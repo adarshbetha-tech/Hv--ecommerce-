@@ -13,7 +13,7 @@
  * - Informative count, active filter indicators, and empty-state recovery
  */
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import ProductCard from "./ProductCard";
 import QuoteModal from "./QuoteModal";
 
@@ -58,10 +58,26 @@ function isFastenerProduct(product) {
  * Contains NO thumbnails, NO image placeholders, and NO empty image containers.
  */
 function TextProductRow({ product, onAddToCart, onViewDetails }) {
+  const [addFeedback, setAddFeedback] = useState(false);
+  const feedbackTimerRef = useRef(null);
   const primaryVariant = product.variants?.[0];
   const sku = primaryVariant?.sku || product.sku || `VTX-${(product.slug || "").toUpperCase()}`;
   const hasPrice = product.price !== null && product.price !== undefined;
   const inStock = product.inStock !== false;
+
+  useEffect(() => () => {
+    if (feedbackTimerRef.current) window.clearTimeout(feedbackTimerRef.current);
+  }, []);
+
+  const handleAddToCart = () => {
+    if (addFeedback) return;
+    onAddToCart && onAddToCart(product, primaryVariant);
+    setAddFeedback(true);
+    feedbackTimerRef.current = window.setTimeout(() => {
+      setAddFeedback(false);
+      feedbackTimerRef.current = null;
+    }, 1800);
+  };
 
   return (
     <div className="vtx-text-product-row" data-testid={`text-product-${product.id || product.slug}`}>
@@ -116,11 +132,12 @@ function TextProductRow({ product, onAddToCart, onViewDetails }) {
         <button
           type="button"
           className="btn btn-primary vtx-btn-text-cart"
-          onClick={() => onAddToCart && onAddToCart(product, primaryVariant)}
+          onClick={handleAddToCart}
+          disabled={!inStock || addFeedback}
           data-testid={`add-to-cart-${product.id || product.slug}`}
-          aria-label={`Add ${product.name} to cart`}
+          aria-label={addFeedback ? `${product.name} added to cart` : `Add ${product.name} to cart`}
         >
-          🛒 Add to Cart
+          {addFeedback ? "✓ Added" : "🛒 Add to Cart"}
         </button>
       </div>
     </div>

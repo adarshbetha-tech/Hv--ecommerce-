@@ -3,12 +3,15 @@ import logo from "./assets/logo.png";
 import LoginPage from "./components/Login/LoginPage";
 import AdminLayout from "./components/Admin/AdminLayout";
 import CartDrawer from "./components/Cart/CartDrawer";
+import CartPage from "./components/Cart/CartPage";
 import CheckoutPage from "./components/Checkout/CheckoutPage";
 import OrdersPage from "./components/Orders/OrdersPage";
 import ProductListPage from "./components/Products/ProductListPage";
 import ProductDetailPage from "./components/Products/ProductDetailPage";
 import ProductCard from "./components/Products/ProductCard";
 import WishlistDrawer from "./components/Products/WishlistDrawer";
+import WishlistPage from "./components/Products/WishlistPage";
+import "./components/CartWishlistPages.css";
 import QuoteModal from "./components/Products/QuoteModal";
 import AnnouncementBar from "./components/Home/AnnouncementBar";
 import MegaMenu from "./components/Home/MegaMenu";
@@ -162,6 +165,8 @@ export default function App() {
       if (path.startsWith("/admin")) return "admin";
       if (path === "/login") return "login";
       if (path === "/checkout") return "checkout";
+      if (path === "/cart") return "cart-page";
+      if (path === "/wishlist") return "wishlist-page";
       if (path === "/orders" || path === "/my-orders") return "orders";
       if (path.startsWith("/product/")) return "product-detail";
       if (path === "/products" || path === "/catalog") return "products";
@@ -314,6 +319,10 @@ export default function App() {
         setCurrentView("login");
       } else if (path === "/checkout") {
         setCurrentView("checkout");
+      } else if (path === "/cart") {
+        setCurrentView("cart-page");
+      } else if (path === "/wishlist") {
+        setCurrentView("wishlist-page");
       } else if (path === "/orders" || path === "/my-orders") {
         setCurrentView("orders");
       } else if (path.startsWith("/product/")) {
@@ -489,6 +498,14 @@ export default function App() {
       targetPath = redirectParam ? `/login?redirect=${encodeURIComponent(redirectParam)}` : "/login";
     } else if (view === "checkout") {
       targetPath = "/checkout";
+    } else if (view === "cart-page") {
+      targetPath = "/cart";
+      setCartOpen(false);
+      setWishlistOpen(false);
+    } else if (view === "wishlist-page") {
+      targetPath = "/wishlist";
+      setCartOpen(false);
+      setWishlistOpen(false);
     } else if (view === "orders") {
       targetPath = "/orders";
     } else if (view === "admin") {
@@ -581,6 +598,10 @@ export default function App() {
       }
     } else if (redirectDestination === "/checkout") {
       navigate("checkout");
+    } else if (redirectDestination === "/cart") {
+      navigate("cart-page");
+    } else if (redirectDestination === "/wishlist") {
+      navigate("wishlist-page");
     } else if (redirectDestination === "/orders" || redirectDestination === "/my-orders") {
       navigate("orders");
     } else {
@@ -605,7 +626,7 @@ export default function App() {
     const targetVariant = variant || product?.variants?.[0];
     if (!targetVariant) {
       setCartError("Unable to add product: no purchasable variant found.");
-      return;
+      return false;
     }
     // Quote-only items can be added directly to cart as quote-required items
 
@@ -630,8 +651,10 @@ export default function App() {
       );
       setCartBadgeBumped(true);
       setTimeout(() => setCartBadgeBumped(false), 550);
+      return true;
     } catch (err) {
       setCartError(err.message || "Failed to add item to cart.");
+      return false;
     } finally {
       setPendingCartAction(null);
     }
@@ -1131,7 +1154,7 @@ export default function App() {
             <button
               type="button"
               className="header-action header-action-btn wishlist-action"
-              onClick={() => setWishlistOpen(true)}
+              onClick={() => navigate("wishlist-page")}
               aria-label={`Saved Wishlist with ${wishlistCount} items`}
               title="View saved wishlist components"
             >
@@ -1146,7 +1169,7 @@ export default function App() {
             <button
               type="button"
               className="header-action cart-action"
-              onClick={() => setCartOpen(true)}
+              onClick={() => navigate("cart-page")}
               aria-label={`Shopping cart with ${cart?.totalQuantity || 0} items`}
               data-testid="cart-button"
             >
@@ -1472,11 +1495,77 @@ export default function App() {
     <SiteFooter
       wishlistCount={wishlistCount}
       onNavigateCategory={(slug) => handleNavigateCatalogWithCategory(slug)}
-      onOpenWishlist={() => setWishlistOpen(true)}
+      onOpenWishlist={() => navigate("wishlist-page")}
       onRequestQuote={() => setQuoteProduct({ name: "Bulk Component Order", sku: "VTX-BULK-RFQ", id: "footer-rfq" })}
       onOpenPolicy={(policyId) => setActivePolicyModal(policyId)}
     />
   );
+
+  // Dedicated full-page shopping cart
+  if (currentView === "cart-page") {
+    return (
+      <div className="page">
+        <MockDevBanner currentUser={currentUser} currentView={currentView} onSimulateUser={handleSimulateUser} onToggleMock={handleToggleMockMode} onNavigate={navigate} />
+        {renderSharedHeader()}
+        <CartPage
+          cart={cart}
+          loading={cartLoading}
+          pendingAction={pendingCartAction}
+          cartError={cartError}
+          onUpdateQuantity={handleUpdateQuantity}
+          onRemoveItem={handleRemoveItem}
+          onClearCart={handleClearCart}
+          onContinueShopping={() => navigate("products")}
+          onProceedToCheckout={handleProceedToCheckout}
+        />
+        {renderSharedFooter()}
+        <CartDrawer
+          isOpen={cartOpen} onClose={() => setCartOpen(false)} cart={cart} loading={cartLoading}
+          pendingAction={pendingCartAction} onUpdateQuantity={handleUpdateQuantity} onRemoveItem={handleRemoveItem}
+          onClearCart={handleClearCart} cartError={cartError} onClearError={() => setCartError(null)}
+          onNavigateLogin={() => navigate("login", null, "/cart")} onProceedToCheckout={handleProceedToCheckout} currentUser={currentUser}
+        />
+        <WishlistDrawer isOpen={wishlistOpen} onClose={() => setWishlistOpen(false)} onAddToCart={handleAddToCart} onViewDetails={handleOpenProductDetail} />
+      </div>
+    );
+  }
+
+  // Dedicated full-page wishlist
+  if (currentView === "wishlist-page") {
+    const handleWishlistAddToCart = async (savedItem) => {
+      const product = products.find((item) => item.id === savedItem.id || item.slug === savedItem.slug || item.id === savedItem.slug || item.slug === savedItem.id);
+      if (!product) {
+        handleOpenProductDetail(savedItem);
+        return false;
+      }
+      const variant = product.variants?.[0];
+      if (!variant) {
+        handleOpenProductDetail(product);
+        return false;
+      }
+      const added = await handleAddToCart(product, variant, 1);
+      return added !== false;
+    };
+    return (
+      <div className="page">
+        <MockDevBanner currentUser={currentUser} currentView={currentView} onSimulateUser={handleSimulateUser} onToggleMock={handleToggleMockMode} onNavigate={navigate} />
+        {renderSharedHeader()}
+        <WishlistPage
+          onAddToCart={handleWishlistAddToCart}
+          onViewDetails={handleOpenProductDetail}
+          onContinueShopping={() => navigate("products")}
+        />
+        {renderSharedFooter()}
+        <CartDrawer
+          isOpen={cartOpen} onClose={() => setCartOpen(false)} cart={cart} loading={cartLoading}
+          pendingAction={pendingCartAction} onUpdateQuantity={handleUpdateQuantity} onRemoveItem={handleRemoveItem}
+          onClearCart={handleClearCart} cartError={cartError} onClearError={() => setCartError(null)}
+          onNavigateLogin={() => navigate("login", null, "/wishlist")} onProceedToCheckout={handleProceedToCheckout} currentUser={currentUser}
+        />
+        <WishlistDrawer isOpen={wishlistOpen} onClose={() => setWishlistOpen(false)} onAddToCart={handleAddToCart} onViewDetails={handleOpenProductDetail} />
+      </div>
+    );
+  }
 
   // 3.5 DEDICATED CUSTOMER ORDERS VIEW
   if (currentView === "orders") {
