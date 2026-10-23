@@ -15,6 +15,7 @@ export default function WishlistDrawer({
   onViewDetails,
 }) {
   const [items, setItems] = useState(() => getWishlistItems());
+  const [movingItemId, setMovingItemId] = useState(null);
 
   const refreshItems = () => {
     setItems(getWishlistItems());
@@ -46,11 +47,15 @@ export default function WishlistDrawer({
   if (!isOpen) return null;
 
   const handleMoveToCart = (item) => {
+    const itemId = item.id || item.slug;
+    if (movingItemId === itemId) return;
+    setMovingItemId(itemId);
     if (onAddToCart) {
       onAddToCart(item);
     }
-    removeFromWishlist(item.id || item.slug);
+    removeFromWishlist(itemId);
     refreshItems();
+    window.setTimeout(() => setMovingItemId(null), 1800);
   };
 
   const handleRemove = (productId) => {
@@ -147,8 +152,9 @@ export default function WishlistDrawer({
                           type="button"
                           className="btn-move-cart"
                           onClick={() => handleMoveToCart(item)}
+                          disabled={movingItemId === (item.id || item.slug)}
                         >
-                          🛒 Move to Cart
+                          {movingItemId === (item.id || item.slug) ? "✓ Added" : "🛒 Move to Cart"}
                         </button>
                       ) : (
                         <button
