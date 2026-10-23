@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <radialGradient id="bgGradWing" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="70%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </radialGradient>
+    <linearGradient id="wingSteelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="25%" stop-color="#cbd5e1"/>
+      <stop offset="50%" stop-color="#ffffff"/>
+      <stop offset="75%" stop-color="#94a3b8"/>
+      <stop offset="100%" stop-color="#475569"/>
+    </linearGradient>
+    <linearGradient id="wingLeftGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#64748b"/>
+      <stop offset="35%" stop-color="#cbd5e1"/>
+      <stop offset="70%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#94a3b8"/>
+    </linearGradient>
+    <linearGradient id="wingRightGrad" x1="100%" y1="0%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#64748b"/>
+      <stop offset="35%" stop-color="#cbd5e1"/>
+      <stop offset="70%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#94a3b8"/>
+    </linearGradient>
+    <linearGradient id="wingBossBore" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#020617"/>
+      <stop offset="50%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+    <filter id="softShadowWing" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+    </filter>
+  </defs>
+
+  <rect width="500" height="500" fill="url(#bgGradWing)" rx="16"/>
+  <circle cx="250" cy="250" r="215" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6,6"/>
+  <path d="M 250 25 L 250 475 M 25 250 L 475 250" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="4,4"/>
+
+  <!-- Soft Contact Drop Shadow -->
+  <ellipse cx="250" cy="385" rx="155" ry="24" fill="#0f172a" fill-opacity="0.16" filter="url(#softShadowWing)"/>
+
+  <!-- Spec Tag (Top Left) -->
+  <g transform="translate(25, 30)">
+    <rect width="115" height="24" rx="4" fill="#0f172a" fill-opacity="0.06" stroke="#cbd5e1" stroke-width="1"/>
+    <text x="57" y="16" text-anchor="middle" font-family="monospace" font-size="10" font-weight="bold" fill="#0284c7">DIN 315 BUTTERFLY</text>
+  </g>
+
+  <!-- Manual Adjust Badge (Top Right) -->
+  <g transform="translate(370, 30)">
+    <circle cx="45" cy="45" r="42" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+    <path d="M 25 45 C 32 30, 40 30, 45 45 C 50 30, 58 30, 65 45 C 60 55, 52 58, 45 48 C 38 58, 30 55, 25 45 Z" fill="#cbd5e1" stroke="#475569" stroke-width="1.5"/>
+    <circle cx="45" cy="46" r="6" fill="#0284c7"/>
+    <text x="45" y="102" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10" font-weight="700" fill="#475569" letter-spacing="0.5">TOOL-LESS</text>
+  </g>
+
+  <!-- Wing Nut Realistic 3D Body -->
+  <g transform="translate(250, 240)">
+    <!-- Central Cylindrical Hub / Boss -->
+    <ellipse cx="0" cy="85" rx="55" ry="20" fill="url(#wingSteelGrad)" stroke="#475569" stroke-width="1.5"/>
+    <rect x="-55" y="15" width="110" height="70" fill="url(#wingSteelGrad)" stroke="#64748b" stroke-width="1"/>
+    <ellipse cx="0" cy="15" rx="55" ry="20" fill="url(#wingSteelGrad)" stroke="#cbd5e1" stroke-width="1.5"/>
+
+    <!-- Left Butterfly Wing Blade -->
+    <path d="M -45 45 C -95 40, -165 -35, -155 -70 C -145 -100, -95 -75, -70 -20 C -55 5, -45 25, -35 45 Z" fill="url(#wingLeftGrad)" stroke="#475569" stroke-width="2"/>
+    <!-- Left Wing Highlight Ridge -->
+    <path d="M -145 -65 C -130 -80, -90 -60, -70 -20 C -58 2, -45 30, -38 42" fill="none" stroke="#ffffff" stroke-width="2" stroke-opacity="0.8"/>
+
+    <!-- Right Butterfly Wing Blade -->
+    <path d="M 45 45 C 95 40, 165 -35, 155 -70 C 145 -100, 95 -75, 70 -20 C 55 5, 45 25, 35 45 Z" fill="url(#wingRightGrad)" stroke="#475569" stroke-width="2"/>
+    <!-- Right Wing Highlight Ridge -->
+    <path d="M 145 -65 C 130 -80, 90 -60, 70 -20 C 58 2, 45 30, 38 42" fill="none" stroke="#ffffff" stroke-width="2" stroke-opacity="0.8"/>
+
+    <!-- Boss Center Top Face -->
+    <ellipse cx="0" cy="15" rx="50" ry="18" fill="url(#wingSteelGrad)" stroke="#cbd5e1" stroke-width="1.5"/>
+
+    <!-- Internal Threaded Bore -->
+    <ellipse cx="0" cy="15" rx="30" ry="11" fill="url(#wingBossBore)" stroke="#1e293b" stroke-width="2"/>
+
+    <!-- Internal Spiral Thread Ridges -->
+    <path d="M -26 13 Q 0 21 26 13" fill="none" stroke="#64748b" stroke-width="2"/>
+    <path d="M -24 17 Q 0 25 24 17" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+  </g>
+
+  <!-- Dimensions Tag (Bottom) -->
+  <g transform="translate(250, 455)">
+    <text x="0" y="0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" font-weight="700" fill="#0f172a" letter-spacing="1">FORGED SS304 WING NUT</text>
+    <text x="0" y="18" text-anchor="middle" font-family="monospace" font-size="10" fill="#64748b">ERGONOMIC TWIN-WING THUMBNUT</text>
+  </g>
+</svg>

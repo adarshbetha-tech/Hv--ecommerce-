@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
 import logo from "./assets/logo.png";
-import arduinoImg from "./assets/hardware/arduino.jpg";
 import LoginPage from "./components/Login/LoginPage";
 import AdminLayout from "./components/Admin/AdminLayout";
 import CartDrawer from "./components/Cart/CartDrawer";
@@ -11,6 +10,18 @@ import ProductDetailPage from "./components/Products/ProductDetailPage";
 import ProductCard from "./components/Products/ProductCard";
 import WishlistDrawer from "./components/Products/WishlistDrawer";
 import QuoteModal from "./components/Products/QuoteModal";
+import AnnouncementBar from "./components/Home/AnnouncementBar";
+import MegaMenu from "./components/Home/MegaMenu";
+import HeroSlider from "./components/Home/HeroSlider";
+import CategoryTiles from "./components/Home/CategoryTiles";
+import ProductRail from "./components/Home/ProductRail";
+import ShippingInfoStrip from "./components/Home/ShippingInfoStrip";
+import ValueProps from "./components/Home/ValueProps";
+import BulkInquirySection from "./components/Home/BulkInquirySection";
+import FloatingSupport from "./components/Home/FloatingSupport";
+import PolicyModal from "./components/Home/PolicyModal";
+import SiteFooter from "./components/Home/SiteFooter";
+import ScrollReveal from "./components/Common/ScrollReveal";
 import { subscribeNewsletter } from "./services/newsletterApi";
 import { getCurrentUser, logoutUser } from "./services/authApi";
 import { getCategories, getProducts, getProductBySlug } from "./services/catalogApi";
@@ -48,12 +59,14 @@ const topBarItems = [
 
 const navItems = [
   "Home",
+  "Shop Categories",
   "Products",
   "Fasteners",
   "Electronic Products",
   "Nuts",
-  "Brands",
+  "Bulk Inquiry",
   "Offers",
+  "Brands",
   "Resources",
   "About",
   "Contact",
@@ -216,6 +229,8 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [isOffersOnly, setIsOffersOnly] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [megaMenuOpen, setMegaMenuOpen] = useState(false);
+  const [mobileCategoriesExpanded, setMobileCategoriesExpanded] = useState(false);
 
   // Dedicated Product Detail state
   const [detailProduct, setDetailProduct] = useState(null);
@@ -224,6 +239,9 @@ export default function App() {
 
   // RFQ Modal State
   const [quoteProduct, setQuoteProduct] = useState(null);
+
+  // Policy Modal State (Shipping, GST, Returns, Privacy, Terms)
+  const [activePolicyModal, setActivePolicyModal] = useState(null);
 
   // Newsletter state
   const [email, setEmail] = useState("");
@@ -246,22 +264,25 @@ export default function App() {
     return () => window.removeEventListener("vertex_wishlist_updated", handleWishlistChange);
   }, []);
 
-  // Close mobile drawer on Escape key and lock body scroll
+  // Close mobile drawer or mega menu on Escape key and lock body scroll
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === "Escape" && mobileMenuOpen) {
-        setMobileMenuOpen(false);
+      if (e.key === "Escape") {
+        if (megaMenuOpen) setMegaMenuOpen(false);
+        if (mobileMenuOpen) setMobileMenuOpen(false);
       }
     };
+    window.addEventListener("keydown", handleKeyDown);
     if (mobileMenuOpen) {
-      window.addEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
     }
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "";
     };
-  }, [mobileMenuOpen]);
+  }, [mobileMenuOpen, megaMenuOpen]);
 
   useEffect(() => {
     // Check initial authentication status via secure HttpOnly cookie
@@ -587,12 +608,7 @@ export default function App() {
       setCartError("Unable to add product: no purchasable variant found.");
       return;
     }
-
-    // If product has no price or is quote-only, open quote modal
-    if (product.price === null || product.price === undefined) {
-      setQuoteProduct(product);
-      return;
-    }
+    // Quote-only items can be added directly to cart as quote-required items
 
     const qty = Math.max(1, parseInt(quantity, 10) || 1);
     setPendingCartAction({ type: "add", id: targetVariant.id });
@@ -744,6 +760,25 @@ export default function App() {
     const prodSection = document.getElementById("featured-products");
     if (prodSection && typeof prodSection.scrollIntoView === "function") {
       prodSection.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  const handleScrollToSection = (sectionId) => {
+    setMobileMenuOpen(false);
+    setMegaMenuOpen(false);
+    if (currentView !== "home") {
+      navigate("home");
+      setTimeout(() => {
+        const el = document.getElementById(sectionId) || document.querySelector(`.${sectionId}`);
+        if (el && typeof el.scrollIntoView === "function") {
+          el.scrollIntoView({ behavior: "smooth" });
+        }
+      }, 100);
+    } else {
+      const el = document.getElementById(sectionId) || document.querySelector(`.${sectionId}`);
+      if (el && typeof el.scrollIntoView === "function") {
+        el.scrollIntoView({ behavior: "smooth" });
+      }
     }
   };
 
@@ -925,6 +960,9 @@ export default function App() {
   // Common Header component for Home, Products Catalogue, and Product Detail
   const renderSharedHeader = () => (
     <>
+      {/* Top Announcement Bar — 3 Rotating Tiered Offers */}
+      <AnnouncementBar />
+
       {flashMessage && (
         <div className="vtx-flash-banner" role="status">
           <span>{flashMessage}</span>
@@ -1002,6 +1040,7 @@ export default function App() {
               navigate("home");
               handleClearAllFilters();
               setMobileMenuOpen(false);
+              setMegaMenuOpen(false);
             }}
             style={{ cursor: "pointer" }}
           >
@@ -1082,20 +1121,23 @@ export default function App() {
                 type="button"
                 className="header-action header-action-btn"
                 onClick={() => navigate("login")}
+                aria-label="Login / Register"
               >
-                <span aria-hidden="true">👤</span> Login / Register
+                <span aria-hidden="true">👤</span>{" "}
+                <span className="header-action-label">Login / Register</span>
               </button>
             )}
 
             {/* Wishlist Header Action */}
             <button
               type="button"
-              className="header-action wishlist-action"
+              className="header-action header-action-btn wishlist-action"
               onClick={() => setWishlistOpen(true)}
               aria-label={`Saved Wishlist with ${wishlistCount} items`}
               title="View saved wishlist components"
             >
-              <span aria-hidden="true">❤️</span> Wishlist
+              <span aria-hidden="true">❤️</span>{" "}
+              <span className="header-action-label">Wishlist</span>
               <span className="cart-badge" data-testid="wishlist-badge">
                 {wishlistCount}
               </span>
@@ -1109,7 +1151,8 @@ export default function App() {
               aria-label={`Shopping cart with ${cart?.totalQuantity || 0} items`}
               data-testid="cart-button"
             >
-              <span aria-hidden="true">🛒</span> Cart
+              <span aria-hidden="true">🛒</span>{" "}
+              <span className="header-action-label">Cart</span>
               <span
                 className={`cart-badge${cartBadgeBumped ? " is-bumped" : ""}`}
                 data-testid="cart-badge"
@@ -1127,28 +1170,52 @@ export default function App() {
               const handleNavClick = (e) => {
                 e.preventDefault();
                 if (item === "Home") {
+                  setMegaMenuOpen(false);
                   navigate("home");
                   handleClearAllFilters();
+                } else if (item === "Shop Categories") {
+                  setMegaMenuOpen((prev) => !prev);
                 } else if (item === "Products") {
+                  setMegaMenuOpen(false);
                   handleNavigateCatalogWithCategory("all");
                 } else if (item === "Fasteners" || item === "Screws & Fasteners") {
+                  setMegaMenuOpen(false);
                   handleNavigateCatalogWithCategory("fasteners");
                 } else if (item === "Electronic Products" || item === "Electronics") {
+                  setMegaMenuOpen(false);
                   handleNavigateCatalogWithCategory("electronics");
                 } else if (item === "Nuts") {
+                  setMegaMenuOpen(false);
                   handleNavigateCatalogWithCategory("nuts");
+                } else if (item === "Bulk Inquiry") {
+                  setMegaMenuOpen(false);
+                  setQuoteProduct({
+                    name: "Custom Bulk Fasteners & Electronics",
+                    sku: "VTX-BULK-CUSTOM",
+                    id: "bulk-rfq",
+                  });
                 } else if (item === "Offers") {
+                  setMegaMenuOpen(false);
                   setIsOffersOnly(true);
                   if (currentView !== "home") navigate("home");
                   const prodSection = document.getElementById("featured-products");
                   if (prodSection && typeof prodSection.scrollIntoView === "function") {
                     prodSection.scrollIntoView({ behavior: "smooth" });
                   }
+                } else if (item === "Brands") {
+                  handleScrollToSection("brands-strip");
+                } else if (item === "Resources") {
+                  handleScrollToSection("reference-section");
+                } else if (item === "About") {
+                  handleScrollToSection("footer");
+                } else if (item === "Contact") {
+                  handleScrollToSection("footer");
                 }
               };
 
               const isNavActive =
                 (item === "Home" && currentView === "home" && selectedCategory === "all" && !isOffersOnly) ||
+                (item === "Shop Categories" && megaMenuOpen) ||
                 (item === "Products" && currentView === "products" && selectedCatalogCategory === "all") ||
                 ((item === "Fasteners" || item === "Screws & Fasteners") && (selectedCategory === "fasteners" || selectedCatalogCategory === "fasteners")) ||
                 ((item === "Electronic Products" || item === "Electronics") && (selectedCategory === "electronics" || selectedCatalogCategory === "electronics")) ||
@@ -1159,15 +1226,44 @@ export default function App() {
                 <button
                   type="button"
                   key={item}
-                  className={"nav-link" + (isNavActive ? " active" : "")}
+                  className={
+                    "nav-link" +
+                    (isNavActive ? " active" : "") +
+                    (item === "Shop Categories" ? " nav-link-dropdown-trigger" + (megaMenuOpen ? " is-open" : "") : "")
+                  }
                   onClick={handleNavClick}
+                  aria-haspopup={item === "Shop Categories" ? "true" : undefined}
+                  aria-expanded={item === "Shop Categories" ? megaMenuOpen : undefined}
+                  aria-controls={item === "Shop Categories" ? "vtx-mega-menu" : undefined}
                 >
-                  {item}
+                  <span>{item}</span>
+                  {item === "Shop Categories" && (
+                    <span className="nav-chevron" aria-hidden="true">▾</span>
+                  )}
                 </button>
               );
             })}
           </div>
         </nav>
+
+        {/* Category Mega Menu */}
+        <MegaMenu
+          isOpen={megaMenuOpen}
+          categories={categories}
+          onNavigateCategory={(catSlug, subSlug) => {
+            setMegaMenuOpen(false);
+            handleNavigateCatalogWithCategory(catSlug, subSlug);
+          }}
+          onRequestQuote={() => {
+            setMegaMenuOpen(false);
+            setQuoteProduct({
+              name: "Custom Bulk Fasteners & Electronics",
+              sku: "VTX-BULK-CUSTOM",
+              id: "bulk-rfq",
+            });
+          }}
+          onClose={() => setMegaMenuOpen(false)}
+        />
       </header>
 
       {/* Mobile Navigation Drawer */}
@@ -1182,7 +1278,8 @@ export default function App() {
             id="mobile-nav-drawer"
             className="vtx-mobile-nav-drawer is-open"
             aria-label="Mobile Navigation"
-            role="region"
+            role="dialog"
+            aria-modal="true"
           >
             <div className="vtx-mobile-nav-header">
               <div className="vtx-mobile-brand">
@@ -1202,40 +1299,108 @@ export default function App() {
             <div className="vtx-mobile-nav-content">
               <div className="vtx-mobile-nav-section">
                 <span className="vtx-mobile-nav-title">Catalog Navigation</span>
-                <div className="vtx-mobile-nav-links">
-                  {navItems.map((item) => {
-                    const handleMobileNavClick = (e) => {
-                      e.preventDefault();
-                      setMobileMenuOpen(false);
-                      if (item === "Home") {
-                        navigate("home");
-                        handleClearAllFilters();
-                      } else if (item === "Products") {
-                        handleNavigateCatalogWithCategory("all");
-                      } else if (item === "Fasteners" || item === "Screws & Fasteners") {
-                        handleNavigateCatalogWithCategory("fasteners");
-                      } else if (item === "Electronic Products" || item === "Electronics") {
-                        handleNavigateCatalogWithCategory("electronics");
-                      } else if (item === "Nuts") {
-                        handleNavigateCatalogWithCategory("nuts");
-                      } else if (item === "Offers") {
-                        setIsOffersOnly(true);
-                        if (currentView !== "home") navigate("home");
-                      }
-                    };
 
-                    return (
-                      <button
-                        type="button"
-                        key={`mobile-${item}`}
-                        className="vtx-mobile-nav-link"
-                        onClick={handleMobileNavClick}
-                      >
-                        <span>{item}</span>
-                        <span aria-hidden="true" style={{ opacity: 0.5 }}>→</span>
-                      </button>
-                    );
-                  })}
+                {/* Mobile Categories Accordion */}
+                <div className="vtx-mobile-category-accordion">
+                  <button
+                    type="button"
+                    className="vtx-mobile-category-summary"
+                    onClick={() => setMobileCategoriesExpanded((prev) => !prev)}
+                    aria-expanded={mobileCategoriesExpanded}
+                  >
+                    <span>📦 Shop Categories &amp; Subcategories</span>
+                    <span>{mobileCategoriesExpanded ? "▲" : "▼"}</span>
+                  </button>
+
+                  {mobileCategoriesExpanded && (
+                    <div className="vtx-mobile-subcat-links">
+                      {categories.map((cat) => (
+                        <div key={cat.id || cat.slug} style={{ marginBottom: "8px" }}>
+                          <button
+                            type="button"
+                            className="vtx-mobile-subcat-item"
+                            style={{ fontWeight: 700, color: "var(--navy)" }}
+                            onClick={() => {
+                              setMobileMenuOpen(false);
+                              handleNavigateCatalogWithCategory(cat.slug, "all");
+                            }}
+                          >
+                            <span>{cat.icon || "📦"} {cat.name}</span>
+                            <span>→</span>
+                          </button>
+                          {cat.children && cat.children.length > 0 && (
+                            <div style={{ paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "2px" }}>
+                              {cat.children.map((sub) => (
+                                <button
+                                  type="button"
+                                  key={sub.id || sub.slug}
+                                  className="vtx-mobile-subcat-item"
+                                  onClick={() => {
+                                    setMobileMenuOpen(false);
+                                    handleNavigateCatalogWithCategory(cat.slug, sub.slug);
+                                  }}
+                                >
+                                  <span>› {sub.name}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="vtx-mobile-nav-links">
+                  {navItems
+                    .filter((item) => item !== "Shop Categories")
+                    .map((item) => {
+                      const handleMobileNavClick = (e) => {
+                        e.preventDefault();
+                        setMobileMenuOpen(false);
+                        if (item === "Home") {
+                          navigate("home");
+                          handleClearAllFilters();
+                        } else if (item === "Products") {
+                          handleNavigateCatalogWithCategory("all");
+                        } else if (item === "Electronics") {
+                          handleNavigateCatalogWithCategory("electronics");
+                        } else if (item === "Screws & Fasteners") {
+                          handleNavigateCatalogWithCategory("fasteners");
+                        } else if (item === "Nuts") {
+                          handleNavigateCatalogWithCategory("nuts");
+                        } else if (item === "Bulk Inquiry") {
+                          setQuoteProduct({
+                            name: "Custom Bulk Fasteners & Electronics",
+                            sku: "VTX-BULK-CUSTOM",
+                            id: "bulk-rfq",
+                          });
+                        } else if (item === "Offers") {
+                          setIsOffersOnly(true);
+                          if (currentView !== "home") navigate("home");
+                        } else if (item === "Brands") {
+                          handleScrollToSection("brands-strip");
+                        } else if (item === "Resources") {
+                          handleScrollToSection("reference-section");
+                        } else if (item === "About") {
+                          handleScrollToSection("footer");
+                        } else if (item === "Contact") {
+                          handleScrollToSection("footer");
+                        }
+                      };
+
+                      return (
+                        <button
+                          type="button"
+                          key={`mobile-${item}`}
+                          className="vtx-mobile-nav-link"
+                          onClick={handleMobileNavClick}
+                        >
+                          <span>{item}</span>
+                          <span aria-hidden="true" style={{ opacity: 0.5 }}>→</span>
+                        </button>
+                      );
+                    })}
                 </div>
               </div>
 
@@ -1305,110 +1470,13 @@ export default function App() {
 
   // Common Shared Footer
   const renderSharedFooter = () => (
-    <footer className="footer">
-      <div className="footer-inner">
-        <div className="footer-col">
-          <div className="brand footer-brand">
-            <img src={logo} alt="HV Vertex logo" className="brand-logo" />
-            <div className="brand-text">
-              <span className="brand-name">VERTEX</span>
-              <span className="brand-tagline">BUILD BETTER TOGETHER</span>
-            </div>
-          </div>
-          <p className="footer-about">
-            VERTEX is an online engineering components and precision hardware store.
-            Supplying automotive lithium-ion cells, microcontroller hardware, motor drivers,
-            and metric fasteners across India.
-          </p>
-        </div>
-
-        <div className="footer-col">
-          <h4>Catalogue</h4>
-          <ul>
-            <li>
-              <button
-                type="button"
-                className="footer-link-btn"
-                onClick={() => handleNavigateCatalogWithCategory("all")}
-              >
-                All Products
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                className="footer-link-btn"
-                onClick={() => handleNavigateCatalogWithCategory("electronics")}
-              >
-                Lithium Cells &amp; Electronics
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                className="footer-link-btn"
-                onClick={() => handleNavigateCatalogWithCategory("fasteners")}
-              >
-                Screws &amp; Fasteners
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                className="footer-link-btn"
-                onClick={() => handleNavigateCatalogWithCategory("nuts")}
-              >
-                Nuts &amp; Washers
-              </button>
-            </li>
-          </ul>
-        </div>
-
-        <div className="footer-col">
-          <h4>Support &amp; Commercial</h4>
-          <ul>
-            <li>
-              <button type="button" className="footer-link-btn" onClick={() => setWishlistOpen(true)}>
-                Saved Wishlist ({wishlistCount})
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                className="footer-link-btn"
-                onClick={() => setQuoteProduct({ name: "Bulk Component Order", sku: "VTX-BULK-RFQ" })}
-              >
-                Request Commercial Quote
-              </button>
-            </li>
-            <li>
-              <button type="button" className="footer-link-btn" onClick={(e) => e.preventDefault()}>
-                Pan-India Shipping Policy
-              </button>
-            </li>
-            <li>
-              <button type="button" className="footer-link-btn" onClick={(e) => e.preventDefault()}>
-                GST Tax Invoicing
-              </button>
-            </li>
-          </ul>
-        </div>
-
-        <div className="footer-col">
-          <h4>Contact &amp; Hub</h4>
-          <p>📍 Hyderabad, Telangana, India</p>
-          <p>✉️ sales@vertex.in</p>
-          <p>📞 +91 98765 43210</p>
-          <p style={{ marginTop: "8px", fontSize: "0.8rem", color: "var(--text-muted)" }}>
-            ⚡ Verified Technical Specifications
-          </p>
-        </div>
-      </div>
-
-      <div className="footer-bottom">
-        <p>© {new Date().getFullYear()} VERTEX Engineering &amp; Supplies. All rights reserved.</p>
-      </div>
-    </footer>
+    <SiteFooter
+      wishlistCount={wishlistCount}
+      onNavigateCategory={(slug) => handleNavigateCatalogWithCategory(slug)}
+      onOpenWishlist={() => setWishlistOpen(true)}
+      onRequestQuote={() => setQuoteProduct({ name: "Bulk Component Order", sku: "VTX-BULK-RFQ", id: "footer-rfq" })}
+      onOpenPolicy={(policyId) => setActivePolicyModal(policyId)}
+    />
   );
 
   // 3.5 DEDICATED CUSTOMER ORDERS VIEW
@@ -1511,6 +1579,13 @@ export default function App() {
           onAddToCart={handleAddToCart}
           onViewDetails={handleOpenProductDetail}
         />
+
+        <QuoteModal
+          product={quoteProduct}
+          isOpen={Boolean(quoteProduct)}
+          onClose={() => setQuoteProduct(null)}
+          currentUser={currentUser}
+        />
       </div>
     );
   }
@@ -1574,6 +1649,13 @@ export default function App() {
           onAddToCart={handleAddToCart}
           onViewDetails={handleOpenProductDetail}
         />
+
+        <QuoteModal
+          product={quoteProduct}
+          isOpen={Boolean(quoteProduct)}
+          onClose={() => setQuoteProduct(null)}
+          currentUser={currentUser}
+        />
       </div>
     );
   }
@@ -1608,8 +1690,40 @@ export default function App() {
     return true;
   });
 
+  const fastenersRailProducts = visibleProducts.filter(
+    (p) =>
+      p.category?.slug === "fasteners" ||
+      p.categoryId === "cat-fasteners" ||
+      p.category?.slug?.includes("fastener") ||
+      p.category?.slug?.includes("screw")
+  );
+
+  const electronicsRailProducts = visibleProducts.filter(
+    (p) =>
+      p.category?.slug === "electronics" ||
+      p.categoryId === "cat-electronics" ||
+      p.category?.slug?.includes("elect")
+  );
+
+  const nutsRailProducts = visibleProducts.filter(
+    (p) =>
+      p.category?.slug === "nuts" ||
+      p.categoryId === "cat-nuts" ||
+      p.category?.slug?.includes("nut")
+  );
+
+  const otherRailProducts = visibleProducts.filter(
+    (p) =>
+      !fastenersRailProducts.includes(p) &&
+      !electronicsRailProducts.includes(p) &&
+      !nutsRailProducts.includes(p)
+  );
+
   return (
     <div className="page">
+      <a href="#shop-categories" className="skip-link">
+        Skip to content
+      </a>
       <MockDevBanner
         currentUser={currentUser}
         currentView={currentView}
@@ -1619,179 +1733,31 @@ export default function App() {
       />
       {renderSharedHeader()}
 
-      {/* Hero Section */}
-      <section className="hero">
-        <div className="hero-inner">
-          <div className="hero-copy">
-            <div className="hero-badge">
-              <span>⚡ Industrial Components &amp; Precision Fasteners</span>
-            </div>
-            <h1>
-              Precision Electronics &amp; Hardware Fasteners
-              <br />
-              <span className="hero-accent">Built for Engineering &amp; B2B Supply</span>
-            </h1>
-            <p className="hero-sub">
-              Source factory-tested microcontrollers, industrial automation modules, SS304 metric fasteners, and lab components with transparent volume pricing and pan-India dispatch.
-            </p>
-            <div className="hero-ctas">
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleExploreProducts}
-              >
-                Explore Products ↓
-              </button>
-              <button
-                type="button"
-                className="btn btn-outline-light"
-                onClick={() => handleCategorySelect("electronics")}
-              >
-                Shop Electronics →
-              </button>
-              <button
-                type="button"
-                className="btn btn-outline-light"
-                onClick={() => handleNavigateCatalogWithCategory("all")}
-              >
-                Browse Catalogue →
-              </button>
-            </div>
-            <div className="hero-perks-row">
-              <span className="hero-perk-item">✓ Factory Verified Sourcing</span>
-              <span className="hero-perk-item">✓ SS304 Precision Tolerances</span>
-              <span className="hero-perk-item">✓ GST Tax Invoicing</span>
-            </div>
-          </div>
-          <div className="hero-art" aria-hidden="true">
-            <div className="hero-card-preview">
-              <div className="hero-preview-header">
-                <span className="hero-pill-category">Hardware Showcase</span>
-                <span className="hero-pill-status">● Ready to Dispatch</span>
-              </div>
-              <div className="hero-preview-img-wrap">
-                <img src={arduinoImg} alt="Industrial Microcontroller" className="hero-preview-img" />
-              </div>
-              <div className="hero-preview-body">
-                <div className="hero-preview-title">Arduino Uno R3 &amp; SS304 Metric Hardware</div>
-                <div className="hero-preview-sku">SKU: ELEC-ARD-UNO-R3 • SS304 M3-M10</div>
-                <div className="hero-preview-footer">
-                  <span className="hero-preview-price">Verified B2B Direct Sourcing</span>
-                  <span className="hero-preview-tag">ISO 9001 Compliant</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Hero Section — 4-Slide Interactive Slider */}
+      <HeroSlider
+        onExploreProducts={handleExploreProducts}
+        onNavigateCategory={handleCategorySelect}
+        onNavigateCatalog={() => handleNavigateCatalogWithCategory("all")}
+        onRequestQuote={() =>
+          setQuoteProduct({
+            name: "Custom Bulk Fasteners & Electronics",
+            sku: "VTX-BULK-CUSTOM",
+            id: "bulk-rfq",
+          })
+        }
+      />
 
-      {/* Trust & Value Propositions */}
-      <section className="vtx-values-bar" aria-label="Why choose VERTEX">
-        <div className="vtx-values-inner">
-          <div className="vtx-value-card vtx-reveal vtx-stagger-1">
-            <div className="vtx-value-icon" aria-hidden="true">🔌</div>
-            <div className="vtx-value-content">
-              <h3 className="vtx-value-title">Industrial Component Selection</h3>
-              <p className="vtx-value-desc">
-                Factory-tested microcontrollers, motor drivers, PLCs, and development boards for production and lab prototypes.
-              </p>
-            </div>
-          </div>
-          <div className="vtx-value-card vtx-reveal vtx-stagger-2">
-            <div className="vtx-value-icon" aria-hidden="true">🔩</div>
-            <div className="vtx-value-content">
-              <h3 className="vtx-value-title">Technical Specifications</h3>
-              <p className="vtx-value-desc">
-                Standard metric pitches, SS304 tensile tolerance, and documented pack sizes for every fastener SKU.
-              </p>
-            </div>
-          </div>
-          <div className="vtx-value-card vtx-reveal vtx-stagger-3">
-            <div className="vtx-value-icon" aria-hidden="true">📦</div>
-            <div className="vtx-value-content">
-              <h3 className="vtx-value-title">Bulk Purchasing Options</h3>
-              <p className="vtx-value-desc">
-                Volume-tiered pricing and direct quote requests for workshops, educational institutions, and OEMs.
-              </p>
-            </div>
-          </div>
-          <div className="vtx-value-card vtx-reveal vtx-stagger-4">
-            <div className="vtx-value-icon" aria-hidden="true">🚚</div>
-            <div className="vtx-value-content">
-              <h3 className="vtx-value-title">Order Visibility &amp; Support</h3>
-              <p className="vtx-value-desc">
-                Transparent shipment dispatch, GST-compliant tax invoices, and dedicated technical inquiry assistance.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Shipping & Store Guarantees Info Strip */}
+      <ShippingInfoStrip onOpenPolicy={(policyId) => setActivePolicyModal(policyId)} />
 
       {/* Shop by Category Section */}
-      <section className="section" id="shop-categories">
-        <div className="section-head">
-          <h2>Shop by Category</h2>
-          <button
-            type="button"
-            onClick={() => handleNavigateCatalogWithCategory("all")}
-            className="link-arrow"
-          >
-            View All Categories →
-          </button>
-        </div>
-
-        {categoriesLoading ? (
-          <div className="category-grid" role="status" aria-label="Loading categories">
-            {[1, 2, 3].map((n) => (
-              <div className="category-card-skeleton" key={n}>
-                <div className="skeleton-line" style={{ width: "32px", height: "32px", borderRadius: "50%" }} />
-                <div className="skeleton-line skeleton-title" />
-                <div className="skeleton-line" style={{ width: "90%" }} />
-                <div className="skeleton-line" style={{ width: "60%" }} />
-              </div>
-            ))}
-          </div>
-        ) : categoriesError ? (
-          <div className="catalog-error-state" role="alert">
-            <div className="error-icon" aria-hidden="true">⚠️</div>
-            <h3>Unable to Load Categories</h3>
-            <p>{categoriesError}</p>
-            <button type="button" className="btn-retry" onClick={loadCategories}>
-              ↻ Retry
-            </button>
-          </div>
-        ) : (
-          <div className="category-grid">
-            {categories.filter((cat) => cat.isActive !== false).map((cat, idx) => {
-              const tint = cat.tint || ["tint-blue", "tint-orange", "tint-green"][idx % 3];
-              const icon = cat.icon || (cat.slug?.includes("elect") ? "🔌" : cat.slug?.includes("fast") ? "🔩" : cat.slug?.includes("nut") ? "⬡" : "📦");
-              const subCountText = cat.children && cat.children.length > 0
-                ? `${cat.children.length} Subcategories`
-                : cat.productsCount !== undefined
-                  ? `${cat.productsCount} Products`
-                  : "Verified Catalog";
-
-              return (
-                <div className={`category-card ${tint} vtx-reveal vtx-stagger-${(idx % 3) + 1}`} key={cat.id || cat.slug}>
-                  <div className="category-icon">{icon}</div>
-                  <h3>{cat.name}</h3>
-                  <p>{cat.description || "High-precision components engineered for industrial & prototyping applications."}</p>
-                  <div className="category-foot">
-                    <button
-                      type="button"
-                      className="link-text"
-                      onClick={() => handleNavigateCatalogWithCategory(cat.slug)}
-                    >
-                      Explore {cat.name} →
-                    </button>
-                    <span>{subCountText}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      <CategoryTiles
+        categories={categories}
+        loading={categoriesLoading}
+        error={categoriesError}
+        onRetry={loadCategories}
+        onSelectCategory={(catSlug, subSlug) => handleNavigateCatalogWithCategory(catSlug, subSlug)}
+      />
 
       {/* Featured Products Section */}
       <section className="section" id="featured-products">
@@ -1897,9 +1863,9 @@ export default function App() {
               Clear All Filters
             </button>
           </div>
-        ) : (
+        ) : activeSearch || selectedCategory !== "all" || isOffersOnly ? (
           <div className="product-grid">
-            {visibleProducts.map((p) => (
+            {visibleProducts.map((p, idx) => (
               <ProductCard
                 key={p.id || p.slug}
                 product={p}
@@ -1907,8 +1873,64 @@ export default function App() {
                 onViewDetails={handleOpenProductDetail}
                 onRequestQuote={(prod) => setQuoteProduct(prod)}
                 isAdding={pendingCartAction?.id === p.variants?.[0]?.id}
+                revealIndex={idx}
               />
             ))}
+          </div>
+        ) : (
+          <div className="vtx-home-rails-container">
+            {fastenersRailProducts.length > 0 && (
+              <ProductRail
+                title="Mini Assorted Packs & Fasteners"
+                subtitle="Precision metric machine screws, SS304 hex bolts, and assorted packs."
+                badge="MINI ASSORTED PACKS"
+                products={fastenersRailProducts}
+                onAddToCart={handleAddToCart}
+                onViewDetails={handleOpenProductDetail}
+                onRequestQuote={(prod) => setQuoteProduct(prod)}
+                onViewAll={() => handleNavigateCatalogWithCategory("fasteners")}
+                pendingCartAction={pendingCartAction}
+              />
+            )}
+            {electronicsRailProducts.length > 0 && (
+              <ProductRail
+                title="Power Tools & Development Boards"
+                subtitle="Industrial-grade microcontrollers, motor drivers, and lab hardware."
+                badge="ELECTRONICS"
+                products={electronicsRailProducts}
+                onAddToCart={handleAddToCart}
+                onViewDetails={handleOpenProductDetail}
+                onRequestQuote={(prod) => setQuoteProduct(prod)}
+                onViewAll={() => handleNavigateCatalogWithCategory("electronics")}
+                pendingCartAction={pendingCartAction}
+              />
+            )}
+            {nutsRailProducts.length > 0 && (
+              <ProductRail
+                title="Assorted Screw Packs & Nut Types"
+                subtitle="High-durability Nyloc nuts, hex nuts, and precision lock assemblies."
+                badge="POPULAR PICKS"
+                products={nutsRailProducts}
+                onAddToCart={handleAddToCart}
+                onViewDetails={handleOpenProductDetail}
+                onRequestQuote={(prod) => setQuoteProduct(prod)}
+                onViewAll={() => handleNavigateCatalogWithCategory("nuts")}
+                pendingCartAction={pendingCartAction}
+              />
+            )}
+            {otherRailProducts.length > 0 && (
+              <ProductRail
+                title="Industrial Components & Automation"
+                subtitle="Sensors, precision assembly tools, and verified engineering accessories."
+                badge="HARDWARE"
+                products={otherRailProducts}
+                onAddToCart={handleAddToCart}
+                onViewDetails={handleOpenProductDetail}
+                onRequestQuote={(prod) => setQuoteProduct(prod)}
+                onViewAll={() => handleNavigateCatalogWithCategory("all")}
+                pendingCartAction={pendingCartAction}
+              />
+            )}
           </div>
         )}
       </section>
@@ -1916,137 +1938,119 @@ export default function App() {
       {/* Reference lists: fastener & nut types from the official category list */}
       <section className="section reference-section">
         <div className="reference-grid">
-          <div className="reference-card vtx-reveal vtx-stagger-1">
-            <h3>Screws &amp; Fasteners — Types</h3>
-            <ul>
-              {fastenerTypes.map((t) => (
-                <li key={t}>
-                  <button
-                    type="button"
-                    className="vtx-ref-link"
-                    onClick={() => handleNavigateCatalogWithCategory("fasteners")}
-                  >
-                    {t} →
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="reference-card vtx-reveal vtx-stagger-2">
-            <h3>Nut Types</h3>
-            <ul>
-              {nutTypes.map((t) => (
-                <li key={t}>
-                  <button
-                    type="button"
-                    className="vtx-ref-link"
-                    onClick={() => handleNavigateCatalogWithCategory("nuts")}
-                  >
-                    {t} →
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <ScrollReveal staggerIndex={0} yOffset={18} duration={0.45}>
+            <div className="reference-card vtx-reveal is-revealed vtx-stagger-1">
+              <h3>Screws &amp; Fasteners — Types</h3>
+              <ul>
+                {fastenerTypes.map((t) => (
+                  <li key={t}>
+                    <button
+                      type="button"
+                      className="vtx-ref-link"
+                      onClick={() => handleNavigateCatalogWithCategory("fasteners")}
+                    >
+                      {t} →
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </ScrollReveal>
+          <ScrollReveal staggerIndex={1} yOffset={18} duration={0.45}>
+            <div className="reference-card vtx-reveal is-revealed vtx-stagger-2">
+              <h3>Nut Types</h3>
+              <ul>
+                {nutTypes.map((t) => (
+                  <li key={t}>
+                    <button
+                      type="button"
+                      className="vtx-ref-link"
+                      onClick={() => handleNavigateCatalogWithCategory("nuts")}
+                    >
+                      {t} →
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </ScrollReveal>
         </div>
       </section>
 
-      {/* Bulk Orders Banner */}
-      <section className="bulk-banner vtx-reveal">
-        <div className="bulk-copy">
-          <h3>
-            Bulk Orders
-            <br />
-            Better Prices
-          </h3>
-          <p>
-            Get special pricing for bulk orders. Ideal for industries,
-            educational institutions and makers.
-          </p>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => setQuoteProduct({ name: "Bulk Hardware Inquiry", sku: "VTX-BULK-TIER" })}
-          >
-            Request a Quote →
-          </button>
-        </div>
-        <div className="bulk-perks">
-          <div>
-            <span>💎</span>
-            <p>Genuine Products</p>
-          </div>
-          <div>
-            <span>🚚</span>
-            <p>Pan India Delivery</p>
-          </div>
-          <div>
-            <span>🛡️</span>
-            <p>Secure Payments</p>
-          </div>
-          <div>
-            <span>🎧</span>
-            <p>Dedicated Support</p>
-          </div>
-        </div>
-      </section>
+      {/* Value Propositions */}
+      <ValueProps />
+
+      {/* Bulk Procurement & RFQ */}
+      <BulkInquirySection
+        onRequestQuote={() =>
+          setQuoteProduct({
+            name: "Bulk Hardware & Component Inquiry",
+            sku: "VTX-BULK-TIER",
+            id: "bulk-rfq",
+          })
+        }
+      />
 
       {/* Newsletter */}
       <section className="newsletter">
-        <div className="newsletter-inner">
-          <h3>Stay Updated on New Arrivals &amp; Tech Guides</h3>
-          <p>
-            Get product updates, technical datasheets and exclusive offers
-            delivered to your inbox.
-          </p>
-          {subscribed ? (
-            <p className="newsletter-success">
-              ✓ Thank you for subscribing to VERTEX updates!
+        <ScrollReveal yOffset={18} duration={0.45}>
+          <div className="newsletter-inner">
+            <h3>Stay Updated on New Arrivals &amp; Tech Guides</h3>
+            <p>
+              Get product updates, technical datasheets and exclusive offers
+              delivered to your inbox.
             </p>
-          ) : (
-            <form className="newsletter-form" onSubmit={handleSubscribe}>
-              {newsletterError && (
-                <div className="newsletter-error" style={{ color: "#ef4444", fontSize: "13px", marginBottom: "8px" }} role="alert">
-                  {newsletterError}
-                </div>
-              )}
-              <input
-                type="email"
-                placeholder="Enter your work email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                aria-label="Work email address"
-                required
-                disabled={subscribing}
-              />
-              <button className="btn btn-primary" type="submit" disabled={subscribing}>
-                {subscribing ? "Subscribing..." : "Subscribe"}
-              </button>
-            </form>
-          )}
-        </div>
+            {subscribed ? (
+              <p className="newsletter-success">
+                ✓ Thank you for subscribing to VERTEX updates!
+              </p>
+            ) : (
+              <form className="newsletter-form" onSubmit={handleSubscribe}>
+                {newsletterError && (
+                  <div className="newsletter-error" style={{ color: "#ef4444", fontSize: "13px", marginBottom: "8px" }} role="alert">
+                    {newsletterError}
+                  </div>
+                )}
+                <input
+                  type="email"
+                  placeholder="Enter your work email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  aria-label="Work email address"
+                  required
+                  disabled={subscribing}
+                />
+                <button className="btn btn-primary" type="submit" disabled={subscribing}>
+                  {subscribing ? "Subscribing..." : "Subscribe"}
+                </button>
+              </form>
+            )}
+          </div>
+        </ScrollReveal>
       </section>
 
       {/* Brands Strip */}
       <section className="brands-strip">
-        <div className="brands-inner">
-          <span className="brands-label">Featured Brands</span>
-          <div className="brand-tags">
-            {brands.map((b) => (
-              <span
-                className="brand-tag"
-                key={b}
-                onClick={() => {
-                  navigate("products", "dashboard", null, null, `brand=${encodeURIComponent(b)}`);
-                }}
-                style={{ cursor: "pointer" }}
-                title={`Browse ${b} products`}
-              >
-                {b}
-              </span>
-            ))}
+        <ScrollReveal yOffset={16} duration={0.42}>
+          <div className="brands-inner">
+            <span className="brands-label">Featured Brands</span>
+            <div className="brand-tags">
+              {brands.map((b) => (
+                <span
+                  className="brand-tag"
+                  key={b}
+                  onClick={() => {
+                    navigate("products", "dashboard", null, null, `brand=${encodeURIComponent(b)}`);
+                  }}
+                  style={{ cursor: "pointer" }}
+                  title={`Browse ${b} products`}
+                >
+                  {b}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        </ScrollReveal>
       </section>
 
       {renderSharedFooter()}
@@ -2155,6 +2159,25 @@ export default function App() {
         onClose={() => setWishlistOpen(false)}
         onAddToCart={handleAddToCart}
         onViewDetails={handleOpenProductDetail}
+      />
+
+      {/* Official VERTEX Policy Modal */}
+      <PolicyModal
+        policyId={activePolicyModal}
+        isOpen={Boolean(activePolicyModal)}
+        onClose={() => setActivePolicyModal(null)}
+      />
+
+      {/* Floating Technical Support Assistance */}
+      <FloatingSupport
+        onRequestQuote={() =>
+          setQuoteProduct({
+            name: "Bulk Hardware & Component Inquiry",
+            sku: "VTX-BULK-TIER",
+            id: "bulk-rfq",
+          })
+        }
+        onOpenPolicy={(policyId) => setActivePolicyModal(policyId)}
       />
     </div>
   );

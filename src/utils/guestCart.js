@@ -56,9 +56,11 @@ export function clearStoredGuestCart() {
  */
 export function formatGuestCart(items = []) {
   const safeItems = (items || []).map((item) => {
-    const unitPrice = Number(item.unitPrice || item.variant?.price || 0);
+    const rawPrice = item.unitPrice !== undefined ? item.unitPrice : (item.variant?.price);
+    const isQuoteRequired = rawPrice === null || rawPrice === undefined;
+    const unitPrice = isQuoteRequired ? null : Number(rawPrice);
     const qty = Math.max(1, parseInt(item.quantity, 10) || 1);
-    const lineTotal = Number((unitPrice * qty).toFixed(2));
+    const lineTotal = isQuoteRequired ? null : Number((unitPrice * qty).toFixed(2));
 
     return {
       id: item.id || `guest-${item.variantId}`,
@@ -67,6 +69,7 @@ export function formatGuestCart(items = []) {
       quantity: qty,
       unitPrice,
       lineTotal,
+      isQuoteRequired,
       isAvailable: item.isAvailable !== false,
       variant: item.variant || null,
       product: item.product || null,
@@ -75,11 +78,10 @@ export function formatGuestCart(items = []) {
 
   const itemCount = safeItems.length;
   const totalQuantity = safeItems.reduce((acc, it) => acc + it.quantity, 0);
+  const pricedItems = safeItems.filter((it) => it.isAvailable && it.lineTotal !== null);
+  const quoteItems = safeItems.filter((it) => it.isQuoteRequired || it.lineTotal === null);
   const subtotal = Number(
-    safeItems
-      .filter((it) => it.isAvailable)
-      .reduce((acc, it) => acc + it.lineTotal, 0)
-      .toFixed(2)
+    pricedItems.reduce((acc, it) => acc + it.lineTotal, 0).toFixed(2)
   );
 
   return {
@@ -89,6 +91,9 @@ export function formatGuestCart(items = []) {
     itemCount,
     totalQuantity,
     subtotal,
+    hasQuoteOnlyItems: quoteItems.length > 0,
+    quoteItemsCount: quoteItems.length,
+    hasPricedItems: pricedItems.length > 0,
   };
 }
 
@@ -108,7 +113,8 @@ export function addGuestItem(product, variant, quantity = 1) {
     items[existingIndex].quantity = Math.min(newQty, maxQty);
     items[existingIndex].lineTotal = Number((items[existingIndex].unitPrice * items[existingIndex].quantity).toFixed(2));
   } else {
-    const unitPrice = Number(variant.price || 0);
+    const isQuote = variant.price === null || variant.price === undefined;
+    const unitPrice = isQuote ? null : Number(variant.price);
     const maxQty = variant.stockQuantity && variant.stockQuantity > 0 ? variant.stockQuantity : 999;
     const finalQty = Math.min(addQty, maxQty);
 
@@ -117,7 +123,7 @@ export function addGuestItem(product, variant, quantity = 1) {
       variantId: variant.id,
       quantity: finalQty,
       unitPrice,
-      lineTotal: Number((unitPrice * finalQty).toFixed(2)),
+      lineTotal: isQuote ? null : Number((unitPrice * finalQty).toFixed(2)),
       isAvailable: true,
       variant: {
         id: variant.id,
@@ -160,7 +166,7 @@ export function updateGuestItemQuantity(itemId, quantity) {
       : 999;
     const safeQty = Math.min(Math.max(1, parseInt(quantity, 10) || 1), maxQty);
     item.quantity = safeQty;
-    item.lineTotal = Number((item.unitPrice * safeQty).toFixed(2));
+    item.lineTotal = (item.unitPrice === null || item.unitPrice === undefined) ? null : Number((item.unitPrice * safeQty).toFixed(2));
     setStoredGuestItems(items);
   }
 

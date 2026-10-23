@@ -42,9 +42,11 @@ function saveCartItems(items) {
 
 export function formatMockCart(items = []) {
   const safeItems = (items || []).map((item) => {
-    const unitPrice = Number(item.unitPrice || item.variant?.price || 0);
+    const rawPrice = item.unitPrice !== undefined ? item.unitPrice : (item.variant?.price);
+    const isQuoteRequired = rawPrice === null || rawPrice === undefined;
+    const unitPrice = isQuoteRequired ? null : Number(rawPrice);
     const qty = Math.max(1, parseInt(item.quantity, 10) || 1);
-    const lineTotal = Number((unitPrice * qty).toFixed(2));
+    const lineTotal = isQuoteRequired ? null : Number((unitPrice * qty).toFixed(2));
 
     return {
       id: item.id || `mock-item-${item.variantId}`,
@@ -53,6 +55,7 @@ export function formatMockCart(items = []) {
       quantity: qty,
       unitPrice,
       lineTotal,
+      isQuoteRequired,
       isAvailable: true,
       variant: item.variant || null,
       product: item.product || null,
@@ -61,8 +64,10 @@ export function formatMockCart(items = []) {
 
   const itemCount = safeItems.length;
   const totalQuantity = safeItems.reduce((acc, it) => acc + it.quantity, 0);
+  const pricedItems = safeItems.filter((it) => it.isAvailable && it.lineTotal !== null);
+  const quoteItems = safeItems.filter((it) => it.isQuoteRequired || it.lineTotal === null);
   const subtotal = Number(
-    safeItems.reduce((acc, it) => acc + it.lineTotal, 0).toFixed(2)
+    pricedItems.reduce((acc, it) => acc + it.lineTotal, 0).toFixed(2)
   );
 
   return {
@@ -72,6 +77,9 @@ export function formatMockCart(items = []) {
     itemCount,
     totalQuantity,
     subtotal,
+    hasQuoteOnlyItems: quoteItems.length > 0,
+    quoteItemsCount: quoteItems.length,
+    hasPricedItems: pricedItems.length > 0,
   };
 }
 
@@ -102,7 +110,8 @@ export async function addItemToCart({ variantId, quantity = 1 }) {
     }
 
     const { product, variant } = found;
-    const unitPrice = Number(variant.price || 0);
+    const isQuote = variant.price === null || variant.price === undefined;
+    const unitPrice = isQuote ? null : Number(variant.price);
 
     items.push({
       id: `mock-item-${variant.id}`,

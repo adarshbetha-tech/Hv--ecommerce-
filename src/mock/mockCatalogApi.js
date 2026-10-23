@@ -152,21 +152,13 @@ export async function getProducts({
     filtered = filtered.filter((p) => p.price !== null && Number(p.price) <= max);
   }
 
-  // 7. Sorting
+  // 7. Sorting (Sort by price only when reliable numeric prices exist per Requirement 8)
   if (sort === "price_asc") {
-    filtered.sort((a, b) => {
-      if (a.price === null && b.price === null) return 0;
-      if (a.price === null) return 1;
-      if (b.price === null) return -1;
-      return Number(a.price) - Number(b.price);
-    });
+    filtered = filtered.filter((p) => p.price !== null && p.price !== undefined);
+    filtered.sort((a, b) => Number(a.price) - Number(b.price));
   } else if (sort === "price_desc") {
-    filtered.sort((a, b) => {
-      if (a.price === null && b.price === null) return 0;
-      if (a.price === null) return 1;
-      if (b.price === null) return -1;
-      return Number(b.price) - Number(a.price);
-    });
+    filtered = filtered.filter((p) => p.price !== null && p.price !== undefined);
+    filtered.sort((a, b) => Number(b.price) - Number(a.price));
   } else if (sort === "name_asc") {
     filtered.sort((a, b) => a.name.localeCompare(b.name));
   } else if (sort === "name_desc") {

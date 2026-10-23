@@ -5,13 +5,13 @@
  * EV-grade lithium-ion cells, precision fasteners, and embedded electronics.
  */
 
-import React from "react";
 import arduinoImg from "./arduino.jpg";
 import automationImg from "./automation.jpg";
 import breadboardImg from "./breadboard.jpg";
 import fastenersImg from "./fasteners.jpg";
 import pcbImg from "./pcb.jpg";
 
+// Screws (OnlyScrews-inspired)
 import slottedChhdImg from "./screws/slotted-chhd.svg";
 import panHeadImg from "./screws/pan-head.svg";
 import countersunkCskImg from "./screws/countersunk-csk.svg";
@@ -25,12 +25,39 @@ import buttonHeadImg from "./screws/button-head.svg";
 import allenCountersunkCskImg from "./screws/allen-countersunk-csk.svg";
 import hexBoltImg from "./screws/hex-bolt.svg";
 
+// Nuts, Washers & Brass Inserts
+import hexNutImg from "./fasteners/hex-nut.svg";
+import nylocNutImg from "./fasteners/nyloc-nut.svg";
+import wingNutImg from "./fasteners/wing-nut.svg";
+import plainWasherImg from "./fasteners/plain-washer.svg";
+import springWasherImg from "./fasteners/spring-washer.svg";
+import externalSerratedWasherImg from "./fasteners/external-serrated-washer.svg";
+import brassSlantKnurledInsertImg from "./fasteners/brass-slant-knurled-insert.svg";
+import brassThreadedInsertImg from "./fasteners/brass-threaded-insert.svg";
+
+// Lithium-Ion Cells & Electronic Components (Robu-inspired)
+import dmegc18650_2600Img from "./electronics/dmegc-18650-2600.svg";
+import dmegc18650_2900Img from "./electronics/dmegc-18650-2900.svg";
+import dmegc18650_3200Img from "./electronics/dmegc-18650-3200.svg";
+import dmegc21700_4500Img from "./electronics/dmegc-21700-4500.svg";
+import norda21700_4500Img from "./electronics/norda-21700-4500.svg";
+import panasonic21700_4500Img from "./electronics/panasonic-21700-4500.svg";
+import norda18650_2600Img from "./electronics/norda-18650-2600.svg";
+
+import breadboardGl12Img from "./electronics/breadboard-gl12.svg";
+import jumperCablesImg from "./electronics/jumper-cables.svg";
+import maleBergStripImg from "./electronics/male-berg-strip.svg";
+import femaleBergStripImg from "./electronics/female-berg-strip.svg";
+
 export const PRODUCT_PHOTOS = {
+  // Legacy / Photography
   arduino: arduinoImg,
   automation: automationImg,
   breadboard: breadboardImg,
   fasteners: fastenersImg,
   pcb: pcbImg,
+
+  // Screws
   slottedChhd: slottedChhdImg,
   panHead: panHeadImg,
   countersunkCsk: countersunkCskImg,
@@ -43,16 +70,56 @@ export const PRODUCT_PHOTOS = {
   buttonHead: buttonHeadImg,
   allenCountersunkCsk: allenCountersunkCskImg,
   hexBolt: hexBoltImg,
+
+  // Nuts, Washers, Inserts
+  hexNut: hexNutImg,
+  nylocNut: nylocNutImg,
+  wingNut: wingNutImg,
+  plainWasher: plainWasherImg,
+  springWasher: springWasherImg,
+  externalSerratedWasher: externalSerratedWasherImg,
+  brassSlantKnurledInsert: brassSlantKnurledInsertImg,
+  brassThreadedInsert: brassThreadedInsertImg,
+
+  // Lithium Cells
+  dmegc18650_2600: dmegc18650_2600Img,
+  dmegc18650_2900: dmegc18650_2900Img,
+  dmegc18650_3200: dmegc18650_3200Img,
+  dmegc21700_4500: dmegc21700_4500Img,
+  norda21700_4500: norda21700_4500Img,
+  panasonic21700_4500: panasonic21700_4500Img,
+  norda18650_2600: norda18650_2600Img,
+
+  // Electronic Components
+  breadboardGl12: breadboardGl12Img,
+  jumperCables: jumperCablesImg,
+  maleBergStrip: maleBergStripImg,
+  femaleBergStrip: femaleBergStripImg,
 };
 
 /**
  * Returns an appropriate SVG or image for a given product slug and category.
+ * Strictly adheres to rule: Electronic Categories 3, 4, 5, 6 return null (NO images).
  */
 export function getProductVisual(product) {
   if (!product) return null;
-  if (product.imageUrl) return product.imageUrl;
 
   const slug = (product.slug || "").toLowerCase();
+  const subcat = (product.subcategory?.slug || "").toLowerCase();
+
+  // Strict Rule: Categories 3, 4, 5, 6 must have NO images
+  if (
+    subcat.includes("hvnex") ||
+    slug.startsWith("hvnex-") ||
+    slug.includes("microcontroller") ||
+    slug.includes("motor-driver") ||
+    slug.includes("plc") ||
+    slug.includes("buck-converter")
+  ) {
+    return null;
+  }
+
+  if (product.imageUrl) return product.imageUrl;
 
   // Screws catalog matching
   if (slug.includes("slotted-chhd")) return slottedChhdImg;
@@ -68,27 +135,50 @@ export function getProductVisual(product) {
   if (slug.includes("allen-countersunk")) return allenCountersunkCskImg;
   if (slug.includes("hex-bolt")) return hexBoltImg;
 
-  // 1. Existing photographed items
+  // Nuts
+  if (slug.includes("nyloc")) return nylocNutImg;
+  if (slug.includes("wing-nut")) return wingNutImg;
+  if (slug.includes("hex-nut") || slug === "nuts") return hexNutImg;
+
+  // Washers
+  if (slug.includes("spring-washer")) return springWasherImg;
+  if (slug.includes("serrated-washer")) return externalSerratedWasherImg;
+  if (slug.includes("plain-washer") || slug.includes("washer")) return plainWasherImg;
+
+  // Inserts
+  if (slug.includes("slant-knurled")) return brassSlantKnurledInsertImg;
+  if (slug.includes("brass") || slug.includes("insert")) return brassThreadedInsertImg;
+
+  // Batteries
+  if (slug.includes("dmegc") && slug.includes("18650") && slug.includes("2600")) return dmegc18650_2600Img;
+  if (slug.includes("dmegc") && slug.includes("18650") && slug.includes("2900")) return dmegc18650_2900Img;
+  if (slug.includes("dmegc") && slug.includes("18650") && slug.includes("3200")) return dmegc18650_3200Img;
+  if (slug.includes("dmegc") && slug.includes("21700")) return dmegc21700_4500Img;
+  if (slug.includes("panasonic") && slug.includes("21700")) return panasonic21700_4500Img;
+  if (slug.includes("norda") && slug.includes("21700")) return norda21700_4500Img;
+  if (slug.includes("norda") && slug.includes("18650")) return norda18650_2600Img;
+
+  // Components
+  if (slug.includes("breadboard")) return breadboardGl12Img;
+  if (slug.includes("jumper")) return jumperCablesImg;
+  if (slug.includes("male-berg")) return maleBergStripImg;
+  if (slug.includes("female-berg")) return femaleBergStripImg;
+
+  // Existing photographed items (legacy)
   if (slug.includes("arduino-uno")) return arduinoImg;
   if (slug.includes("raspberry-pi")) return arduinoImg;
   if (slug.includes("l298n")) return automationImg;
   if (slug.includes("plc-delta")) return pcbImg;
-  if (slug.includes("breadboard")) return breadboardImg;
-  if (slug.includes("hex-nut") || slug.includes("nyloc") || slug.includes("washer") || slug.includes("insert")) return fastenersImg;
 
   return null;
 }
 
 /**
- * Technical SVG Component Illustration
+ * Fallback Component Technical Illustration component
+ * Strictly returns null for electronic categories 3, 4, 5, 6 (no images / no placeholders).
  */
 export function ComponentIllustration({ type, brand = "VERTEX", specs = {}, className = "" }) {
-  // Battery Cell Illustration (18650 or 21700)
-  if (type === "battery" || specs.CellFormat || specs.Chemistry) {
-    const is21700 = (specs.CellFormat || "").includes("21700");
-    const isEV = (specs.Grade || "").includes("EV") || brand === "DMEGC";
-    const cellColor = brand === "DMEGC" ? "#2563eb" : brand === "Panasonic" ? "#0284c7" : "#0d9488";
-    
+  if (type === "battery") {
     return (
       <svg
         viewBox="0 0 240 180"
@@ -97,82 +187,35 @@ export function ComponentIllustration({ type, brand = "VERTEX", specs = {}, clas
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
-          <linearGradient id={`cellGrad-${brand}`} x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor={cellColor} stopOpacity="0.9" />
-            <stop offset="50%" stopColor={cellColor} />
+          <linearGradient id="cellBodyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#1e293b" />
+            <stop offset="50%" stopColor="#334155" />
             <stop offset="100%" stopColor="#0f172a" />
           </linearGradient>
-          <linearGradient id="metalGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <linearGradient id="terminalGrad" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#94a3b8" />
-            <stop offset="50%" stopColor="#f1f5f9" />
+            <stop offset="50%" stopColor="#f8fafc" />
             <stop offset="100%" stopColor="#64748b" />
           </linearGradient>
         </defs>
-        
-        {/* Background grid */}
-        <rect width="240" height="180" fill="#0b1728" rx="8" />
-        <path d="M 20 0 L 20 180 M 60 0 L 60 180 M 100 0 L 100 180 M 140 0 L 140 180 M 180 0 L 180 180 M 220 0 L 220 180" stroke="#1e293b" strokeWidth="1" strokeDasharray="3,3" />
-        <path d="M 0 30 L 240 30 M 0 60 L 240 60 M 0 90 L 240 90 M 0 120 L 240 120 M 0 150 L 240 150" stroke="#1e293b" strokeWidth="1" strokeDasharray="3,3" />
-
-        {/* Battery Cylinder Body */}
-        {/* Positive terminal nipple */}
-        <rect x={is21700 ? "46" : "50"} y="52" width={is21700 ? "148" : "140"} height="14" rx="4" fill="url(#metalGrad)" stroke="#475569" strokeWidth="1" />
-        <rect x="95" y="44" width="50" height="9" rx="3" fill="url(#metalGrad)" stroke="#334155" strokeWidth="1" />
-        
-        {/* Main sleeve */}
-        <rect
-          x={is21700 ? "44" : "48"}
-          y="64"
-          width={is21700 ? "152" : "144"}
-          height="82"
-          rx="6"
-          fill={`url(#cellGrad-${brand})`}
-          stroke="#38bdf8"
-          strokeWidth="1.5"
-        />
-
-        {/* Highlight sheen */}
-        <rect x={is21700 ? "50" : "54"} y="68" width={is21700 ? "140" : "132"} height="10" rx="3" fill="#ffffff" fillOpacity="0.18" />
-
-        {/* Label on Cell */}
-        <text x="120" y="94" textAnchor="middle" fill="#ffffff" fontSize="13" fontWeight="bold" letterSpacing="1">
-          {brand.toUpperCase()} {is21700 ? "21700" : "18650"}
+        <rect width="240" height="180" fill="#09182d" rx="8" />
+        <rect x="50" y="35" width="140" height="110" rx="16" fill="url(#cellBodyGrad)" stroke="#38bdf8" strokeWidth="2" />
+        <rect x="190" y="70" width="14" height="40" rx="3" fill="url(#terminalGrad)" stroke="#475569" strokeWidth="1" />
+        <circle cx="65" cy="55" r="4" fill="#38bdf8" />
+        <text x="120" y="80" textAnchor="middle" fill="#f8fafc" fontSize="13" fontWeight="bold" letterSpacing="1">
+          {brand.toUpperCase()}
         </text>
-        <text x="120" y="112" textAnchor="middle" fill="#93c5fd" fontSize="11" fontFamily="monospace">
-          {specs.NominalVoltage ? `${specs.NominalVoltage} • ` : ""}{specs.RatedCapacity || "EV CELL"}
+        <text x="120" y="100" textAnchor="middle" fill="#38bdf8" fontSize="11" fontFamily="monospace">
+          {specs["Cell Format"] || "LITHIUM-ION"} • {specs["Nominal Capacity"] || specs["Capacity"] || "EV GRADE"}
         </text>
-        <text x="120" y="128" textAnchor="middle" fill="#38bdf8" fontSize="9" fontWeight="600" letterSpacing="0.5">
-          {specs.Grade || "INDUSTRIAL GRADE"}
+        <text x="120" y="120" textAnchor="middle" fill="#94a3b8" fontSize="10">
+          {specs["Nominal Voltage"] || "3.65V"} HIGH DRAIN
         </text>
-
-        {/* Negative Base */}
-        <rect x={is21700 ? "46" : "50"} y="145" width={is21700 ? "148" : "140"} height="6" rx="2" fill="url(#metalGrad)" stroke="#475569" strokeWidth="1" />
-
-        {/* Technical specs pill */}
-        <rect x="12" y="12" width="76" height="20" rx="4" fill="#1e293b" fillOpacity="0.85" stroke="#334155" strokeWidth="1" />
-        <text x="50" y="26" textAnchor="middle" fill="#38bdf8" fontSize="10" fontWeight="bold">
-          {is21700 ? "21700 CELL" : "18650 CELL"}
-        </text>
-        {isEV && (
-          <g>
-            <rect x="160" y="12" width="68" height="20" rx="4" fill="#065f46" fillOpacity="0.85" stroke="#059669" strokeWidth="1" />
-            <text x="194" y="26" textAnchor="middle" fill="#34d399" fontSize="10" fontWeight="bold">
-              ⚡ EV GRADE
-            </text>
-          </g>
-        )}
       </svg>
     );
   }
 
-  // Fasteners & Screws Illustration
-  if (type === "fastener" || type === "screw" || type === "nut" || type === "washer" || type === "insert") {
-    const isPhillips = (specs.DriveType || "").includes("Phillips") || (specs.DriveType || "").includes("Cross");
-    const isSlotted = (specs.DriveType || "").includes("Slotted");
-    const isNut = type === "nut" || (specs.Type || "").includes("Nut");
-    const isWasher = type === "washer" || (specs.Type || "").includes("Washer");
-    const isBrass = type === "insert" || (specs.Material || "").includes("Brass");
-
+  if (type === "fastener") {
     return (
       <svg
         viewBox="0 0 240 180"
@@ -181,188 +224,35 @@ export function ComponentIllustration({ type, brand = "VERTEX", specs = {}, clas
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
-          <linearGradient id="steelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#f8fafc" />
-            <stop offset="40%" stopColor="#94a3b8" />
-            <stop offset="100%" stopColor="#334155" />
+          <linearGradient id="fastenerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#64748b" />
+            <stop offset="50%" stopColor="#cbd5e1" />
+            <stop offset="100%" stopColor="#475569" />
           </linearGradient>
-          <linearGradient id="brassGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#fef08a" />
-            <stop offset="50%" stopColor="#ca8a04" />
-            <stop offset="100%" stopColor="#713f12" />
-          </linearGradient>
-          <pattern id="threadPattern" width="10" height="8" patternUnits="userSpaceOnUse">
-            <path d="M 0 0 L 10 4 M 0 4 L 10 8" stroke="#475569" strokeWidth="1.5" />
-          </pattern>
         </defs>
-
-        {/* Blueprint background */}
-        <rect width="240" height="180" fill="#0c1e33" rx="8" />
-        <circle cx="120" cy="90" r="70" fill="none" stroke="#1e3a5f" strokeWidth="1" strokeDasharray="4,4" />
-        <path d="M 120 10 L 120 170 M 30 90 L 210 90" stroke="#1e3a5f" strokeWidth="1" strokeDasharray="2,2" />
-
-        {isBrass ? (
-          // Brass Insert
-          <g>
-            <rect x="80" y="45" width="80" height="90" rx="4" fill="url(#brassGrad)" stroke="#a16207" strokeWidth="2" />
-            {/* Knurl hatch */}
-            <path d="M 85 55 L 155 75 M 85 75 L 155 95 M 85 95 L 155 115" stroke="#713f12" strokeWidth="2.5" />
-            <path d="M 155 55 L 85 75 M 155 75 L 85 95 M 155 95 L 85 115" stroke="#713f12" strokeWidth="2.5" />
-            {/* Inner thread bore */}
-            <circle cx="120" cy="90" r="18" fill="#1e293b" stroke="#ca8a04" strokeWidth="2" />
-            <circle cx="120" cy="90" r="12" fill="#0f172a" stroke="#ca8a04" strokeWidth="1" strokeDasharray="2,2" />
-            <text x="120" y="156" textAnchor="middle" fill="#facc15" fontSize="10" fontWeight="bold" letterSpacing="0.5">
-              BRASS THREADED INSERT
-            </text>
-          </g>
-        ) : isWasher ? (
-          // Washer
-          <g>
-            <circle cx="120" cy="90" r="54" fill="url(#steelGrad)" stroke="#64748b" strokeWidth="2" />
-            <circle cx="120" cy="90" r="28" fill="#0c1e33" stroke="#94a3b8" strokeWidth="2" />
-            <text x="120" y="160" textAnchor="middle" fill="#93c5fd" fontSize="10" fontWeight="bold">
-              PRECISION WASHER
-            </text>
-          </g>
-        ) : isNut ? (
-          // Hex / Nyloc Nut
-          <g>
-            {/* Hexagon outer */}
-            <polygon
-              points="120,40 166,66 166,118 120,144 74,118 74,66"
-              fill="url(#steelGrad)"
-              stroke="#cbd5e1"
-              strokeWidth="2.5"
-            />
-            {/* Inner circle with thread */}
-            <circle cx="120" cy="92" r="24" fill="#0f172a" stroke="#38bdf8" strokeWidth="2" />
-            <circle cx="120" cy="92" r="18" fill="none" stroke="#64748b" strokeWidth="1.5" strokeDasharray="3,2" />
-            {specs.LockingMechanism && (
-              <circle cx="120" cy="92" r="21" fill="none" stroke="#2563eb" strokeWidth="3" />
-            )}
-            <text x="120" y="162" textAnchor="middle" fill="#93c5fd" fontSize="10" fontWeight="bold">
-              {specs.Type || "HEX FASTENER NUT"}
-            </text>
-          </g>
-        ) : (
-          // Screw / Bolt
-          <g>
-            {/* Screw head */}
-            <rect x="70" y="38" width="100" height="26" rx="4" fill="url(#steelGrad)" stroke="#e2e8f0" strokeWidth="1.5" />
-            {/* Screw drive recess */}
-            {isPhillips ? (
-              <g stroke="#0f172a" strokeWidth="4" strokeLinecap="round">
-                <line x1="120" y1="44" x2="120" y2="58" />
-                <line x1="113" y1="51" x2="127" y2="51" />
-              </g>
-            ) : isSlotted ? (
-              <line x1="95" y1="51" x2="145" y2="51" stroke="#0f172a" strokeWidth="4" strokeLinecap="round" />
-            ) : (
-              // Hex socket
-              <polygon points="120,44 128,48 128,56 120,60 112,56 112,48" fill="#0f172a" />
-            )}
-            {/* Screw Shank & Threads */}
-            <rect x="96" y="64" width="48" height="74" fill="url(#steelGrad)" stroke="#64748b" strokeWidth="1.5" />
-            <rect x="96" y="72" width="48" height="66" fill="url(#threadPattern)" />
-            {/* Point */}
-            <polygon points="96,138 144,138 120,154" fill="url(#steelGrad)" stroke="#64748b" strokeWidth="1" />
-            <text x="120" y="168" textAnchor="middle" fill="#93c5fd" fontSize="10" fontWeight="bold">
-              {specs.HeadType || "PRECISION FASTENER"}
-            </text>
-          </g>
-        )}
-
-        {/* Quality stamp */}
-        <rect x="12" y="12" width="70" height="18" rx="3" fill="#1e293b" />
-        <text x="47" y="24" textAnchor="middle" fill="#38bdf8" fontSize="9" fontWeight="bold">
+        <rect width="240" height="180" fill="#09182d" rx="8" />
+        <circle cx="120" cy="90" r="50" fill="url(#fastenerGrad)" stroke="#38bdf8" strokeWidth="2" />
+        <circle cx="120" cy="90" r="28" fill="#09182d" stroke="#64748b" strokeWidth="1.5" />
+        <text x="120" y="160" textAnchor="middle" fill="#94a3b8" fontSize="10" fontWeight="bold">
           SS304 / ISO
         </text>
       </svg>
     );
   }
 
-  // Microcontroller, Motor Driver, Buck Converter, Electronics Illustration
   return (
     <svg
       viewBox="0 0 240 180"
-      className={`component-svg vtx-electronic-svg ${className}`}
+      className={`component-svg vtx-generic-svg ${className}`}
       aria-hidden="true"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <defs>
-        <linearGradient id="pcbGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#064e3b" />
-          <stop offset="50%" stopColor="#047857" />
-          <stop offset="100%" stopColor="#065f46" />
-        </linearGradient>
-        <linearGradient id="chipGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#1e293b" />
-          <stop offset="100%" stopColor="#020617" />
-        </linearGradient>
-        <linearGradient id="heatsinkGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#334155" />
-          <stop offset="50%" stopColor="#64748b" />
-          <stop offset="100%" stopColor="#1e293b" />
-        </linearGradient>
-      </defs>
-
-      {/* Background chassis */}
       <rect width="240" height="180" fill="#09182d" rx="8" />
-
-      {/* PCB Board */}
-      <rect x="30" y="25" width="180" height="130" rx="8" fill="url(#pcbGrad)" stroke="#10b981" strokeWidth="2" />
-
-      {/* Mounting holes */}
-      <circle cx="42" cy="37" r="4" fill="#09182d" stroke="#facc15" strokeWidth="1.5" />
-      <circle cx="198" cy="37" r="4" fill="#09182d" stroke="#facc15" strokeWidth="1.5" />
-      <circle cx="42" cy="143" r="4" fill="#09182d" stroke="#facc15" strokeWidth="1.5" />
-      <circle cx="198" cy="143" r="4" fill="#09182d" stroke="#facc15" strokeWidth="1.5" />
-
-      {/* PCB Copper Traces */}
-      <path d="M 50 60 L 90 60 L 105 75 M 50 80 L 80 80 L 100 100 M 150 75 L 180 75 M 150 105 L 190 105" stroke="#34d399" strokeWidth="1.5" strokeOpacity="0.4" fill="none" />
-
-      {/* Central IC or Heatsink */}
-      {specs.CurrentRating || specs.MaxPower ? (
-        // Power Driver / Buck Converter with Heatsink
-        <g>
-          <rect x="75" y="55" width="90" height="60" rx="4" fill="url(#heatsinkGrad)" stroke="#94a3b8" strokeWidth="1.5" />
-          <line x1="85" y1="55" x2="85" y2="115" stroke="#0f172a" strokeWidth="2" />
-          <line x1="100" y1="55" x2="100" y2="115" stroke="#0f172a" strokeWidth="2" />
-          <line x1="120" y1="55" x2="120" y2="115" stroke="#0f172a" strokeWidth="2" />
-          <line x1="140" y1="55" x2="140" y2="115" stroke="#0f172a" strokeWidth="2" />
-          <line x1="155" y1="55" x2="155" y2="115" stroke="#0f172a" strokeWidth="2" />
-          <rect x="90" y="75" width="60" height="24" rx="2" fill="#0f172a" />
-          <text x="120" y="91" textAnchor="middle" fill="#38bdf8" fontSize="10" fontWeight="bold">
-            {specs.CurrentRating || specs.MaxPower || "HVNEX"}
-          </text>
-        </g>
-      ) : (
-        // MCU Chip
-        <g>
-          <rect x="85" y="60" width="70" height="60" rx="4" fill="url(#chipGrad)" stroke="#38bdf8" strokeWidth="1.5" />
-          <circle cx="95" cy="70" r="2.5" fill="#38bdf8" />
-          <text x="120" y="88" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="bold" letterSpacing="1">
-            {brand}
-          </text>
-          <text x="120" y="104" textAnchor="middle" fill="#38bdf8" fontSize="9" fontFamily="monospace">
-            {specs.Model || "SOC CONTROLLER"}
-          </text>
-        </g>
-      )}
-
-      {/* Header Pins */}
-      <rect x="40" y="148" width="160" height="6" fill="#0f172a" rx="1" />
-      <path d="M 45 154 L 45 162 M 55 154 L 55 162 M 65 154 L 65 162 M 75 154 L 75 162 M 85 154 L 85 162 M 155 154 L 155 162 M 165 154 L 165 162 M 175 154 L 175 162 M 185 154 L 185 162 M 195 154 L 195 162" stroke="#facc15" strokeWidth="2" />
-
-      {/* Status LED */}
-      <circle cx="180" cy="50" r="3" fill="#10b981" />
-      <circle cx="180" cy="50" r="6" fill="#10b981" fillOpacity="0.3" />
-
-      {/* Corner Label */}
-      <rect x="12" y="10" width="84" height="18" rx="3" fill="#1e293b" />
-      <text x="54" y="22" textAnchor="middle" fill="#34d399" fontSize="9" fontWeight="bold">
-        {brand.toUpperCase()} MODULE
+      <rect x="40" y="30" width="160" height="120" rx="8" fill="#1e293b" stroke="#38bdf8" strokeWidth="1.5" />
+      <text x="120" y="95" textAnchor="middle" fill="#f8fafc" fontSize="12" fontWeight="bold">
+        {brand || "HV VERTEX"}
       </text>
     </svg>
   );
 }
+

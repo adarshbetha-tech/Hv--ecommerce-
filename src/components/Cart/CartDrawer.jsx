@@ -227,18 +227,26 @@ export default function CartDrawer({
                         </div>
 
                         <div className="vtx-cart-item-price-block">
-                          <span className="vtx-cart-item-total" data-testid={`line-total-${item.id}`}>
-                            ₹{Number(item.lineTotal || 0).toLocaleString("en-IN", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                          </span>
-                          <span className="vtx-cart-item-unit">
-                            (₹{Number(item.unitPrice || 0).toLocaleString("en-IN", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })} each)
-                          </span>
+                          {item.lineTotal === null || item.isQuoteRequired || item.unitPrice === null ? (
+                            <span className="vtx-cart-item-quote-badge" data-testid={`line-total-${item.id}`}>
+                              Price on Request
+                            </span>
+                          ) : (
+                            <>
+                              <span className="vtx-cart-item-total" data-testid={`line-total-${item.id}`}>
+                                ₹{Number(item.lineTotal || 0).toLocaleString("en-IN", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </span>
+                              <span className="vtx-cart-item-unit">
+                                (₹{Number(item.unitPrice || 0).toLocaleString("en-IN", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })} each)
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -256,12 +264,21 @@ export default function CartDrawer({
               <div className="vtx-cart-subtotal-row">
                 <span className="vtx-cart-subtotal-label">Subtotal</span>
                 <span className="vtx-cart-subtotal-amount" data-testid="cart-subtotal">
-                  ₹{Number(cart?.subtotal || 0).toLocaleString("en-IN", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
+                  {cart?.hasQuoteOnlyItems && !cart?.hasPricedItems ? (
+                    <span className="vtx-cart-quote-subtotal-note">Quote Required</span>
+                  ) : (
+                    `₹${Number(cart?.subtotal || 0).toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}`
+                  )}
                 </span>
               </div>
+              {cart?.hasQuoteOnlyItems && (
+                <p className="vtx-cart-quote-alert" data-testid="cart-quote-alert">
+                  ℹ️ Quote-required items included. Commercial pricing will be verified by sales engineering upon order review.
+                </p>
+              )}
               <p className="vtx-cart-tax-notice">
                 Applicable GST and shipping calculated at checkout.
               </p>

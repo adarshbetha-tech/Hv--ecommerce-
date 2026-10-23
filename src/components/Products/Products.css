@@ -503,15 +503,35 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  overflow: hidden;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+  overflow: visible;
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
   box-shadow: var(--shadow-sm);
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
-.product-card:hover {
-  transform: translateY(-3px);
-  border-color: #94a3b8;
-  box-shadow: var(--shadow-md);
+.product-card.is-tilting,
+.product-card:hover,
+.product-card:focus-within {
+  border-color: rgba(30, 175, 219, 0.45);
+  z-index: 10;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.product-grid,
+.vtx-rail-track,
+.vtx-catalog-products-grid,
+.vtx-related-grid {
+  perspective: 1200px;
+}
+
+.product-thumb {
+  border-top-left-radius: calc(var(--radius) - 1px);
+  border-top-right-radius: calc(var(--radius) - 1px);
+  overflow: hidden;
 }
 
 .vtx-card-wishlist-btn {
@@ -1901,3 +1921,425 @@
   font-weight: 700;
 }
 
+
+
+/* ========================================================
+   OFFICIAL PDF SECTIONAL CATALOGUE STYLES
+   Fasteners FIRST, Electronic Products SECOND
+   Categories 3-6 Text-Only Lists (NO Images)
+   Categories 1-2 Product Cards with Images
+   ======================================================== */
+
+.vtx-catalog-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.vtx-header-rfq-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--white);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  padding: 8px 16px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.vtx-header-rfq-btn:hover {
+  background: var(--white);
+  color: var(--navy);
+  border-color: var(--white);
+}
+
+.vtx-catalogue-sections-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  width: 100%;
+}
+
+.vtx-catalogue-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: 100%;
+}
+
+.vtx-section-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  background: linear-gradient(90deg, #09182d 0%, #11284a 100%);
+  border-left: 4px solid var(--orange);
+  border-radius: var(--radius-md);
+  color: var(--white);
+  box-shadow: 0 4px 12px rgba(9, 24, 45, 0.08);
+}
+
+.vtx-section-banner.vtx-section-banner-electronics {
+  border-left-color: var(--cyan);
+}
+
+.vtx-section-banner-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.vtx-section-banner-title h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--white);
+}
+
+.vtx-section-num-tag {
+  background: rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+}
+
+.vtx-section-count-tag {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+}
+
+/* ========================================================
+   TEXT-ONLY PRODUCT CATEGORIES (Categories 3, 4, 5, 6)
+   Strictly NO images, NO placeholders, NO empty containers
+   ======================================================== */
+
+.vtx-textonly-categories-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: 100%;
+}
+
+.vtx-text-category-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(9, 24, 45, 0.04);
+}
+
+.vtx-text-category-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  background: #f8fafc;
+  border-bottom: 1px solid var(--border);
+}
+
+.vtx-text-cat-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--navy);
+  color: var(--white);
+  font-weight: 800;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.vtx-text-cat-headings {
+  display: flex;
+  flex-direction: column;
+}
+
+.vtx-text-cat-headings h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0;
+}
+
+.vtx-text-cat-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.vtx-text-rows-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.vtx-text-product-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid #eef2f6;
+  transition: background-color var(--transition-fast);
+}
+
+.vtx-text-product-row:last-child {
+  border-bottom: none;
+}
+
+.vtx-text-product-row:hover {
+  background-color: #f8fafc;
+}
+
+.vtx-text-row-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.vtx-text-row-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+}
+
+.vtx-text-row-name {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.vtx-text-row-name:hover {
+  color: var(--cyan);
+  text-decoration: underline;
+}
+
+.vtx-text-row-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.vtx-text-sku {
+  font-size: 0.78rem;
+  font-family: var(--font-mono, monospace);
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--text-mid);
+}
+
+.vtx-text-brand-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(14, 165, 233, 0.12);
+  color: var(--cyan-dark);
+}
+
+.vtx-text-tag-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.vtx-text-row-specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: 4px;
+}
+
+.vtx-text-spec-chip {
+  font-size: 0.78rem;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--text-mid);
+}
+
+.vtx-spec-key {
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.vtx-text-row-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex-shrink: 0;
+}
+
+.vtx-text-row-price-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.vtx-text-price {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.vtx-text-quote-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.vtx-text-quote {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #d97706;
+}
+
+.vtx-text-quote-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.vtx-text-stock-tag {
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.vtx-text-stock-tag.in-stock {
+  color: var(--emerald);
+}
+
+.vtx-text-stock-tag.out-stock {
+  color: var(--text-muted);
+}
+
+.vtx-btn-text-cart {
+  padding: 7px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+/* ========================================================
+   IMAGE-ENABLED CATEGORIES (Categories 1 & 2)
+   ======================================================== */
+
+.vtx-cards-categories-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  width: 100%;
+}
+
+.vtx-subcat-group-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+.vtx-subcat-group-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 2px solid var(--border);
+}
+
+.vtx-group-badge {
+  background: var(--cyan);
+  color: var(--navy);
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.vtx-group-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0;
+}
+
+.vtx-group-count {
+  margin-left: auto;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* ========================================================
+   CART DRAWER QUOTE-REQUIRED PRODUCT STYLING
+   ======================================================== */
+
+.vtx-cart-item-quote-badge {
+  display: inline-block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.vtx-cart-quote-subtotal-note {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #b45309;
+}
+
+.vtx-cart-quote-alert {
+  font-size: 0.78rem;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin: 8px 0 0 0;
+  line-height: 1.4;
+}
+
+/* Responsive adjustments for text product rows on mobile */
+@media (max-width: 768px) {
+  .vtx-text-product-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .vtx-text-row-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .vtx-text-row-price-wrap {
+    align-items: flex-start;
+  }
+}

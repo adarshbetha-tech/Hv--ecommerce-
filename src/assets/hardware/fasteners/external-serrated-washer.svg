@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <radialGradient id="bgGradSerrated" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="70%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </radialGradient>
+    <linearGradient id="serratedMetalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="25%" stop-color="#cbd5e1"/>
+      <stop offset="50%" stop-color="#f8fafc"/>
+      <stop offset="75%" stop-color="#64748b"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+    <filter id="softShadowSerrated" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+    </filter>
+  </defs>
+
+  <rect width="500" height="500" fill="url(#bgGradSerrated)" rx="16"/>
+  <circle cx="250" cy="250" r="215" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6,6"/>
+  <path d="M 250 25 L 250 475 M 25 250 L 475 250" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="4,4"/>
+
+  <!-- Soft Contact Drop Shadow -->
+  <ellipse cx="250" cy="385" rx="145" ry="32" fill="#0f172a" fill-opacity="0.14" filter="url(#softShadowSerrated)"/>
+
+  <!-- Spec Tag (Top Left) -->
+  <g transform="translate(25, 30)">
+    <rect width="100" height="24" rx="4" fill="#0f172a" fill-opacity="0.06" stroke="#cbd5e1" stroke-width="1"/>
+    <text x="50" y="16" text-anchor="middle" font-family="monospace" font-size="10" font-weight="bold" fill="#0284c7">DIN 6798A</text>
+  </g>
+
+  <!-- Serrated Star Badge (Top Right) -->
+  <g transform="translate(370, 30)">
+    <circle cx="45" cy="45" r="42" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+    <path d="M 45 20 L 50 35 L 65 30 L 60 45 L 75 50 L 60 55 L 65 70 L 50 65 L 45 80 L 40 65 L 25 70 L 30 55 L 15 50 L 30 45 L 25 30 L 40 35 Z" fill="#e2e8f0" stroke="#475569" stroke-width="1.5"/>
+    <circle cx="45" cy="50" r="10" fill="#ffffff" stroke="#0284c7" stroke-width="1.5"/>
+    <text x="45" y="102" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10" font-weight="700" fill="#475569" letter-spacing="0.5">EXTERNAL TOOTH</text>
+  </g>
+
+  <!-- 3D Isometric View External Tooth Serrated Washer -->
+  <g transform="translate(250, 240)">
+    <!-- Central Ring Washer Base -->
+    <path d="M -100 10 C -100 55, 100 55, 100 10 C 100 -35, -100 -35, -100 10 Z M -55 10 C -55 32, 55 32, 55 10 C 55 -12, -55 -12, -55 10 Z" fill="url(#serratedMetalGrad)" stroke="#cbd5e1" stroke-width="1.5" fill-rule="evenodd"/>
+
+    <!-- 14 Radiating External Angled Teeth with 3D Depth & Twisted Edge -->
+    <!-- 0 deg (right) -->
+    <polygon points="100,10 142,-2 138,22 96,18" fill="url(#serratedMetalGrad)" stroke="#475569" stroke-width="1.2"/>
+    <!-- 25 deg -->
+    <polygon points="90,26 128,26 120,48 82,34" fill="url(#serratedMetalGrad)" stroke="#475569" stroke-width="1.2"/>
+    <!-- 50 deg -->
+    <polygon points="65,39 95,58 82,75 52,47" fill="url(#serratedMetalGrad)" stroke="#475569" stroke-width="1.2"/>
+    <!-- 75 deg -->
+    <polygon points="30,48 45,78 28,88 12,50" fill="url(#serratedMetalGrad)" stroke="#475569" stroke-width="1.2"/>
+    <!-- 105 deg -->
+    <polygon points="-12,50 -28,88 -45,78 -30,48" fill="url(#serratedMetalGrad)" stroke="#475569" stroke-width="1.2"/>
+    <!-- 130 deg -->
+    <polygon points="-52,47 -82,75 -95,58 -65,39" fill="url(#serratedMetalGrad)" stroke="#475569" stroke-width="1.2"/>
+    <!-- 155 deg -->
+    <polygon points="-82,34 -120,48 -128,26 -90,26" fill="url(#serratedMetalGrad)" stroke="#475569" stroke-width="1.2"/>
+    <!-- 180 deg (left) -->
+    <polygon points="-96,18 -138,22 -142,-2 -100,10" fill="url(#serratedMetalGrad)" stroke="#475569" stroke-width="1.2"/>
+    <!-- 205 deg -->
+    <polygon points="-90,-6 -128,-14 -120,-36 -82,-14" fill="url(#serratedMetalGrad)" stroke="#475569" stroke-width="1.2"/>
+    <!-- 230 deg -->
+    <polygon points="-65,-19 -95,-38 -82,-55 -52,-27" fill="url(#serratedMetalGrad)" stroke="#475569" stroke-width="1.2"/>
+    <!-- 255 deg -->
+    <polygon points="-30,-28 -45,-58 -28,-68 -12,-30" fill="url(#serratedMetalGrad)" stroke="#475569" stroke-width="1.2"/>
+    <!-- 285 deg -->
+    <polygon points="12,-30 28,-68 45,-58 30,-28" fill="url(#serratedMetalGrad)" stroke="#475569" stroke-width="1.2"/>
+    <!-- 310 deg -->
+    <polygon points="52,-27 82,-55 95,-38 65,-19" fill="url(#serratedMetalGrad)" stroke="#475569" stroke-width="1.2"/>
+    <!-- 335 deg -->
+    <polygon points="82,-14 120,-36 128,-14 90,-6" fill="url(#serratedMetalGrad)" stroke="#475569" stroke-width="1.2"/>
+
+    <!-- Inner Bore Edge Chamfer -->
+    <ellipse cx="0" cy="10" rx="55" ry="22" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.8"/>
+  </g>
+
+  <!-- Tag (Bottom) -->
+  <g transform="translate(250, 455)">
+    <text x="0" y="0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" font-weight="700" fill="#0f172a" letter-spacing="1">EXTERNAL SERRATED LOCK WASHER</text>
+    <text x="0" y="18" text-anchor="middle" font-family="monospace" font-size="10" fill="#64748b">MAXIMUM ELECTRICAL GROUNDING &amp; ANTI-VIBRATION GRIP</text>
+  </g>
+</svg>

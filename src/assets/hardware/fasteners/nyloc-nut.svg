@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <radialGradient id="bgGradNyloc" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="70%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </radialGradient>
+    <linearGradient id="nylocMetalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="25%" stop-color="#cbd5e1"/>
+      <stop offset="50%" stop-color="#ffffff"/>
+      <stop offset="75%" stop-color="#94a3b8"/>
+      <stop offset="100%" stop-color="#475569"/>
+    </linearGradient>
+    <linearGradient id="nylocFacetSide" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#94a3b8"/>
+      <stop offset="40%" stop-color="#cbd5e1"/>
+      <stop offset="80%" stop-color="#64748b"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+    <linearGradient id="blueNylonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="40%" stop-color="#2563eb"/>
+      <stop offset="80%" stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#1e3a8a"/>
+    </linearGradient>
+    <linearGradient id="nylocBoreShadow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#020617"/>
+      <stop offset="50%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <filter id="softShadowNyloc" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+    </filter>
+  </defs>
+
+  <rect width="500" height="500" fill="url(#bgGradNyloc)" rx="16"/>
+  <circle cx="250" cy="250" r="215" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6,6"/>
+  <path d="M 250 25 L 250 475 M 25 250 L 475 250" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="4,4"/>
+
+  <!-- Soft Contact Drop Shadow -->
+  <ellipse cx="250" cy="400" rx="140" ry="24" fill="#0f172a" fill-opacity="0.16" filter="url(#softShadowNyloc)"/>
+
+  <!-- Spec Tag (Top Left) -->
+  <g transform="translate(25, 30)">
+    <rect width="110" height="24" rx="4" fill="#0f172a" fill-opacity="0.06" stroke="#cbd5e1" stroke-width="1"/>
+    <text x="55" y="16" text-anchor="middle" font-family="monospace" font-size="10" font-weight="bold" fill="#0284c7">DIN 985 / ISO 7040</text>
+  </g>
+
+  <!-- Lock Collar Badge (Top Right) -->
+  <g transform="translate(370, 30)">
+    <circle cx="45" cy="45" r="42" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+    <polygon points="45,18 70,32 70,58 45,72 20,58 20,32" fill="#e2e8f0" stroke="#475569" stroke-width="1.5"/>
+    <circle cx="45" cy="45" r="16" fill="url(#blueNylonGrad)" stroke="#1e40af" stroke-width="2"/>
+    <circle cx="45" cy="45" r="8" fill="#ffffff"/>
+    <text x="45" y="102" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10" font-weight="700" fill="#2563eb" letter-spacing="0.5">NYLON LOCK</text>
+  </g>
+
+  <!-- 3D Perspective Nyloc Nut -->
+  <g transform="translate(250, 240)">
+    <!-- Hexagonal Lower Base Body -->
+    <polygon points="-125,10 -125,75 -50,115 -50,50" fill="url(#nylocFacetSide)" stroke="#334155" stroke-width="1.5"/>
+    <polygon points="-50,50 -50,115 50,115 50,50" fill="url(#nylocMetalGrad)" stroke="#475569" stroke-width="1.5"/>
+    <polygon points="50,50 50,115 125,75 125,10" fill="url(#nylocFacetSide)" stroke="#334155" stroke-width="1.5"/>
+
+    <!-- Upper Chamfer Face -->
+    <polygon points="0,-45 125,10 50,50 -50,50 -125,10" fill="url(#nylocMetalGrad)" stroke="#cbd5e1" stroke-width="1.5"/>
+
+    <!-- Dominant Cylindrical Crown / Retaining Dome -->
+    <ellipse cx="0" cy="8" rx="82" ry="46" fill="url(#nylocFacetSide)" stroke="#64748b" stroke-width="1.5"/>
+    <path d="M -82 8 L -82 -32 A 82 46 0 0 1 82 -32 L 82 8 A 82 46 0 0 1 -82 8 Z" fill="url(#nylocMetalGrad)" stroke="#475569" stroke-width="1.5"/>
+    <ellipse cx="0" cy="-32" rx="82" ry="46" fill="url(#nylocMetalGrad)" stroke="#cbd5e1" stroke-width="1.5"/>
+
+    <!-- Metal Crimp Lip Over Nylon Collar -->
+    <ellipse cx="0" cy="-32" rx="72" ry="40" fill="url(#nylocFacetSide)" stroke="#94a3b8" stroke-width="1"/>
+
+    <!-- Signature High-Visibility Blue Nylon Locking Ring Collar -->
+    <ellipse cx="0" cy="-32" rx="64" ry="36" fill="url(#blueNylonGrad)" stroke="#1d4ed8" stroke-width="2"/>
+    <ellipse cx="0" cy="-34" rx="60" ry="33" fill="none" stroke="#93c5fd" stroke-width="1.5" stroke-opacity="0.6"/>
+
+    <!-- Internal Bore & Inner Thread Entrance -->
+    <ellipse cx="0" cy="-32" rx="46" ry="26" fill="url(#nylocBoreShadow)" stroke="#1e3a8a" stroke-width="2"/>
+
+    <!-- Thread Spiral Inside Bore -->
+    <path d="M -40 -34 Q 0 -18 40 -34" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-opacity="0.7"/>
+    <path d="M -36 -28 Q 0 -12 36 -28" fill="none" stroke="#94a3b8" stroke-width="2"/>
+    <path d="M -32 -22 Q 0 -6 32 -22" fill="none" stroke="#475569" stroke-width="2.5"/>
+  </g>
+
+  <!-- Title Tag -->
+  <g transform="translate(250, 455)">
+    <text x="0" y="0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" font-weight="700" fill="#0f172a" letter-spacing="1">SS304 NYLOC LOCK NUT</text>
+    <text x="0" y="18" text-anchor="middle" font-family="monospace" font-size="10" fill="#64748b">VIBRATION-RESISTANT PREVAILING TORQUE</text>
+  </g>
+</svg>

@@ -1,19 +1,53 @@
 /**
- * VERTEX Professional Product Card
+ * VERTEX Professional Product Card with Interactive 3D Tilt
  * 
  * Renders an individual product in the catalogue grid or list view.
  * Displays verified specifications, authentic pricing or "Quote on Request",
  * Add to Cart, Add to Wishlist, and View Details actions.
  * 
- * Inspired by OnlyScrews.in hardware presentation patterns:
- * - Product-specific screw images with crisp studio framing
- * - Clear titles with screw type and available dimensions/pack size
- * - Drive type and engineering standard indicators
- * - Industrial hardware aesthetic tailored to HV VERTEX design tokens
+ * Features:
+ * - Fluid pointer-based 3D tilt interaction powered by Framer Motion springs
+ * - Natural spring physics (damping: 22, stiffness: 260) with smooth neutral return
+ * - Subtle layered Z-depth for thumbnail, badges, specs, price, and actions
+ * - Restrained rotation angles (max 7.5deg) ensuring readability and zero layout shifts
+ * - Complete touch device safety (touch scrolling preserved without sticky tilt)
+ * - Strict accessibility compliance (prefers-reduced-motion, visible focus outlines, ARIA attributes)
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  motion,
+  useMotionValue,
+  useSpring,
+  useTransform,
+} from "framer-motion";
 import { isItemInWishlist, toggleWishlistItem } from "../../utils/wishlist";
+import ScrollReveal from "../Common/ScrollReveal";
+
+// Safe prefers-reduced-motion detector that gracefully handles SSR and test environments
+function useSafeReducedMotion() {
+  const [prefersReduced, setPrefersReduced] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    try {
+      const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+      if (mq) {
+        setPrefersReduced(Boolean(mq.matches));
+        const handler = (e) => setPrefersReduced(Boolean(e.matches));
+        if (typeof mq.addEventListener === "function") {
+          mq.addEventListener("change", handler);
+          return () => mq.removeEventListener("change", handler);
+        } else if (typeof mq.addListener === "function") {
+          mq.addListener(handler);
+          return () => mq.removeListener(handler);
+        }
+      }
+    } catch {
+      // Graceful fallback
+    }
+  }, []);
+  return prefersReduced;
+}
 
 export default function ProductCard({
   product,
@@ -22,9 +56,28 @@ export default function ProductCard({
   onRequestQuote,
   isAdding = false,
   viewMode = "grid", // "grid" | "list"
+  variant = "standard", // "standard" | "compact"
+  revealIndex = 0,
+  disableReveal = false,
 }) {
+  const cardRef = useRef(null);
   const [imgError, setImgError] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(() => isItemInWishlist(product?.id || product?.slug));
+  const prefersReducedMotion = useSafeReducedMotion();
+
+  // Normalized motion values for cursor position relative to card center (-0.5 to 0.5)
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  // Smooth, physical spring configuration
+  const springConfig = { damping: 22, stiffness: 260, mass: 0.6 };
+  const mouseXSpring = useSpring(x, springConfig);
+  const mouseYSpring = useSpring(y, springConfig);
+
+  // Restrained rotation angles: max 7.5 degrees to keep text and prices easily legible
+  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], [7.5, -7.5]);
+  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], [-7.5, 7.5]);
 
   useEffect(() => {
     setIsWishlisted(isItemInWishlist(product?.id || product?.slug));
@@ -44,6 +97,32 @@ export default function ProductCard({
     e.stopPropagation();
     const nowWishlisted = toggleWishlistItem(product);
     setIsWishlisted(nowWishlisted);
+  };
+
+  // Pointer event handlers for 3D tilt
+  const handlePointerEnter = (e) => {
+    if (e.pointerType === "touch" || prefersReducedMotion || viewMode === "list") return;
+    setIsHovered(true);
+  };
+
+  const handlePointerMove = (e) => {
+    // Only apply tilt on mouse / trackpad, not touch screens or list mode or reduced motion
+    if (e.pointerType === "touch" || prefersReducedMotion || viewMode === "list") return;
+    const rect = cardRef.current?.getBoundingClientRect();
+    if (!rect || rect.width === 0 || rect.height === 0) return;
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const xPct = mouseX / rect.width - 0.5;
+    const yPct = mouseY / rect.height - 0.5;
+    x.set(xPct);
+    y.set(yPct);
+    if (!isHovered) setIsHovered(true);
+  };
+
+  const handlePointerLeave = () => {
+    x.set(0);
+    y.set(0);
+    setIsHovered(false);
   };
 
   const primaryVariant = product.variants?.[0];
@@ -82,21 +161,57 @@ export default function ProductCard({
   const specEntries = product.specs ? Object.entries(product.specs).slice(0, 3) : [];
 
   return (
-    <div
-      className={`product-card vtx-reveal ${viewMode === "list" ? "product-card-list-mode" : ""} ${isScrewOrFastener ? "product-card-hardware" : ""}`}
-      data-testid={`product-card-${product.id || product.slug}`}
+    <ScrollReveal
+      className={`vtx-card-reveal-wrapper ${viewMode === "list" ? "vtx-card-reveal-list" : ""}`}
+      staggerIndex={revealIndex}
+      staggerDelay={0.065}
+      duration={0.45}
+      yOffset={18}
+      scaleFrom={0.99}
+      disabled={disableReveal || viewMode === "list" || prefersReducedMotion}
+    >
+      <motion.div
+        ref={cardRef}
+        className={`product-card vtx-reveal is-revealed ${viewMode === "list" ? "product-card-list-mode" : ""} ${isScrewOrFastener ? "product-card-hardware" : ""} ${variant === "compact" ? "product-card-compact" : ""} ${isHovered ? "is-tilting" : ""}`}
+        data-testid={`product-card-${product.id || product.slug}`}
+        onPointerEnter={handlePointerEnter}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
+        style={{
+          rotateX: prefersReducedMotion || viewMode === "list" ? 0 : rotateX,
+          rotateY: prefersReducedMotion || viewMode === "list" ? 0 : rotateY,
+          transformStyle: "preserve-3d",
+          transformPerspective: 1000,
+          opacity: 1,
+        }}
+      whileHover={
+        prefersReducedMotion || viewMode === "list"
+          ? undefined
+          : {
+              y: -4,
+              boxShadow:
+                "0 20px 32px -8px rgba(9, 24, 45, 0.16), 0 8px 16px -4px rgba(9, 24, 45, 0.08)",
+            }
+      }
+      transition={{ duration: 0.2 }}
     >
       {/* Wishlist toggle button */}
-      <button
+      <motion.button
         type="button"
         className={`vtx-card-wishlist-btn ${isWishlisted ? "is-active" : ""}`}
         onClick={handleWishlistClick}
         title={isWishlisted ? "Remove from Wishlist" : "Save to Wishlist"}
         aria-label={isWishlisted ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
         aria-pressed={isWishlisted}
+        style={{
+          transform: isHovered && !prefersReducedMotion ? "translateZ(32px)" : "translateZ(0px)",
+          transition: "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+        }}
+        whileHover={prefersReducedMotion ? undefined : { scale: 1.15 }}
+        whileTap={prefersReducedMotion ? undefined : { scale: 0.9 }}
       >
         <span aria-hidden="true">{isWishlisted ? "❤️" : "🤍"}</span>
-      </button>
+      </motion.button>
 
       {/* Promotional / Engineering Tag */}
       {product.tag && (
@@ -111,6 +226,10 @@ export default function ProductCard({
               ? "tag-marine-grade"
               : "tag-best")
           }
+          style={{
+            transform: isHovered && !prefersReducedMotion ? "translateZ(26px)" : "translateZ(0px)",
+            transition: "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+          }}
         >
           {product.tag}
         </span>
@@ -128,10 +247,20 @@ export default function ProductCard({
           }
         }}
         aria-label={`View details for ${product.name}`}
+        style={{
+          transform: isHovered && !prefersReducedMotion ? "translateZ(18px)" : "translateZ(0px)",
+          transition: "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+        }}
       >
         {/* Drive Type Indicator Overlay on Hardware Images */}
         {driveType && (
-          <span className={`vtx-card-drive-pill ${drivePillClass}`}>
+          <span
+            className={`vtx-card-drive-pill ${drivePillClass}`}
+            style={{
+              transform: isHovered && !prefersReducedMotion ? "translateZ(28px)" : "translateZ(0px)",
+              transition: "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+            }}
+          >
             <span className="drive-icon" aria-hidden="true">{driveIcon}</span> {driveType.split(" ")[0]}
           </span>
         )}
@@ -143,6 +272,8 @@ export default function ProductCard({
             className={`product-image ${isScrewOrFastener ? "screw-product-image" : ""}`}
             onError={() => setImgError(true)}
             loading="lazy"
+            width="240"
+            height="160"
           />
         ) : (
           <span className="thumb-placeholder">
@@ -152,7 +283,14 @@ export default function ProductCard({
 
         {/* Standard Norm Watermark */}
         {standardNorm && (
-          <span className="vtx-thumb-norm-tag" title={standardNorm}>
+          <span
+            className="vtx-thumb-norm-tag"
+            title={standardNorm}
+            style={{
+              transform: isHovered && !prefersReducedMotion ? "translateZ(24px)" : "translateZ(0px)",
+              transition: "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+            }}
+          >
             {standardNorm.split("/")[0].trim()}
           </span>
         )}
@@ -174,13 +312,24 @@ export default function ProductCard({
           className="product-name"
           title={product.name}
           onClick={() => onViewDetails && onViewDetails(product)}
+          style={{
+            transform: isHovered && !prefersReducedMotion ? "translateZ(14px)" : "translateZ(0px)",
+            transition: "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+          }}
         >
           {product.name}
         </h3>
 
         {/* Clear Size & Dimension Indicator (OnlyScrews pattern) */}
         {(dimensions || unitLabel) && (
-          <div className="product-size-indicator" aria-label="Available size and pack information">
+          <div
+            className="product-size-indicator"
+            aria-label="Available size and pack information"
+            style={{
+              transform: isHovered && !prefersReducedMotion ? "translateZ(10px)" : "translateZ(0px)",
+              transition: "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+            }}
+          >
             <span className="size-pill">
               <span className="size-icon" aria-hidden="true">📐</span> {dimensions ? `${dimensions} • ` : ""}{unitLabel || "Standard Pack"}
             </span>
@@ -194,7 +343,14 @@ export default function ProductCard({
 
         {/* Verified Specifications Chips (Technical Hardware Specs) */}
         {specEntries.length > 0 && (
-          <div className="product-spec-chips" aria-label="Verified specifications">
+          <div
+            className="product-spec-chips"
+            aria-label="Verified specifications"
+            style={{
+              transform: isHovered && !prefersReducedMotion ? "translateZ(12px)" : "translateZ(0px)",
+              transition: "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+            }}
+          >
             {headType && (
               <span className="spec-chip spec-chip-head" title={`Head: ${headType}`}>
                 <strong>Head:</strong> {headType.replace(/\s*\(.*?\)/, "")}
@@ -214,7 +370,13 @@ export default function ProductCard({
         )}
 
         {/* Pricing display */}
-        <div className="product-price-row">
+        <div
+          className="product-price-row"
+          style={{
+            transform: isHovered && !prefersReducedMotion ? "translateZ(16px)" : "translateZ(0px)",
+            transition: "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+          }}
+        >
           {hasPrice ? (
             <>
               <span className="price">₹{Number(product.price).toLocaleString("en-IN")}</span>
@@ -241,42 +403,29 @@ export default function ProductCard({
             : "Available on Inquiry"}
         </p>
 
-        {/* Action Buttons */}
-        <div className="product-actions-row">
-          {onViewDetails && (
-            <button
-              type="button"
-              className="btn btn-outline btn-specs"
-              onClick={() => onViewDetails(product)}
-              title="View Technical Specs"
-            >
-              Specs
-            </button>
-          )}
-
-          {hasPrice ? (
-            <button
-              type="button"
-              className="btn btn-outline btn-cart"
-              onClick={() => onAddToCart && onAddToCart(product, primaryVariant)}
-              disabled={!inStock || isAdding}
-              data-testid={`add-to-cart-${product.id || product.slug}`}
-            >
-              {isAdding ? "Adding..." : "🛒 Add to Cart"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="btn btn-outline btn-rfq"
-              onClick={() => onRequestQuote ? onRequestQuote(product) : (onViewDetails && onViewDetails(product))}
-              title="Request a Commercial Price Quote"
-              data-testid={`add-to-cart-${product.id || product.slug}`}
-            >
-              📋 Request Quote
-            </button>
-          )}
+        {/* Action Buttons: Primary Add to Cart Button replacing Specs & Request Quote */}
+        <div
+          className="product-actions-row"
+          style={{
+            transform: isHovered && !prefersReducedMotion ? "translateZ(22px)" : "translateZ(0px)",
+            transition: "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+          }}
+        >
+          <motion.button
+            type="button"
+            className="btn btn-primary btn-cart vtx-card-add-to-cart"
+            onClick={() => onAddToCart && onAddToCart(product, primaryVariant)}
+            disabled={!inStock || isAdding}
+            data-testid={`add-to-cart-${product.id || product.slug}`}
+            aria-label={`Add ${product.name} to cart`}
+            whileHover={prefersReducedMotion || !inStock ? undefined : { scale: 1.02 }}
+            whileTap={prefersReducedMotion || !inStock ? undefined : { scale: 0.98 }}
+          >
+            {isAdding ? "Adding..." : "🛒 Add to Cart"}
+          </motion.button>
         </div>
       </div>
-    </div>
-  );
+    </motion.div>
+  </ScrollReveal>
+);
 }

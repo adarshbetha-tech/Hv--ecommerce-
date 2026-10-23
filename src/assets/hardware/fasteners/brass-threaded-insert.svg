@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <radialGradient id="bgGradBrass2" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="70%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </radialGradient>
+    <linearGradient id="brassInsertBody" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ca8a04"/>
+      <stop offset="18%" stop-color="#fef08a"/>
+      <stop offset="42%" stop-color="#facc15"/>
+      <stop offset="70%" stop-color="#a16207"/>
+      <stop offset="88%" stop-color="#fef08a"/>
+      <stop offset="100%" stop-color="#713f12"/>
+    </linearGradient>
+    <linearGradient id="brassRibFace" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="40%" stop-color="#facc15"/>
+      <stop offset="80%" stop-color="#ca8a04"/>
+      <stop offset="100%" stop-color="#713f12"/>
+    </linearGradient>
+    <linearGradient id="insertBoreDark" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#020617"/>
+      <stop offset="50%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <filter id="softShadowBrass2" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+    </filter>
+  </defs>
+
+  <rect width="500" height="500" fill="url(#bgGradBrass2)" rx="16"/>
+  <circle cx="250" cy="250" r="215" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6,6"/>
+  <path d="M 250 25 L 250 475 M 25 250 L 475 250" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="4,4"/>
+
+  <!-- Soft Contact Drop Shadow -->
+  <ellipse cx="250" cy="405" rx="110" ry="22" fill="#0f172a" fill-opacity="0.18" filter="url(#softShadowBrass2)"/>
+
+  <!-- Spec Tag (Top Left) -->
+  <g transform="translate(25, 30)">
+    <rect width="130" height="24" rx="4" fill="#0f172a" fill-opacity="0.06" stroke="#cbd5e1" stroke-width="1"/>
+    <text x="65" y="16" text-anchor="middle" font-family="monospace" font-size="10" font-weight="bold" fill="#d97706">ULTRASONIC EMBED</text>
+  </g>
+
+  <!-- Type Badge (Top Right) -->
+  <g transform="translate(370, 30)">
+    <circle cx="45" cy="45" r="42" fill="#ffffff" stroke="#d97706" stroke-width="2"/>
+    <rect x="28" y="24" width="34" height="42" rx="3" fill="#fef08a" stroke="#a16207" stroke-width="1.5"/>
+    <line x1="33" y1="24" x2="33" y2="66" stroke="#854d0e" stroke-width="1.5"/>
+    <line x1="40" y1="24" x2="40" y2="66" stroke="#854d0e" stroke-width="1.5"/>
+    <line x1="47" y1="24" x2="47" y2="66" stroke="#854d0e" stroke-width="1.5"/>
+    <line x1="54" y1="24" x2="54" y2="66" stroke="#854d0e" stroke-width="1.5"/>
+    <text x="45" y="102" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10" font-weight="700" fill="#a16207" letter-spacing="0.5">THREAD BUSH</text>
+  </g>
+
+  <!-- Brass Threaded Insert Cylinder with Flanged Retention Ribs -->
+  <g transform="translate(250, 240)">
+    <!-- Bottom Chamfer Base -->
+    <path d="M -70 115 L -55 145 C -55 160, 55 160, 55 145 L 70 115 Z" fill="url(#brassInsertBody)" stroke="#713f12" stroke-width="1.5"/>
+
+    <!-- Bottom Knurled Band -->
+    <rect x="-72" y="75" width="144" height="40" fill="url(#brassInsertBody)" stroke="#713f12" stroke-width="1.5"/>
+    <!-- Straight Knurling Vertical Flutes -->
+    <g stroke="#713f12" stroke-width="2" opacity="0.8">
+      <line x1="-60" y1="75" x2="-60" y2="115"/>
+      <line x1="-45" y1="75" x2="-45" y2="115"/>
+      <line x1="-30" y1="75" x2="-30" y2="115"/>
+      <line x1="-15" y1="75" x2="-15" y2="115"/>
+      <line x1="0" y1="75" x2="0" y2="115"/>
+      <line x1="15" y1="75" x2="15" y2="115"/>
+      <line x1="30" y1="75" x2="30" y2="115"/>
+      <line x1="45" y1="75" x2="45" y2="115"/>
+      <line x1="60" y1="75" x2="60" y2="115"/>
+    </g>
+
+    <!-- Retention Rib Flange Ring (Lower) -->
+    <ellipse cx="0" cy="75" rx="80" ry="24" fill="url(#brassRibFace)" stroke="#713f12" stroke-width="1.5"/>
+
+    <!-- Middle Straight Knurled Band -->
+    <rect x="-72" y="25" width="144" height="48" fill="url(#brassInsertBody)" stroke="#713f12" stroke-width="1.5"/>
+    <g stroke="#713f12" stroke-width="2" opacity="0.8">
+      <line x1="-60" y1="25" x2="-60" y2="73"/>
+      <line x1="-45" y1="25" x2="-45" y2="73"/>
+      <line x1="-30" y1="25" x2="-30" y2="73"/>
+      <line x1="-15" y1="25" x2="-15" y2="73"/>
+      <line x1="0" y1="25" x2="0" y2="73"/>
+      <line x1="15" y1="25" x2="15" y2="73"/>
+      <line x1="30" y1="25" x2="30" y2="73"/>
+      <line x1="45" y1="25" x2="45" y2="73"/>
+      <line x1="60" y1="25" x2="60" y2="73"/>
+    </g>
+
+    <!-- Upper Retention Flange Ring -->
+    <ellipse cx="0" cy="25" rx="82" ry="26" fill="url(#brassRibFace)" stroke="#713f12" stroke-width="1.5"/>
+
+    <!-- Top Body Collar -->
+    <rect x="-76" y="-25" width="152" height="48" fill="url(#brassInsertBody)" stroke="#713f12" stroke-width="1.5"/>
+    <g stroke="#713f12" stroke-width="2" opacity="0.8">
+      <line x1="-60" y1="-25" x2="-60" y2="23"/>
+      <line x1="-40" y1="-25" x2="-40" y2="23"/>
+      <line x1="-20" y1="-25" x2="-20" y2="23"/>
+      <line x1="0" y1="-25" x2="0" y2="23"/>
+      <line x1="20" y1="-25" x2="20" y2="23"/>
+      <line x1="40" y1="-25" x2="40" y2="23"/>
+      <line x1="60" y1="-25" x2="60" y2="23"/>
+    </g>
+
+    <!-- Top Face Rim -->
+    <ellipse cx="0" cy="-25" rx="80" ry="32" fill="url(#brassRibFace)" stroke="#fef08a" stroke-width="2"/>
+    <ellipse cx="0" cy="-25" rx="76" ry="30" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.8"/>
+
+    <!-- Internal Metric Threaded Bore -->
+    <ellipse cx="0" cy="-25" rx="46" ry="19" fill="url(#insertBoreDark)" stroke="#854d0e" stroke-width="2"/>
+
+    <!-- Internal Thread Ridges -->
+    <path d="M -42 -25 Q 0 -12 42 -25" fill="none" stroke="#ca8a04" stroke-width="2.5"/>
+    <path d="M -38 -19 Q 0 -6 38 -19" fill="none" stroke="#fef08a" stroke-width="2"/>
+    <path d="M -34 -13 Q 0 0 34 -13" fill="none" stroke="#854d0e" stroke-width="2.5"/>
+  </g>
+
+  <!-- Tag (Bottom) -->
+  <g transform="translate(250, 455)">
+    <text x="0" y="0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" font-weight="700" fill="#0f172a" letter-spacing="1">MACHINED BRASS THREADED INSERT</text>
+    <text x="0" y="18" text-anchor="middle" font-family="monospace" font-size="10" fill="#a16207">PLASTIC INJECTION MOLDING &amp; ENCLOSURE HARDWARE</text>
+  </g>
+</svg>

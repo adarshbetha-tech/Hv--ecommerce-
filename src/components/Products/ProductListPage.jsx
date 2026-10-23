@@ -17,6 +17,104 @@ import React, { useState, useEffect, useMemo } from "react";
 import ProductCard from "./ProductCard";
 import QuoteModal from "./QuoteModal";
 
+
+/**
+ * Helper to identify text-only electronic products (Categories 3, 4, 5, 6)
+ * Strict rule: NO images, NO thumbnails, NO empty placeholders.
+ */
+function isTextOnlyProduct(product) {
+  if (!product) return false;
+  if (product.isTextOnly === true || product.subcategory?.textOnly === true) return true;
+  const sub = (product.subcategory?.slug || "").toLowerCase();
+  return (
+    sub.startsWith("hvnex-") ||
+    sub === "hvnex-microcontrollers" ||
+    sub === "hvnex-motor-drivers" ||
+    sub === "hvnex-plc-controllers" ||
+    sub === "hvnex-buck-converters"
+  );
+}
+
+function isFastenerProduct(product) {
+  if (!product) return false;
+  const cat = (product.category?.slug || product.categoryId || "").toLowerCase();
+  return cat === "fasteners" || cat === "cat-fasteners" || cat === "nuts" || cat === "cat-nuts";
+}
+
+/**
+ * Compact, professional text-based product row for Categories 3, 4, 5, 6
+ * Contains NO thumbnails, NO image placeholders, and NO empty image containers.
+ */
+function TextProductRow({ product, onAddToCart, onViewDetails }) {
+  const primaryVariant = product.variants?.[0];
+  const sku = primaryVariant?.sku || product.sku || `VTX-${(product.slug || "").toUpperCase()}`;
+  const hasPrice = product.price !== null && product.price !== undefined;
+  const inStock = product.inStock !== false;
+
+  return (
+    <div className="vtx-text-product-row" data-testid={`text-product-${product.id || product.slug}`}>
+      <div className="vtx-text-row-main">
+        <div className="vtx-text-row-header">
+          <h4
+            className="vtx-text-row-name"
+            onClick={() => onViewDetails && onViewDetails(product)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") onViewDetails && onViewDetails(product);
+            }}
+            title="Click to view verified technical specifications"
+          >
+            {product.name}
+          </h4>
+          <div className="vtx-text-row-meta">
+            <code className="vtx-text-sku">SKU: {sku}</code>
+            {product.brand && <span className="vtx-text-brand-badge">{product.brand}</span>}
+            {product.tag && <span className="vtx-text-tag-badge">{product.tag}</span>}
+          </div>
+        </div>
+
+        {/* Verified Technical Specification Chips */}
+        {product.specs && Object.keys(product.specs).length > 0 && (
+          <div className="vtx-text-row-specs">
+            {Object.entries(product.specs).map(([key, val]) => (
+              <span className="vtx-text-spec-chip" key={key} title={`${key}: ${val}`}>
+                <strong className="vtx-spec-key">{key}:</strong> {val}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="vtx-text-row-actions">
+        <div className="vtx-text-row-price-wrap">
+          {hasPrice ? (
+            <span className="vtx-text-price">₹{Number(product.price).toLocaleString("en-IN")}</span>
+          ) : (
+            <div className="vtx-text-quote-box">
+              <span className="vtx-text-quote">Quote on Request</span>
+              <span className="vtx-text-quote-sub">Commercial Pricing</span>
+            </div>
+          )}
+          <span className={`vtx-text-stock-tag ${inStock ? "in-stock" : "out-stock"}`}>
+            {inStock ? "● In Stock" : "○ Pre-Order"}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          className="btn btn-primary vtx-btn-text-cart"
+          onClick={() => onAddToCart && onAddToCart(product, primaryVariant)}
+          data-testid={`add-to-cart-${product.id || product.slug}`}
+          aria-label={`Add ${product.name} to cart`}
+        >
+          🛒 Add to Cart
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function ProductListPage({
   categories = [],
   products = [],
@@ -410,11 +508,22 @@ export default function ProductListPage({
                 "Browse factory-certified lithium-ion cells, precision machine screws, metric nuts, development microcontrollers, and high-power motor drivers."}
             </p>
           </div>
-          <div className="vtx-catalog-count-pill" aria-live="polite">
+          <div className="vtx-catalog-header-actions">
+            <div className="vtx-catalog-count-pill" aria-live="polite">
             <span className="vtx-count-number">{filteredProducts.length}</span>
             <span className="vtx-count-label">
               {filteredProducts.length === 1 ? "Product Found" : "Products Found"}
             </span>
+          </div>
+            <button
+              type="button"
+              className="btn btn-outline vtx-header-rfq-btn"
+              onClick={() => setQuoteProduct(filteredProducts[0] || { name: "Commercial Price Quote" })}
+              title="Request a Commercial Price Quote"
+              aria-label="Request Quote"
+            >
+              📋 Request Quote
+            </button>
           </div>
         </div>
       </section>
@@ -903,19 +1012,324 @@ export default function ProductListPage({
               </div>
             </div>
           ) : (
-            /* Product Grid / List */
-            <div className={viewMode === "list" ? "product-list-view" : "product-grid"}>
-              {filteredProducts.map((p) => (
-                <ProductCard
-                  key={p.id || p.slug}
-                  product={p}
-                  viewMode={viewMode}
-                  onAddToCart={onAddToCart}
-                  onViewDetails={onViewDetails}
-                  onRequestQuote={(prod) => setQuoteProduct(prod)}
-                />
-              ))}
-            </div>
+            /* Product Catalogue: Fasteners First, Electronic Products Second */
+            viewMode === "list" ? (
+              <div className="product-list-view">
+                {filteredProducts.map((p, idx) => (
+                  isTextOnlyProduct(p) ? (
+                    <TextProductRow
+                      key={p.id || p.slug}
+                      product={p}
+                      onAddToCart={onAddToCart}
+                      onViewDetails={onViewDetails}
+                    />
+                  ) : (
+                    <ProductCard
+                      key={p.id || p.slug}
+                      product={p}
+                      viewMode="list"
+                      onAddToCart={onAddToCart}
+                      onViewDetails={onViewDetails}
+                      onRequestQuote={(prod) => setQuoteProduct(prod)}
+                      revealIndex={idx}
+                    />
+                  )
+                ))}
+              </div>
+            ) : (
+              /* Grid Mode with Structured Catalogue Sections */
+              <div className="vtx-catalogue-sections-wrap">
+                {/* 1. Fasteners Section (FIRST per PDF specification) */}
+                {filteredProducts.some(isFastenerProduct) && (
+                  <section className="vtx-catalogue-section vtx-fasteners-catalogue-section">
+                    <div className="vtx-section-banner">
+                      <div className="vtx-section-banner-title">
+                        <span className="vtx-section-num-tag">SECTION 1</span>
+                        <h2>Precision Fasteners & Screws</h2>
+                      </div>
+                      <span className="vtx-section-count-tag">
+                        {filteredProducts.filter(isFastenerProduct).length} Products
+                      </span>
+                    </div>
+
+                    <div className="product-grid">
+                      {filteredProducts.filter(isFastenerProduct).map((p, idx) => (
+                        <ProductCard
+                          key={p.id || p.slug}
+                          product={p}
+                          viewMode="grid"
+                          onAddToCart={onAddToCart}
+                          onViewDetails={onViewDetails}
+                          onRequestQuote={(prod) => setQuoteProduct(prod)}
+                          revealIndex={idx}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {/* 2. Electronic Products Section (SECOND per PDF specification) */}
+                {filteredProducts.some((p) => !isFastenerProduct(p)) && (
+                  <section className="vtx-catalogue-section vtx-electronics-catalogue-section">
+                    <div className="vtx-section-banner vtx-section-banner-electronics">
+                      <div className="vtx-section-banner-title">
+                        <span className="vtx-section-num-tag">SECTION 2</span>
+                        <h2>Electronic Products & Embedded Systems</h2>
+                      </div>
+                      <span className="vtx-section-count-tag">
+                        {filteredProducts.filter((p) => !isFastenerProduct(p)).length} Products
+                      </span>
+                    </div>
+
+                    {/* FIRST: Categories 3, 4, 5, 6 - Strictly Text-Only Lists (NO IMAGES) */}
+                    {filteredProducts.some(isTextOnlyProduct) && (
+                      <div className="vtx-textonly-categories-wrapper">
+                        {/* 3. HVNEX – Microcontroller Boards */}
+                        {filteredProducts.filter((p) => p.subcategory?.slug === "hvnex-microcontrollers").length > 0 && (
+                          <div className="vtx-text-category-card">
+                            <div className="vtx-text-category-header">
+                              <span className="vtx-text-cat-num">3</span>
+                              <div className="vtx-text-cat-headings">
+                                <h3>HVNEX – Microcontroller Boards</h3>
+                                <span className="vtx-text-cat-subtitle">Compact Technical Listing • No Images</span>
+                              </div>
+                            </div>
+                            <div className="vtx-text-rows-container">
+                              {filteredProducts
+                                .filter((p) => p.subcategory?.slug === "hvnex-microcontrollers")
+                                .map((p) => (
+                                  <TextProductRow
+                                    key={p.id || p.slug}
+                                    product={p}
+                                    onAddToCart={onAddToCart}
+                                    onViewDetails={onViewDetails}
+                                  />
+                                ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 4. HVNEX – DC Motor Drivers */}
+                        {filteredProducts.filter((p) => p.subcategory?.slug === "hvnex-motor-drivers").length > 0 && (
+                          <div className="vtx-text-category-card">
+                            <div className="vtx-text-category-header">
+                              <span className="vtx-text-cat-num">4</span>
+                              <div className="vtx-text-cat-headings">
+                                <h3>HVNEX – DC Motor Drivers</h3>
+                                <span className="vtx-text-cat-subtitle">Compact Technical Listing • No Images</span>
+                              </div>
+                            </div>
+                            <div className="vtx-text-rows-container">
+                              {filteredProducts
+                                .filter((p) => p.subcategory?.slug === "hvnex-motor-drivers")
+                                .map((p) => (
+                                  <TextProductRow
+                                    key={p.id || p.slug}
+                                    product={p}
+                                    onAddToCart={onAddToCart}
+                                    onViewDetails={onViewDetails}
+                                  />
+                                ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 5. HVNEX – PLC Controller */}
+                        {filteredProducts.filter((p) => p.subcategory?.slug === "hvnex-plc-controllers").length > 0 && (
+                          <div className="vtx-text-category-card">
+                            <div className="vtx-text-category-header">
+                              <span className="vtx-text-cat-num">5</span>
+                              <div className="vtx-text-cat-headings">
+                                <h3>HVNEX – PLC Controller</h3>
+                                <span className="vtx-text-cat-subtitle">Compact Technical Listing • No Images</span>
+                              </div>
+                            </div>
+                            <div className="vtx-text-rows-container">
+                              {filteredProducts
+                                .filter((p) => p.subcategory?.slug === "hvnex-plc-controllers")
+                                .map((p) => (
+                                  <TextProductRow
+                                    key={p.id || p.slug}
+                                    product={p}
+                                    onAddToCart={onAddToCart}
+                                    onViewDetails={onViewDetails}
+                                  />
+                                ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 6. HVNEX – DC-DC Buck Converters */}
+                        {filteredProducts.filter((p) => p.subcategory?.slug === "hvnex-buck-converters").length > 0 && (
+                          <div className="vtx-text-category-card">
+                            <div className="vtx-text-category-header">
+                              <span className="vtx-text-cat-num">6</span>
+                              <div className="vtx-text-cat-headings">
+                                <h3>HVNEX – DC-DC Buck Converters</h3>
+                                <span className="vtx-text-cat-subtitle">Compact Technical Listing • No Images</span>
+                              </div>
+                            </div>
+                            <div className="vtx-text-rows-container">
+                              {filteredProducts
+                                .filter((p) => p.subcategory?.slug === "hvnex-buck-converters")
+                                .map((p) => (
+                                  <TextProductRow
+                                    key={p.id || p.slug}
+                                    product={p}
+                                    onAddToCart={onAddToCart}
+                                    onViewDetails={onViewDetails}
+                                  />
+                                ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Fallback for any other text-only items */}
+                        {filteredProducts.filter((p) =>
+                          isTextOnlyProduct(p) &&
+                          p.subcategory?.slug !== "hvnex-microcontrollers" &&
+                          p.subcategory?.slug !== "hvnex-motor-drivers" &&
+                          p.subcategory?.slug !== "hvnex-plc-controllers" &&
+                          p.subcategory?.slug !== "hvnex-buck-converters"
+                        ).length > 0 && (
+                          <div className="vtx-text-category-card">
+                            <div className="vtx-text-category-header">
+                              <span className="vtx-text-cat-num">HVNEX</span>
+                              <div className="vtx-text-cat-headings">
+                                <h3>HVNEX Specialized Controllers</h3>
+                                <span className="vtx-text-cat-subtitle">Technical Listing • No Images</span>
+                              </div>
+                            </div>
+                            <div className="vtx-text-rows-container">
+                              {filteredProducts
+                                .filter((p) =>
+                                  isTextOnlyProduct(p) &&
+                                  p.subcategory?.slug !== "hvnex-microcontrollers" &&
+                                  p.subcategory?.slug !== "hvnex-motor-drivers" &&
+                                  p.subcategory?.slug !== "hvnex-plc-controllers" &&
+                                  p.subcategory?.slug !== "hvnex-buck-converters"
+                                )
+                                .map((p) => (
+                                  <TextProductRow
+                                    key={p.id || p.slug}
+                                    product={p}
+                                    onAddToCart={onAddToCart}
+                                    onViewDetails={onViewDetails}
+                                  />
+                                ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* SECOND: Categories 1 and 2 - Product Cards with Images */}
+                    {filteredProducts.some((p) => !isFastenerProduct(p) && !isTextOnlyProduct(p)) && (
+                      <div className="vtx-cards-categories-wrapper">
+                        {/* 1. Lithium-Ion Batteries / Cells */}
+                        {filteredProducts.filter((p) => p.subcategory?.slug === "lithium-ion-batteries").length > 0 && (
+                          <div className="vtx-subcat-group-block">
+                            <div className="vtx-subcat-group-header">
+                              <span className="vtx-group-badge">Category 1</span>
+                              <h3 className="vtx-group-title">Lithium-Ion Batteries / Cells</h3>
+                              <span className="vtx-group-count">
+                                {filteredProducts.filter((p) => p.subcategory?.slug === "lithium-ion-batteries").length} Verified Cells
+                              </span>
+                            </div>
+                            <div className="product-grid">
+                              {filteredProducts
+                                .filter((p) => p.subcategory?.slug === "lithium-ion-batteries")
+                                .map((p, idx) => (
+                                  <ProductCard
+                                    key={p.id || p.slug}
+                                    product={p}
+                                    viewMode="grid"
+                                    onAddToCart={onAddToCart}
+                                    onViewDetails={onViewDetails}
+                                    onRequestQuote={(prod) => setQuoteProduct(prod)}
+                                    revealIndex={idx}
+                                  />
+                                ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 2. Electronic Components */}
+                        {filteredProducts.filter((p) => p.subcategory?.slug === "electronic-components").length > 0 && (
+                          <div className="vtx-subcat-group-block">
+                            <div className="vtx-subcat-group-header">
+                              <span className="vtx-group-badge">Category 2</span>
+                              <h3 className="vtx-group-title">Electronic Components</h3>
+                              <span className="vtx-group-count">
+                                {filteredProducts.filter((p) => p.subcategory?.slug === "electronic-components").length} Components
+                              </span>
+                            </div>
+                            <div className="product-grid">
+                              {filteredProducts
+                                .filter((p) => p.subcategory?.slug === "electronic-components")
+                                .map((p, idx) => (
+                                  <ProductCard
+                                    key={p.id || p.slug}
+                                    product={p}
+                                    viewMode="grid"
+                                    onAddToCart={onAddToCart}
+                                    onViewDetails={onViewDetails}
+                                    onRequestQuote={(prod) => setQuoteProduct(prod)}
+                                    revealIndex={idx}
+                                  />
+                                ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Any other electronic products (e.g. preserved test items) */}
+                        {filteredProducts.filter((p) =>
+                          !isFastenerProduct(p) &&
+                          !isTextOnlyProduct(p) &&
+                          p.subcategory?.slug !== "lithium-ion-batteries" &&
+                          p.subcategory?.slug !== "electronic-components"
+                        ).length > 0 && (
+                          <div className="vtx-subcat-group-block">
+                            <div className="vtx-subcat-group-header">
+                              <span className="vtx-group-badge">Hardware</span>
+                              <h3 className="vtx-group-title">Additional Prototyping Electronics</h3>
+                              <span className="vtx-group-count">
+                                {filteredProducts.filter((p) =>
+                                  !isFastenerProduct(p) &&
+                                  !isTextOnlyProduct(p) &&
+                                  p.subcategory?.slug !== "lithium-ion-batteries" &&
+                                  p.subcategory?.slug !== "electronic-components"
+                                ).length} Items
+                              </span>
+                            </div>
+                            <div className="product-grid">
+                              {filteredProducts
+                                .filter((p) =>
+                                  !isFastenerProduct(p) &&
+                                  !isTextOnlyProduct(p) &&
+                                  p.subcategory?.slug !== "lithium-ion-batteries" &&
+                                  p.subcategory?.slug !== "electronic-components"
+                                )
+                                .map((p, idx) => (
+                                  <ProductCard
+                                    key={p.id || p.slug}
+                                    product={p}
+                                    viewMode="grid"
+                                    onAddToCart={onAddToCart}
+                                    onViewDetails={onViewDetails}
+                                    onRequestQuote={(prod) => setQuoteProduct(prod)}
+                                    revealIndex={idx}
+                                  />
+                                ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                )}
+              </div>
+            )
           )}
         </main>
       </div>

@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <radialGradient id="bgGradHexNut" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="70%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </radialGradient>
+    <linearGradient id="nutMetalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f1f5f9"/>
+      <stop offset="25%" stop-color="#cbd5e1"/>
+      <stop offset="50%" stop-color="#ffffff"/>
+      <stop offset="75%" stop-color="#94a3b8"/>
+      <stop offset="100%" stop-color="#475569"/>
+    </linearGradient>
+    <linearGradient id="nutFacetSide" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#94a3b8"/>
+      <stop offset="40%" stop-color="#cbd5e1"/>
+      <stop offset="80%" stop-color="#64748b"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+    <linearGradient id="nutThreadHole" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#020617"/>
+      <stop offset="40%" stop-color="#0f172a"/>
+      <stop offset="70%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+    <filter id="softShadowNut" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+    </filter>
+  </defs>
+
+  <!-- Clean Studio Background -->
+  <rect width="500" height="500" fill="url(#bgGradHexNut)" rx="16"/>
+  <circle cx="250" cy="250" r="215" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6,6"/>
+  <path d="M 250 25 L 250 475 M 25 250 L 475 250" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="4,4"/>
+
+  <!-- Soft Contact Drop Shadow -->
+  <ellipse cx="250" cy="385" rx="140" ry="24" fill="#0f172a" fill-opacity="0.16" filter="url(#softShadowNut)"/>
+
+  <!-- Spec Tag (Top Left) -->
+  <g transform="translate(25, 30)">
+    <rect width="135" height="24" rx="4" fill="#0f172a" fill-opacity="0.06" stroke="#cbd5e1" stroke-width="1"/>
+    <text x="67" y="16" text-anchor="middle" font-family="monospace" font-size="10" font-weight="bold" fill="#0284c7">DIN 934 / ISO 4032</text>
+  </g>
+
+  <!-- Type Badge (Top Right) -->
+  <g transform="translate(370, 30)">
+    <circle cx="45" cy="45" r="42" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+    <polygon points="45,18 70,32 70,58 45,72 20,58 20,32" fill="#e2e8f0" stroke="#475569" stroke-width="1.5"/>
+    <circle cx="45" cy="45" r="14" fill="#ffffff" stroke="#0284c7" stroke-width="1.5"/>
+    <text x="45" y="102" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10" font-weight="700" fill="#475569" letter-spacing="0.5">HEX NUT</text>
+  </g>
+
+  <!-- 3D Perspective Hexagon Nut Body -->
+  <g transform="translate(250, 240)">
+    <!-- Lower Side Facets (3D Thickness) -->
+    <!-- Left side facet -->
+    <polygon points="-130,-15 -130,55 -55,100 -55,30" fill="url(#nutFacetSide)" stroke="#334155" stroke-width="1.5"/>
+    <!-- Center front facet -->
+    <polygon points="-55,30 -55,100 55,100 55,30" fill="url(#nutMetalGrad)" stroke="#475569" stroke-width="1.5"/>
+    <!-- Right side facet -->
+    <polygon points="55,30 55,100 130,55 130,-15" fill="url(#nutFacetSide)" stroke="#334155" stroke-width="1.5"/>
+
+    <!-- Bottom Chamfer Rim -->
+    <path d="M -130 55 Q -55 108 55 108 Q 130 60 130 55" fill="none" stroke="#64748b" stroke-width="1"/>
+
+    <!-- Top Hex Face -->
+    <polygon points="0,-75 130,-15 55,30 -55,30 -130,-15" fill="url(#nutMetalGrad)" stroke="#cbd5e1" stroke-width="1.5"/>
+    <polygon points="0,-75 -130,-15 -55,30" fill="#ffffff" fill-opacity="0.3"/>
+
+    <!-- Face Bevel Highlight Line -->
+    <polygon points="0,-71 123,-15 51,26 -51,26 -123,-15" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.7"/>
+
+    <!-- Center Threaded Hole Inner Bore -->
+    <ellipse cx="0" cy="-7" rx="55" ry="32" fill="url(#nutThreadHole)" stroke="#1e293b" stroke-width="2"/>
+
+    <!-- Thread Ridges / Spiral Pitch -->
+    <path d="M -50 -10 Q 0 8 50 -10" fill="none" stroke="#64748b" stroke-width="2.5"/>
+    <path d="M -48 -2 Q 0 16 48 -2" fill="none" stroke="#94a3b8" stroke-width="2"/>
+    <path d="M -45 6 Q 0 24 45 6" fill="none" stroke="#475569" stroke-width="2.5"/>
+    <path d="M -40 14 Q 0 30 40 14" fill="none" stroke="#334155" stroke-width="2"/>
+
+    <!-- Inner Bore Counter-bore Chamfer Highlight -->
+    <ellipse cx="0" cy="-7" rx="55" ry="32" fill="none" stroke="#ffffff" stroke-width="1" stroke-opacity="0.4"/>
+  </g>
+
+  <!-- Dimensions Tag (Bottom) -->
+  <g transform="translate(250, 455)">
+    <text x="0" y="0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" font-weight="700" fill="#0f172a" letter-spacing="1">SS304 METRIC FULL HEX NUT</text>
+    <text x="0" y="18" text-anchor="middle" font-family="monospace" font-size="10" fill="#64748b">IS / ISO 4032 • COARSE PITCH</text>
+  </g>
+</svg>
