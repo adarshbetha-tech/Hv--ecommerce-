@@ -14,6 +14,8 @@ const INITIAL_COUPONS = [
     id: "coup-reg-01",
     code: "VTX-IND-BULK10",
     campaignName: "Industrial Bulk Fasteners Incentive",
+    recipientName: "Premier Heavy Industries Ltd.",
+    recipientAddress: "Plot 42, Peenya Industrial Area Phase 2, Bengaluru, Karnataka 560058",
     category: "regular",
     subType: "reusable",
     typeLabel: "Time-Limited Reusable",
@@ -35,6 +37,8 @@ const INITIAL_COUPONS = [
     id: "coup-reg-02",
     code: "VTX-ELEC-FIRST",
     campaignName: "New Lab Welcome Voucher",
+    recipientName: "National Avionics Research Laboratory",
+    recipientAddress: "HAL Airport Road, Kodihalli, Bengaluru, Karnataka 560017",
     category: "regular",
     subType: "single_use",
     typeLabel: "Single-Use Voucher",
@@ -60,6 +64,9 @@ const INITIAL_COUPONS = [
     subType: "college_gift",
     typeLabel: "College Educational Gift",
     collegeName: "Indian Institute of Science (IISc) Bengaluru",
+    collegeAddress: "CV Raman Road, Mathikere, Bengaluru, Karnataka 560012",
+    recipientName: "Robotics & Autonomous Systems Lab",
+    recipientAddress: "Dept of Mechanical Engineering, IISc Campus, Bengaluru 560012",
     collegeId: "IISC-ROBO-2026",
     studentDomain: "@iisc.ac.in",
     discountType: "free_gift",
@@ -88,6 +95,9 @@ const INITIAL_COUPONS = [
     subType: "college_gift",
     typeLabel: "College Educational Gift",
     collegeName: "IIT Madras - Aero Design Lab",
+    collegeAddress: "IIT P.O., Sardar Patel Road, Chennai, Tamil Nadu 600036",
+    recipientName: "Aero Design Project Group",
+    recipientAddress: "Dept of Aerospace Engineering, IIT Madras, Chennai 600036",
     collegeId: "IITM-AERO-GRANT",
     studentDomain: "@smail.iitm.ac.in",
     discountType: "percentage",
@@ -135,6 +145,8 @@ export default function AdminDiscounts() {
   const [regSubType, setRegSubType] = useState("reusable"); // "reusable" | "single_use"
   const [regCode, setRegCode] = useState("");
   const [regCampaignName, setRegCampaignName] = useState("");
+  const [regRecipientName, setRegRecipientName] = useState("");
+  const [regRecipientAddress, setRegRecipientAddress] = useState("");
   const [regDiscountType, setRegDiscountType] = useState("percentage");
   const [regDiscountVal, setRegDiscountVal] = useState("10");
   const [regMinOrder, setRegMinOrder] = useState("5000");
@@ -147,6 +159,8 @@ export default function AdminDiscounts() {
 
   // Form states for College Coupon
   const [colCollegeName, setColCollegeName] = useState("");
+  const [colCollegeAddress, setColCollegeAddress] = useState("");
+  const [colRecipientName, setColRecipientName] = useState("");
   const [colCollegeId, setColCollegeId] = useState("");
   const [colStudentDomain, setColStudentDomain] = useState("");
   const [colCode, setColCode] = useState("");
@@ -329,6 +343,8 @@ export default function AdminDiscounts() {
         id: `coup-reg-${Date.now()}`,
         code: regCode.trim().toUpperCase(),
         campaignName: regCampaignName.trim(),
+        recipientName: regRecipientName.trim() || null,
+        recipientAddress: regRecipientAddress.trim() || null,
         category: "regular",
         subType: regSubType,
         typeLabel: isSingle ? "Single-Use Voucher" : "Time-Limited Reusable",
@@ -377,6 +393,9 @@ export default function AdminDiscounts() {
         id: `coup-col-${Date.now()}`,
         code: colCode.trim().toUpperCase(),
         campaignName: colCampaignName.trim(),
+        recipientName: colRecipientName.trim() || null,
+        collegeAddress: colCollegeAddress.trim() || null,
+        recipientAddress: colCollegeAddress.trim() || null,
         category: "college",
         subType: "college_gift",
         typeLabel: "College Educational Gift",
@@ -733,10 +752,27 @@ export default function AdminDiscounts() {
                                   ({coupon.studentDomain})
                                 </span>
                               )}
+                              {(coupon.collegeAddress || coupon.recipientAddress) && (
+                                <div style={{ fontSize: "0.73rem", color: "var(--adm-text-muted)", marginTop: 2 }} title={coupon.collegeAddress || coupon.recipientAddress}>
+                                  📍 {coupon.collegeAddress || coupon.recipientAddress}
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <div style={{ fontSize: "0.76rem", color: "var(--adm-text-secondary)", marginTop: 2 }}>
-                              {coupon.description}
+                              {coupon.recipientName && (
+                                <div style={{ fontWeight: 600, color: "var(--adm-text-primary)" }}>
+                                  👤 {coupon.recipientName}
+                                </div>
+                              )}
+                              {coupon.recipientAddress && (
+                                <div style={{ fontSize: "0.73rem", color: "var(--adm-text-muted)", marginTop: 1 }} title={coupon.recipientAddress}>
+                                  📍 {coupon.recipientAddress}
+                                </div>
+                              )}
+                              {!coupon.recipientName && !coupon.recipientAddress && (
+                                <div>{coupon.description}</div>
+                              )}
                             </div>
                           )}
                         </td>
@@ -1050,6 +1086,31 @@ export default function AdminDiscounts() {
                         {inspectingCoupon.eligibilityCriteria || "Active student status"}
                       </span>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Recipient / Delivery Address Binding (if present) */}
+              {(inspectingCoupon.recipientName || inspectingCoupon.recipientAddress || inspectingCoupon.collegeAddress) && (
+                <div style={{ marginBottom: 18 }} data-testid="inspect-coupon-recipient-section">
+                  <h4 style={{ fontSize: "0.9rem", color: "var(--adm-primary)", margin: "0 0 10px" }}>
+                    📍 Recipient &amp; Delivery Address Binding
+                  </h4>
+                  <div className="adm-detail-grid">
+                    {inspectingCoupon.recipientName && (
+                      <div className="adm-detail-item">
+                        <span className="adm-detail-label">Designated Recipient / Account</span>
+                        <span className="adm-detail-value">{inspectingCoupon.recipientName}</span>
+                      </div>
+                    )}
+                    {(inspectingCoupon.recipientAddress || inspectingCoupon.collegeAddress) && (
+                      <div className="adm-detail-item">
+                        <span className="adm-detail-label">Designated Address</span>
+                        <span className="adm-detail-value">
+                          {inspectingCoupon.recipientAddress || inspectingCoupon.collegeAddress}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1523,6 +1584,36 @@ export default function AdminDiscounts() {
                       </div>
                     </div>
 
+                    <div className="adm-form-grid" style={{ marginBottom: 12 }}>
+                      <div className="adm-form-field">
+                        <label htmlFor="regRecipientName">
+                          Designated Recipient / Customer Name (Optional)
+                        </label>
+                        <input
+                          id="regRecipientName"
+                          type="text"
+                          className="adm-input"
+                          value={regRecipientName}
+                          onChange={(e) => setRegRecipientName(e.target.value)}
+                          placeholder="e.g. Apex Robotics Pvt Ltd / Dr. S. Raman"
+                        />
+                      </div>
+
+                      <div className="adm-form-field">
+                        <label htmlFor="regRecipientAddress">
+                          Designated Delivery / Billing Address (Optional)
+                        </label>
+                        <input
+                          id="regRecipientAddress"
+                          type="text"
+                          className="adm-input"
+                          value={regRecipientAddress}
+                          onChange={(e) => setRegRecipientAddress(e.target.value)}
+                          placeholder="e.g. Plot 14, Peenya Phase 2, Bengaluru 560058"
+                        />
+                      </div>
+                    </div>
+
                     <div className="adm-form-field" style={{ marginBottom: 16 }}>
                       <label htmlFor="regDescription">Campaign Description / Notes</label>
                       <textarea
@@ -1577,6 +1668,30 @@ export default function AdminDiscounts() {
                             🎲 Generate
                           </button>
                         </div>
+                      </div>
+
+                      <div className="adm-form-field">
+                        <label htmlFor="colCollegeAddress">Campus / Department Address (Optional)</label>
+                        <input
+                          id="colCollegeAddress"
+                          type="text"
+                          className="adm-input"
+                          value={colCollegeAddress}
+                          onChange={(e) => setColCollegeAddress(e.target.value)}
+                          placeholder="e.g. Powai, Mumbai, Maharashtra 400076"
+                        />
+                      </div>
+
+                      <div className="adm-form-field">
+                        <label htmlFor="colRecipientName">Department / Faculty Lead (Optional)</label>
+                        <input
+                          id="colRecipientName"
+                          type="text"
+                          className="adm-input"
+                          value={colRecipientName}
+                          onChange={(e) => setColRecipientName(e.target.value)}
+                          placeholder="e.g. Dr. H. Bhaskaran / Robotics Lab"
+                        />
                       </div>
 
                       <div className="adm-form-field">

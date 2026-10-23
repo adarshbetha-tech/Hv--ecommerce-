@@ -16,7 +16,7 @@
 
 import automationImg from "../assets/hardware/automation.jpg";
 import arduinoImg from "../assets/hardware/arduino.jpg";
-
+import pcbImg from "../assets/hardware/pcb.jpg";
 // Screws (OnlyScrews-inspired)
 import slottedChhdImg from "../assets/hardware/screws/slotted-chhd.svg";
 import panHeadImg from "../assets/hardware/screws/pan-head.svg";
@@ -56,12 +56,7 @@ import maleBergStripImg from "../assets/hardware/electronics/male-berg-strip.svg
 import femaleBergStripImg from "../assets/hardware/electronics/female-berg-strip.svg";
 
 export const OFFICIAL_CATEGORIES = [
-  // Keep the existing category objects here
-];
-
-export const MOCK_CATEGORIES = [
-  // Keep the existing mock category objects here
-];
+  {
     id: "cat-fasteners",
     name: "Fasteners",
     slug: "fasteners",
@@ -110,14 +105,10 @@ export const MOCK_CATEGORIES = [
     icon: "⬡",
     tint: "tint-green",
 
-    description: "Hex nuts, Nyloc lock nuts, and wing nuts.",
-    productsCount: 3,
-    isActive: true,
-    isOfficial: false,
-
     description: "Hex nuts, Nyloc lock nuts, wing nuts, and serrated flange nuts.",
     productsCount: 3,
     isActive: true,
+    isOfficial: false,
 
     children: [
       { id: "sub-nuts", name: "Nuts", slug: "nuts", parentId: "cat-nuts", isActive: true },
@@ -503,7 +494,18 @@ export const MOCK_PRODUCTS = [
     unit: "Pack of 50",
     variants: [
       {
-        id: "var-socket-head",
+        id: "var-socket-head-m3",
+        sku: "FAST-SHC-M3-P50",
+        partNumber: "SHC-HEX-M3X12",
+        name: "Socket Head Screw (M3 x 12mm) - Pack of 50",
+        packSize: "Pack of 50",
+        dimensions: "M3 x 12mm",
+        price: null,
+        stockQuantity: 450,
+        inStock: true,
+      },
+      {
+        id: "var-socket-head-m4",
         sku: "FAST-SHC-M4-P50",
         partNumber: "SHC-HEX-M4X16",
         name: "Socket Head Screw (M4 x 16mm) - Pack of 50",
@@ -511,6 +513,17 @@ export const MOCK_PRODUCTS = [
         dimensions: "M4 x 16mm",
         price: null,
         stockQuantity: 500,
+        inStock: true,
+      },
+      {
+        id: "var-socket-head-m5",
+        sku: "FAST-SHC-M5-P50",
+        partNumber: "SHC-HEX-M5X20",
+        name: "Socket Head Screw (M5 x 20mm) - Pack of 50",
+        packSize: "Pack of 50",
+        dimensions: "M5 x 20mm",
+        price: null,
+        stockQuantity: 400,
         inStock: true,
       },
     ],
@@ -634,8 +647,6 @@ export const MOCK_PRODUCTS = [
         price: 250.0,
         mrp: 280.0,
         stockQuantity: 200,
-
-        stockQuantity: 380,
         inStock: true,
       },
     ],
@@ -757,48 +768,6 @@ export const MOCK_PRODUCTS = [
     ],
   },
 
-  {
-    id: "prod-flanged-nut-m6",
-    name: "Serrated Flanged Hex Nut (M6)",
-    slug: "flanged-hex-nut-m6",
-    description: "Zinc-plated serrated flange nuts that distribute clamping load and eliminate the requirement for loose washers.",
-    categoryId: "cat-fasteners",
-    category: { id: "cat-fasteners", name: "Fasteners", slug: "fasteners" },
-    subcategory: { id: "sub-nuts", name: "Nuts", slug: "nuts" },
-    brand: "VERTEX",
-    specs: {
-      "Type": "Serrated Flange Nut",
-      "Thread Size": "M6",
-      "Finish": "Zinc Plated",
-      "Standard": "DIN 6923",
-    },
-    hsnCode: "7318",
-    gstRate: 18.0,
-    tag: "15% OFF",
-    imageUrl: fastenersImg,
-    price: 95.0,
-    mrp: 112.0,
-    inStock: true,
-    rating: 4.8,
-    reviews: 27,
-    unit: "Pack of 25",
-    isOfficialCatalog: false,
-    isFixture: true,
-    variants: [
-      {
-        id: "var-flange-m6-p25",
-        sku: "NUTS-FLG-M6-P25",
-        partNumber: "ZN-FLG-M6",
-        name: "M6 - Pack of 25",
-        packSize: "Pack of 25",
-        dimensions: "M6",
-        price: 95.0,
-        mrp: 112.0,
-        stockQuantity: 220,
-        inStock: true,
-      },
-    ],
-  },
 
   // 5. Washers
   {
@@ -1867,83 +1836,7 @@ export const MOCK_PRODUCTS = [
       },
     ],
   },
-  {
-    id: "prod-ss-hex-bolt-m8",
-    name: "Stainless Steel Hex Bolt (M8 x 30mm)",
-    slug: "stainless-steel-hex-bolt-m8",
-    description: "SS304 marine grade hexagon full-thread machine bolt engineered for heavy mechanical mountings, flange couplings, and outdoor frames.",
-    categoryId: "cat-fasteners",
-    category: { id: "cat-fasteners", name: "Fasteners", slug: "fasteners" },
-    subcategory: { id: "sub-screws-hex", name: "3. Screws — Hex (Allen)", slug: "screws-hex-allen" },
-    brand: "VERTEX",
-    specs: {
-      "Drive Type": "Hex External",
-      "Head Type": "Hexagonal Head",
-      "Standard": "DIN 933 / ISO 4017",
-      "Material Grade": "SS304 Stainless Steel",
-    },
-    hsnCode: "7318",
-    gstRate: 18.0,
-    tag: "Marine Grade",
-    imageUrl: hexBoltImg,
-    price: 250.0,
-    mrp: null,
-    inStock: true,
-    rating: 4.9,
-    reviews: 31,
-    unit: "Pack of 10",
-    variants: [
-      {
 
-        id: "var-hvnex-d20",
-        sku: "HVNEX-DRV-D20",
-        partNumber: "HVNEX-D20",
-        name: "HVNEX-D20 20A Driver",
-        packSize: "1 Module",
-        price: null,
-        stockQuantity: 110,
-        inStock: true,
-      },
-    ],
-  },
-  {
-    id: "prod-hvnex-d60",
-    name: "HVNEX-D60 – 60A DC Motor Driver",
-    slug: "hvnex-d60-60a-dc-motor-driver",
-    description: "Heavy-duty 60A high-power DC motor driver from HVNEX with dual aluminum heatsinks, optoisolated logic inputs, and peak current protection.",
-    categoryId: "cat-electronics",
-    category: { id: "cat-electronics", name: "Electronic Products", slug: "electronics" },
-    subcategory: { id: "sub-hvnex-drivers", name: "HVNEX — DC Motor Drivers", slug: "hvnex-motor-drivers" },
-    brand: "HVNEX",
-    specs: {
-      "Model": "HVNEX-D60",
-      "Current Rating": "60A High Current",
-      "Type": "DC Motor Driver Module",
-      "Manufacturer": "HVNEX",
-    },
-    hsnCode: "8542",
-    gstRate: 18.0,
-    tag: "60A Heavy-Duty",
-    imageUrl: null,
-    price: null,
-    mrp: null,
-    inStock: true,
-    rating: 5.0,
-    reviews: 28,
-    unit: "1 Module",
-    variants: [
-      {
-        id: "var-hvnex-d60",
-        sku: "HVNEX-DRV-D60",
-        partNumber: "HVNEX-D60",
-        name: "HVNEX-D60 60A Driver",
-        packSize: "1 Module",
-        price: null,
-        stockQuantity: 85,
-        inStock: true,
-      },
-    ],
-  },
   {
     id: "prod-drv-l298n",
     name: "Motor Driver Module (L298N)",
@@ -1986,46 +1879,7 @@ export const MOCK_PRODUCTS = [
     ],
   },
 
-  // ==========================================
-  // ELECTRONIC PRODUCTS — HVNEX PLC Controller
-  // ==========================================
-  {
-    id: "prod-hvnex-plc-basic",
-    name: "HVNEX-PLC Basic",
-    slug: "hvnex-plc-basic",
-    description: "Programmable Logic Controller (PLC) from HVNEX engineered for industrial relay sequencing, digital I/O monitoring, and production line automation.",
-    categoryId: "cat-electronics",
-    category: { id: "cat-electronics", name: "Electronic Products", slug: "electronics" },
-    subcategory: { id: "sub-hvnex-plc", name: "HVNEX — PLC Controller", slug: "hvnex-plc-controllers" },
-    brand: "HVNEX",
-    specs: {
-      "Model": "HVNEX-PLC Basic",
-      "Type": "Programmable Logic Controller (PLC)",
-      "Manufacturer": "HVNEX",
-    },
-    hsnCode: "8537",
-    gstRate: 18.0,
-    tag: "Industrial PLC",
-    imageUrl: pcbImg,
-    price: null,
-    mrp: null,
-    inStock: true,
-    rating: 4.9,
-    reviews: 16,
-    unit: "1 Unit",
-    variants: [
-      {
-        id: "var-hvnex-plc",
-        sku: "HVNEX-PLC-BASIC",
-        partNumber: "HVNEX-PLC-B",
-        name: "HVNEX-PLC Basic Unit",
-        packSize: "1 Unit",
-        price: null,
-        stockQuantity: 40,
-        inStock: true,
-      },
-    ],
-  },
+
   {
     id: "prod-plc-delta-dvp",
     name: "PLC - Delta DVP Series",
@@ -2060,17 +1914,8 @@ export const MOCK_PRODUCTS = [
         name: "Standard Unit",
         packSize: "1 Unit",
         price: 4999.0,
-
-        id: "var-hex-m8-p10",
-        sku: "FAST-HEX-M8-30-P10",
-        partNumber: "SS304-HB-M8X30",
-        name: "M8 x 30mm - Pack of 10",
-        packSize: "Pack of 10",
-        dimensions: "M8 x 30mm",
-        price: 250.0,
-
         mrp: null,
-        stockQuantity: 200,
+        stockQuantity: 20,
         inStock: true,
       },
     ],
@@ -2100,6 +1945,8 @@ export const MOCK_PRODUCTS = [
     rating: 4.8,
     reviews: 27,
     unit: "Pack of 25",
+    isOfficialCatalog: false,
+    isFixture: true,
     variants: [
       {
         id: "var-flange-m6-p25",

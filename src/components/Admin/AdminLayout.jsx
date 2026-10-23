@@ -31,6 +31,29 @@ export default function AdminLayout({
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // Theme Management (Default, Dark, Light) with Safe Browser Persistence
+  const [adminTheme, setAdminTheme] = useState(() => {
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        return window.localStorage.getItem("vertex_admin_theme") || "default";
+      }
+    } catch {
+      // ignore
+    }
+    return "default";
+  });
+
+  const handleThemeChange = (newTheme) => {
+    setAdminTheme(newTheme);
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem("vertex_admin_theme", newTheme);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   // Authentication & Authorization state
   const [authLoading, setAuthLoading] = useState(true);
   const [adminUser, setAdminUser] = useState(currentUser);
@@ -115,6 +138,7 @@ export default function AdminLayout({
     return (
       <div
         className="adm-shell"
+        data-admin-theme={adminTheme}
         style={{
           alignItems: "center",
           justifyContent: "center",
@@ -155,7 +179,7 @@ export default function AdminLayout({
 
   // Render Admin Shell
   return (
-    <div className="adm-shell">
+    <div className="adm-shell" data-admin-theme={adminTheme}>
       <AdminSidebar
         activeSection={activeSection}
         onSelectSection={handleSelectSection}
@@ -175,6 +199,8 @@ export default function AdminLayout({
           currentUser={adminUser}
           onLogout={handleLogout}
           healthStatus={healthStatus}
+          adminTheme={adminTheme}
+          onThemeChange={handleThemeChange}
         />
 
         <main className="adm-content" id="admin-main-content">
@@ -203,7 +229,12 @@ export default function AdminLayout({
             <AdminUsers currentAdminUser={adminUser} />
           )}
           {activeSection === "settings" && (
-            <AdminSettings healthStatus={healthStatus} currentAdminUser={adminUser} />
+            <AdminSettings
+              healthStatus={healthStatus}
+              currentAdminUser={adminUser}
+              adminTheme={adminTheme}
+              onThemeChange={handleThemeChange}
+            />
           )}
           {activeSection === "audit-logs" && <AdminAuditLogs />}
         </main>

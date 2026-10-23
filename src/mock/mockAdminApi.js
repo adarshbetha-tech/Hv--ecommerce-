@@ -134,9 +134,25 @@ export async function updateAdminProduct(productId, updateData) {
   if (updateData.brand !== undefined) product.brand = updateData.brand;
   if (updateData.tag !== undefined) product.tag = updateData.tag;
   if (updateData.description !== undefined) product.description = updateData.description;
+  if (updateData.imageUrl !== undefined) product.imageUrl = updateData.imageUrl;
   if (updateData.hsnCode !== undefined) product.hsnCode = updateData.hsnCode;
   if (updateData.gstRate !== undefined) product.gstRate = Number(updateData.gstRate);
+  if (updateData.specificationFileName !== undefined) product.specificationFileName = updateData.specificationFileName;
   if (updateData.isActive !== undefined) product.isActive = updateData.isActive;
+
+  if (updateData.price !== undefined && updateData.price !== null && !isNaN(Number(updateData.price))) {
+    product.price = Number(updateData.price);
+    if (product.variants && product.variants.length > 0) {
+      product.variants[0].price = Number(updateData.price);
+    }
+  }
+
+  if (updateData.stockQuantity !== undefined && updateData.stockQuantity !== null && !isNaN(Number(updateData.stockQuantity))) {
+    product.stockQuantity = Number(updateData.stockQuantity);
+    if (product.variants && product.variants.length > 0) {
+      product.variants[0].stockQuantity = Number(updateData.stockQuantity);
+    }
+  }
 
   return {
     success: true,

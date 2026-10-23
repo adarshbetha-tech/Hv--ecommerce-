@@ -815,7 +815,7 @@ export default function AdminCategories() {
                           <button
                             type="button"
                             className="adm-btn-text"
-                            onClick={() => toggleExpandCategory(cat.id || cat.slug)}
+                            onClick={() => toggleExpandCategory(cat)}
                             style={{ fontSize: "0.74rem" }}
                           >
                             {isExpanded ? "Hide ▲" : "Show ▼"}

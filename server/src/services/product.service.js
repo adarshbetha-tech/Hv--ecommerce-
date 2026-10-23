@@ -162,7 +162,17 @@ export async function listProducts({
       include: {
         category: true,
         variants: {
-          where: { isActive: true },
+          where: {
+            isActive: true,
+            ...(minPrice !== undefined || maxPrice !== undefined
+              ? {
+                  price: {
+                    ...(minPrice !== undefined ? { gte: minPrice } : {}),
+                    ...(maxPrice !== undefined ? { lte: maxPrice } : {}),
+                  },
+                }
+              : {}),
+          },
           include: { tieredPrices: true },
         },
       },
@@ -200,7 +210,17 @@ export async function listProducts({
       include: {
         category: true,
         variants: {
-          where: { isActive: true },
+          where: {
+            isActive: true,
+            ...(minPrice !== undefined || maxPrice !== undefined
+              ? {
+                  price: {
+                    ...(minPrice !== undefined ? { gte: minPrice } : {}),
+                    ...(maxPrice !== undefined ? { lte: maxPrice } : {}),
+                  },
+                }
+              : {}),
+          },
           include: { tieredPrices: true },
         },
       },

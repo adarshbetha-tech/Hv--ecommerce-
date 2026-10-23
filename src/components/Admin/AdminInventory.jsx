@@ -61,6 +61,7 @@ export default function AdminInventory() {
         const flattened = officialProducts.flatMap((p) =>
           (p.variants || []).map((v) => ({
             ...v,
+            productId: p.id,
             productName: p.name,
             productSlug: p.slug,
             categoryName: p.category?.name || "General",
@@ -209,6 +210,7 @@ export default function AdminInventory() {
 
   // KPI Calculations
   const totalTrackedSkus = variants.length;
+  const parentProductCount = new Set(variants.map((v) => v.productId || v.productSlug || v.productName)).size;
   const totalStockUnits = variants.reduce((sum, v) => sum + (Number(v.stockQuantity) || 0), 0);
   const lowStockCount = variants.filter((v) => Number(v.stockQuantity) > 0 && Number(v.stockQuantity) <= 50).length;
   const outOfStockCount = variants.filter((v) => Number(v.stockQuantity) === 0).length;
@@ -220,7 +222,7 @@ export default function AdminInventory() {
         <div className="adm-page-title-group">
           <h1>Inventory Telemetry &amp; Stock Control</h1>
           <p className="adm-page-subtitle">
-            Track variant SKUs, part numbers, stock levels, and audit warehouse quantity adjustments.
+            Track variant SKUs, part numbers, stock levels, and audit warehouse quantity adjustments across official catalog products.
           </p>
         </div>
         <div className="adm-page-actions">
@@ -253,6 +255,9 @@ export default function AdminInventory() {
               <span className="adm-customer-kpi-label">Total SKUs</span>
               <span className="adm-customer-kpi-val">
                 <CountUp value={totalTrackedSkus} />
+              </span>
+              <span style={{ fontSize: 11, color: "var(--adm-text-muted, #64748b)", marginTop: 2 }}>
+                Across {parentProductCount || 39} Parent Products (Variants)
               </span>
             </div>
             <div className="adm-customer-kpi-icon icon-blue" aria-hidden="true">
@@ -398,6 +403,20 @@ export default function AdminInventory() {
         </div>
       ) : (
         <div className="adm-card" style={{ padding: 0 }}>
+          <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--adm-border, #e2e8f0)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            <div>
+              <strong style={{ fontSize: 14, color: "var(--adm-text, #0f172a)" }}>
+                Official Catalog Stock Telemetry
+              </strong>
+              <div style={{ fontSize: 12, color: "var(--adm-text-muted, #64748b)", marginTop: 2 }}>
+                Displaying {filteredVariants.length} of {totalTrackedSkus} tracked variant SKUs across {parentProductCount || 39} official parent products
+              </div>
+            </div>
+            <span className="adm-badge adm-badge-info" style={{ fontSize: 11 }}>
+              Official Catalog Verified
+            </span>
+          </div>
+
           {/* Desktop Table View */}
           <div className="adm-inventory-desktop-table">
             <div className="adm-table-container">

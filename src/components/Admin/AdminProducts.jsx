@@ -6,6 +6,12 @@ import {
   updateAdminProduct,
   updateProductPrice,
 } from "../../services/adminApi";
+import {
+  saveSpecificationFile,
+  getSpecificationFile,
+  deleteSpecificationFile,
+  openOrDownloadSpecFile,
+} from "../../utils/specFileStorage";
 
 // Currency Formatter
 const formatINR = (val) => {
@@ -112,8 +118,14 @@ export default function AdminProducts() {
     slug: "",
     categoryId: "",
     brand: "VERTEX",
+    hsnCode: "8542",
+    gstRate: "18.00",
     tag: "",
+    imageUrl: "",
     description: "",
+    price: "",
+    stockQuantity: "",
+    specificationFileName: "",
     isActive: true,
   });
   const [editModalSubmitting, setEditModalSubmitting] = useState(false);
@@ -130,6 +142,7 @@ export default function AdminProducts() {
   const [specFileError, setSpecFileError] = useState("");
   const [extractedDimensions, setExtractedDimensions] = useState(null);
   const fileInputRef = useRef(null);
+  const editFileInputRef = useRef(null);
 
   // New Product Form State
   const [newProduct, setNewProduct] = useState({
@@ -157,11 +170,23 @@ export default function AdminProducts() {
         sort: selectedSort,
         page: currentPage,
         limit: 10,
+        officialOnly: true,
       });
 
       if (res?.products) {
-        setProducts(res.products);
-        setPagination(res.pagination || { page: 1, limit: 10, totalItems: res.products.length, totalPages: 1 });
+        // Enforce official catalog products on client in case API returns unfiltered results
+        const officialProducts = res.products.filter((p) => p.isOfficialCatalog !== false);
+        setProducts(officialProducts);
+        setPagination(
+          res.pagination
+            ? res.pagination
+            : {
+                page: currentPage,
+                limit: 10,
+                totalItems: officialProducts.length,
+                totalPages: Math.max(1, Math.ceil(officialProducts.length / 10)),
+              }
+        );
       }
     } catch (err) {
       setError(err.message || "Failed to load products from catalog API.");
@@ -179,9 +204,18 @@ export default function AdminProducts() {
       try {
         const catRes = await getAdminCategories();
         if (catRes?.categories) {
-          setCategories(catRes.categories);
-          if (catRes.categories.length > 0 && !newProduct.categoryId) {
-            setNewProduct((prev) => ({ ...prev, categoryId: catRes.categories[0].id }));
+          // Keep only official categories (Fasteners and Electronic Products)
+          const legacyFixtureCategoryIds = new Set(["cat-nuts", "cat-automation", "cat-tools"]);
+          const officialCats = catRes.categories.filter((c) => {
+            if (c.isOfficial === false) return false;
+            if (catRes.categories.some((cat) => cat.id === "cat-fasteners" || cat.id === "cat-electronics")) {
+              if (legacyFixtureCategoryIds.has(c.id)) return false;
+            }
+            return true;
+          });
+          setCategories(officialCats);
+          if (officialCats.length > 0 && !newProduct.categoryId) {
+            setNewProduct((prev) => ({ ...prev, categoryId: officialCats[0].id }));
           }
         }
       } catch (e) {
@@ -307,6 +341,14 @@ export default function AdminProducts() {
         hasSpecificationFile: Boolean(specFile),
       });
 
+      if (specFile && (res?.product?.id || res?.product?.slug || newProduct.slug)) {
+        try {
+          await saveSpecificationFile(res?.product?.id || res?.product?.slug || newProduct.slug, specFile);
+        } catch {
+          // Fallback handled gracefully
+        }
+      }
+
       setModalMessage({
         type: "success",
         text: `Product '${res?.product?.name || newProduct.name}' registered successfully!`,
@@ -347,17 +389,104 @@ export default function AdminProducts() {
 
   const handleStartEditProduct = (product) => {
     setEditingProduct(product);
-    const initialCatId = product.subcategory?.id || product.categoryId || product.category?.id || (categories[0]?.id || "");
+    const initialCatId =
+      product.subcategory?.id ||
+      product.categoryId ||
+      product.category?.id ||
+      (categories[0]?.id || "");
+    const firstVariant = product.variants?.[0] || {};
+    const effectivePrice =
+      firstVariant.price !== undefined && firstVariant.price !== null
+        ? String(firstVariant.price)
+        : product.price !== undefined && product.price !== null
+        ? String(product.price)
+        : "";
+    const effectiveStock =
+      firstVariant.stockQuantity !== undefined && firstVariant.stockQuantity !== null
+        ? String(firstVariant.stockQuantity)
+        : product.stockQuantity !== undefined && product.stockQuantity !== null
+        ? String(product.stockQuantity)
+        : "50";
+
     setEditForm({
       name: product.name || "",
       slug: product.slug || "",
       categoryId: initialCatId,
       brand: product.brand || "VERTEX",
+      hsnCode: product.hsnCode || "8542",
+      gstRate: product.gstRate !== undefined && product.gstRate !== null ? String(product.gstRate) : "18.00",
       tag: product.tag || "",
+      imageUrl: product.imageUrl || "",
       description: product.description || "",
+      price: effectivePrice,
+      stockQuantity: effectiveStock,
+      specificationFileName: product.specificationFileName || "",
       isActive: product.isActive !== false,
     });
     setEditModalMessage(null);
+  };
+
+  const handleEditSpecFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const name = file.name || "";
+    const ext = name.slice(name.lastIndexOf(".")).toLowerCase();
+
+    if (!ALLOWED_SPEC_EXTENSIONS.includes(ext)) {
+      setEditModalMessage({
+        type: "error",
+        text: `Unsupported file format (${ext || "unknown"}). Allowed formats: PDF (.pdf), Excel (.xlsx, .xls), and CSV (.csv).`,
+      });
+      if (editFileInputRef.current) editFileInputRef.current.value = "";
+      return;
+    }
+
+    if (file.size > MAX_SPEC_FILE_SIZE) {
+      setEditModalMessage({
+        type: "error",
+        text: `File size exceeds 10 MB limit (${(file.size / (1024 * 1024)).toFixed(1)} MB).`,
+      });
+      if (editFileInputRef.current) editFileInputRef.current.value = "";
+      return;
+    }
+
+    try {
+      await saveSpecificationFile(editingProduct.id, file);
+      setEditForm((prev) => ({
+        ...prev,
+        specificationFileName: file.name,
+      }));
+      setEditModalMessage({
+        type: "success",
+        text: `Specification file "${file.name}" uploaded and attached to product.`,
+      });
+    } catch {
+      setEditModalMessage({
+        type: "error",
+        text: "Failed to store specification file.",
+      });
+    }
+  };
+
+  const handleDeleteEditSpecFile = () => {
+    if (editingProduct?.id) {
+      deleteSpecificationFile(editingProduct.id);
+    }
+    setEditForm((prev) => ({
+      ...prev,
+      specificationFileName: "",
+    }));
+    if (editFileInputRef.current) editFileInputRef.current.value = "";
+    setEditModalMessage({
+      type: "success",
+      text: "Specification attachment removed.",
+    });
+  };
+
+  const handleViewEditSpecFile = () => {
+    const record = getSpecificationFile(editingProduct?.id) || getSpecificationFile(editForm.specificationFileName);
+    openOrDownloadSpecFile(editForm.specificationFileName, record?.dataUrl);
   };
 
   const handleSaveEditProduct = async (e) => {
@@ -376,6 +505,27 @@ export default function AdminProducts() {
       setEditModalMessage({
         type: "error",
         text: "Please select a valid category for this product.",
+      });
+      return;
+    }
+
+    if (editForm.price !== "" && (isNaN(Number(editForm.price)) || Number(editForm.price) <= 0)) {
+      setEditModalMessage({
+        type: "error",
+        text: "Selling price must be a positive number.",
+      });
+      return;
+    }
+
+    if (
+      editForm.stockQuantity !== "" &&
+      (isNaN(Number(editForm.stockQuantity)) ||
+        Number(editForm.stockQuantity) < 0 ||
+        !Number.isInteger(Number(editForm.stockQuantity)))
+    ) {
+      setEditModalMessage({
+        type: "error",
+        text: "Stock quantity must be a non-negative integer.",
       });
       return;
     }
@@ -405,34 +555,84 @@ export default function AdminProducts() {
 
     try {
       setEditModalSubmitting(true);
-      const res = await updateAdminProduct(editingProduct.id, {
+      const updatePayload = {
         name: editForm.name.trim(),
         categoryId: editForm.categoryId,
         brand: editForm.brand.trim() || null,
         tag: editForm.tag.trim() || null,
         description: editForm.description.trim() || null,
+        imageUrl: editForm.imageUrl.trim() || null,
+        hsnCode: editForm.hsnCode.trim() || null,
+        gstRate: !isNaN(parseFloat(editForm.gstRate)) ? parseFloat(editForm.gstRate) : 18.0,
+        specificationFileName: editForm.specificationFileName.trim() || null,
         isActive: editForm.isActive,
-      });
+      };
+
+      if (editForm.price !== "") {
+        updatePayload.price = parseFloat(editForm.price);
+      }
+      if (editForm.stockQuantity !== "") {
+        updatePayload.stockQuantity = parseInt(editForm.stockQuantity, 10);
+      }
+
+      const res = await updateAdminProduct(editingProduct.id, updatePayload);
+
+      // If price was edited and dedicated endpoint exists, synchronize
+      if (editForm.price !== "" && Number(editForm.price) > 0) {
+        try {
+          await updateProductPrice(editingProduct.id, { price: parseFloat(editForm.price) });
+        } catch {
+          // Fallback if price was handled via updateAdminProduct
+        }
+      }
 
       const updated = res?.product || {
         ...editingProduct,
         ...editForm,
+        ...updatePayload,
         categoryId: selectedCatObj.id,
         category: { id: selectedCatObj.id, name: selectedCatObj.name, slug: selectedCatObj.slug },
         subcategory: selectedSubObj ? { id: selectedSubObj.id, name: selectedSubObj.name, slug: selectedSubObj.slug } : null,
       };
 
       setProducts((prev) =>
-        prev.map((p) => (p.id === editingProduct.id ? { ...p, ...updated } : p))
+        prev.map((p) => {
+          if (p.id !== editingProduct.id) return p;
+          // Protect and update variant records atomically without losing variant array
+          const updatedVariants = (p.variants || []).map((v, idx) => {
+            if (idx === 0) {
+              return {
+                ...v,
+                ...(editForm.price !== "" ? { price: parseFloat(editForm.price) } : {}),
+                ...(editForm.stockQuantity !== "" ? { stockQuantity: parseInt(editForm.stockQuantity, 10) } : {}),
+              };
+            }
+            return v;
+          });
+          return {
+            ...p,
+            ...updated,
+            ...updatePayload,
+            price: editForm.price !== "" ? parseFloat(editForm.price) : p.price,
+            stockQuantity: editForm.stockQuantity !== "" ? parseInt(editForm.stockQuantity, 10) : p.stockQuantity,
+            variants: updatedVariants.length > 0 ? updatedVariants : p.variants,
+          };
+        })
       );
 
       if (inspectingProduct?.id === editingProduct.id) {
-        setInspectingProduct((prev) => ({ ...prev, ...updated }));
+        setInspectingProduct((prev) => ({
+          ...prev,
+          ...updated,
+          ...updatePayload,
+          price: editForm.price !== "" ? parseFloat(editForm.price) : prev.price,
+          stockQuantity: editForm.stockQuantity !== "" ? parseInt(editForm.stockQuantity, 10) : prev.stockQuantity,
+        }));
       }
 
       setEditModalMessage({
         type: "success",
-        text: `Product "${updated.name}" and category assignment updated successfully.`,
+        text: `Product "${updated.name}" updated successfully across catalog.`,
       });
 
       setTimeout(() => {
@@ -561,7 +761,15 @@ export default function AdminProducts() {
 
   // KPI Calculations
   const totalProductsCount = pagination.totalItems || products.length;
-  const activeCategoriesCount = categories.length || (products.length ? new Set(products.map((p) => p.category?.id || p.categoryId)).size : 0);
+  const officialCategoriesList = categories.filter((c) => {
+    if (c.isOfficial === false) return false;
+    const legacyIds = new Set(["cat-nuts", "cat-automation", "cat-tools"]);
+    if (categories.some((cat) => cat.id === "cat-fasteners" || cat.id === "cat-electronics")) {
+      if (legacyIds.has(c.id)) return false;
+    }
+    return true;
+  });
+  const activeCategoriesCount = officialCategoriesList.length || (products.length ? new Set(products.map((p) => p.category?.id || p.categoryId)).size : 0);
   const totalVariantsCount = products.reduce((acc, p) => acc + (p.variants?.length || 1), 0);
   const totalStockUnits = products.reduce((acc, p) => acc + getProductTotalStock(p), 0);
 
@@ -1289,6 +1497,18 @@ export default function AdminProducts() {
                         </span>
                       )}
                     </div>
+                    <button
+                      type="button"
+                      className="adm-btn adm-btn-secondary"
+                      style={{ padding: "4px 10px", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: 5 }}
+                      onClick={() => {
+                        const record = getSpecificationFile(inspectingProduct.id) || getSpecificationFile(inspectingProduct.specificationFileName);
+                        openOrDownloadSpecFile(inspectingProduct.specificationFileName, record?.dataUrl);
+                      }}
+                      data-testid="inspect-view-datasheet-btn"
+                    >
+                      👁️ View Datasheet
+                    </button>
                     <span className="adm-badge adm-badge-success" style={{ fontSize: "0.72rem" }}>
                       Attached
                     </span>
@@ -1915,6 +2135,228 @@ export default function AdminProducts() {
                       <option value="true">Active (Visible to Customers)</option>
                       <option value="false">Inactive (Hidden from Customer Catalog)</option>
                     </select>
+                  </div>
+                </div>
+
+                {/* Price and Stock */}
+                <div className="adm-form-row">
+                  <div className="adm-form-group">
+                    <label className="adm-label" htmlFor="edit-prod-price">
+                      Selling Price (₹ Tax-Exclusive) *
+                    </label>
+                    <input
+                      id="edit-prod-price"
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      className="adm-input"
+                      value={editForm.price}
+                      onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+                      placeholder="e.g. 150.00"
+                      data-testid="edit-prod-price-input"
+                    />
+                  </div>
+                  <div className="adm-form-group">
+                    <label className="adm-label" htmlFor="edit-prod-stock">
+                      Stock Quantity (Units)
+                    </label>
+                    <input
+                      id="edit-prod-stock"
+                      type="number"
+                      step="1"
+                      min="0"
+                      className="adm-input"
+                      value={editForm.stockQuantity}
+                      onChange={(e) => setEditForm({ ...editForm, stockQuantity: e.target.value })}
+                      placeholder="e.g. 500"
+                      data-testid="edit-prod-stock-input"
+                    />
+                  </div>
+                </div>
+
+                {/* HSN & GST */}
+                <div className="adm-form-row">
+                  <div className="adm-form-group">
+                    <label className="adm-label" htmlFor="edit-prod-hsn">
+                      HSN / Tax Classification Code
+                    </label>
+                    <input
+                      id="edit-prod-hsn"
+                      type="text"
+                      className="adm-input"
+                      placeholder="e.g. 7318 (Fasteners) or 8542 (Semiconductors)"
+                      value={editForm.hsnCode}
+                      onChange={(e) => setEditForm({ ...editForm, hsnCode: e.target.value })}
+                    />
+                  </div>
+                  <div className="adm-form-group">
+                    <label className="adm-label" htmlFor="edit-prod-gst">
+                      GST Rate (%)
+                    </label>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input
+                        id="edit-prod-gst"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        className="adm-input"
+                        placeholder="e.g. 18.00"
+                        value={editForm.gstRate}
+                        onChange={(e) => setEditForm({ ...editForm, gstRate: e.target.value })}
+                        style={{ flex: 1 }}
+                        data-testid="edit-prod-gst-input"
+                      />
+                      <select
+                        aria-label="GST Rate Presets"
+                        className="adm-select"
+                        style={{ width: "auto", minWidth: 125 }}
+                        value={["0", "5", "12", "18", "28"].includes(String(parseFloat(editForm.gstRate))) ? String(parseFloat(editForm.gstRate)) : "custom"}
+                        onChange={(e) => {
+                          if (e.target.value !== "custom") {
+                            setEditForm({ ...editForm, gstRate: e.target.value });
+                          }
+                        }}
+                      >
+                        <option value="custom">Presets...</option>
+                        <option value="0">0% (Nil / Exempt)</option>
+                        <option value="5">5% (Concessional)</option>
+                        <option value="12">12%</option>
+                        <option value="18">18% (Standard)</option>
+                        <option value="28">28%</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Media & Specification Attachments */}
+                <div className="adm-form-row">
+                  <div className="adm-form-group">
+                    <label className="adm-label" htmlFor="edit-prod-image">
+                      Product Image URL / Asset Reference
+                    </label>
+                    <input
+                      id="edit-prod-image"
+                      type="text"
+                      className="adm-input"
+                      placeholder="/images/products/fasteners/din912.png"
+                      value={editForm.imageUrl}
+                      onChange={(e) => setEditForm({ ...editForm, imageUrl: e.target.value })}
+                    />
+                    {editForm.imageUrl && (
+                      <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8 }}>
+                        <img
+                          src={editForm.imageUrl}
+                          alt="Preview"
+                          style={{ width: 36, height: 36, objectFit: "contain", borderRadius: 4, border: "1px solid var(--adm-border, #e2e8f0)", background: "#fff" }}
+                          onError={(e) => { e.currentTarget.style.display = "none"; }}
+                        />
+                        <span style={{ fontSize: 11, color: "var(--adm-text-muted, #64748b)" }}>Image reference verified</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="adm-form-group">
+                    <label className="adm-label" htmlFor="edit-prod-spec">
+                      Technical Spec / PDF Attachment Reference
+                    </label>
+                    <input
+                      id="edit-prod-spec"
+                      type="text"
+                      className="adm-input"
+                      placeholder="e.g. DIN912-Spec-Sheet.pdf"
+                      value={editForm.specificationFileName}
+                      onChange={(e) => setEditForm({ ...editForm, specificationFileName: e.target.value })}
+                    />
+                    <input
+                      type="file"
+                      ref={editFileInputRef}
+                      onChange={handleEditSpecFileSelect}
+                      accept=".pdf,.xlsx,.xls,.csv"
+                      style={{ display: "none" }}
+                      data-testid="edit-prod-spec-file-input"
+                    />
+                    {editForm.specificationFileName ? (
+                      <div
+                        style={{
+                          marginTop: 8,
+                          padding: "8px 12px",
+                          borderRadius: "var(--adm-radius-sm, 6px)",
+                          border: "1px solid var(--adm-border, #222d3d)",
+                          background: "var(--adm-surface-alt, #1f2836)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 10,
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, overflow: "hidden" }}>
+                          <span style={{ fontSize: "1.2rem" }}>
+                            {editForm.specificationFileName.endsWith(".pdf") ? "📕" : "📊"}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 500,
+                              color: "var(--adm-text-primary, #f4f6f8)",
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              maxWidth: 180,
+                            }}
+                            title={editForm.specificationFileName}
+                          >
+                            {editForm.specificationFileName}
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            className="adm-btn adm-btn-secondary"
+                            style={{ padding: "3px 8px", fontSize: 11 }}
+                            onClick={handleViewEditSpecFile}
+                            title="View or download attached specification"
+                            data-testid="view-edit-spec-btn"
+                          >
+                            👁️ View
+                          </button>
+                          <button
+                            type="button"
+                            className="adm-btn adm-btn-secondary"
+                            style={{ padding: "3px 8px", fontSize: 11 }}
+                            onClick={() => editFileInputRef.current?.click()}
+                            title="Replace specification file"
+                            data-testid="replace-edit-spec-btn"
+                          >
+                            🔄 Replace
+                          </button>
+                          <button
+                            type="button"
+                            className="adm-btn adm-btn-danger"
+                            style={{ padding: "3px 8px", fontSize: 11 }}
+                            onClick={handleDeleteEditSpecFile}
+                            title="Delete specification file"
+                            data-testid="delete-edit-spec-btn"
+                          >
+                            🗑️ Delete
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ marginTop: 8 }}>
+                        <button
+                          type="button"
+                          className="adm-btn adm-btn-secondary"
+                          style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}
+                          onClick={() => editFileInputRef.current?.click()}
+                          data-testid="upload-edit-spec-btn"
+                        >
+                          📎 Upload PDF / Datasheet File
+                        </button>
+                        <small style={{ fontSize: 11, color: "var(--adm-text-muted, #717d8f)", display: "block", marginTop: 4 }}>
+                          Supports PDF, Excel (.xlsx/.xls), and CSV (Max 10 MB). Stored persistently.
+                        </small>
+                      </div>
+                    )}
                   </div>
                 </div>
 

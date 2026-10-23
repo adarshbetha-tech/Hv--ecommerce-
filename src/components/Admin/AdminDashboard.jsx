@@ -26,7 +26,7 @@ export default function AdminDashboard({ onNavigateSection, onNavigateStorefront
       setError(null);
 
       const [prodRes, catRes, healthRes, ordRes] = await Promise.all([
-        getAdminProducts({ limit: 50 }),
+        getAdminProducts({ limit: 50, officialOnly: true }),
         getAdminCategories(),
         getSystemHealth().catch(() => null),
         getAdminOrders().catch(() => ({ orders: [], isImplemented: false })),
@@ -48,10 +48,20 @@ export default function AdminDashboard({ onNavigateSection, onNavigateStorefront
     loadDashboardData();
   }, [loadDashboardData]);
 
-  const products = productsData.products || [];
-  const totalProductsCount = productsData.pagination?.totalItems || products.length;
+  const rawProducts = productsData.products || [];
+  const products = rawProducts.filter((p) => p.isOfficialCatalog !== false);
+  const totalProductsCount = products.length;
 
-  // Flatten all variants from loaded products
+  const officialCategories = categories.filter((c) => {
+    if (c.isOfficial === false) return false;
+    const legacyFixtureCategoryIds = new Set(["cat-nuts", "cat-automation", "cat-tools"]);
+    if (categories.some((cat) => cat.id === "cat-fasteners" || cat.id === "cat-electronics")) {
+      if (legacyFixtureCategoryIds.has(c.id)) return false;
+    }
+    return true;
+  });
+
+  // Flatten all variants from loaded official products
   const allVariants = products.flatMap((p) =>
     (p.variants || []).map((v) => ({
       ...v,
@@ -159,7 +169,7 @@ export default function AdminDashboard({ onNavigateSection, onNavigateStorefront
               <CountUp value={totalProductsCount} />
             </span>
             <span className="adm-metric-sub">
-              {categories.length} Categories • Verified Active
+              {officialCategories.length} Categories • Verified Active
             </span>
           </div>
           <div className="adm-metric-icon" aria-hidden="true">

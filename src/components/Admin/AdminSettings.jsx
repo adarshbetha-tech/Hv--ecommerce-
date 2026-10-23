@@ -9,7 +9,12 @@ const DEFAULT_OPERATIONAL_SETTINGS = {
   auditLogPageSize: 20,
 };
 
-export default function AdminSettings({ healthStatus, currentAdminUser }) {
+export default function AdminSettings({
+  healthStatus,
+  currentAdminUser,
+  adminTheme = "default",
+  onThemeChange,
+}) {
   const [currentHealth, setCurrentHealth] = useState(healthStatus);
   const [testingHealth, setTestingHealth] = useState(false);
   const [testResult, setTestResult] = useState(null);
@@ -19,6 +24,44 @@ export default function AdminSettings({ healthStatus, currentAdminUser }) {
   const [savedSettings, setSavedSettings] = useState(DEFAULT_OPERATIONAL_SETTINGS);
   const [errors, setErrors] = useState({});
   const [feedbackNotice, setFeedbackNotice] = useState(null);
+
+  const THEMES = [
+    {
+      id: "default",
+      title: "Default Enterprise",
+      subtitle: "Dark Slate Charcoal",
+      description: "Preserve the signature VERTEX dark charcoal interface with vibrant industrial orange accents.",
+      swatches: ["#0b0f14", "#171e28", "#ff7900", "#f4f6f8"],
+      badge: "Signature Fallback",
+    },
+    {
+      id: "dark",
+      title: "Dark OLED Midnight",
+      subtitle: "Pure OLED Pitch Black",
+      description: "Deep obsidian surfaces with pure black background (#000000), crisp zinc borders, and electric cyan accents for low-light environments.",
+      swatches: ["#000000", "#09090b", "#06b6d4", "#ffffff"],
+      badge: "Pure OLED Black",
+    },
+    {
+      id: "light",
+      title: "Light Mode",
+      subtitle: "High Contrast Clean",
+      description: "Clean light surfaces with crisp slate typography (WCAG AA 4.5:1+ compliant) for high-illumination offices.",
+      swatches: ["#f8fafc", "#ffffff", "#ff7900", "#0f172a"],
+      badge: "Clean Light",
+    },
+  ];
+
+  const handleSelectTheme = (themeId) => {
+    if (typeof onThemeChange === "function") {
+      onThemeChange(themeId);
+    }
+    const themeName = THEMES.find((t) => t.id === themeId)?.title || themeId;
+    setFeedbackNotice({
+      type: "success",
+      text: `Theme updated to '${themeName}'. Applied immediately across all admin modules and persisted to your session.`,
+    });
+  };
 
   // Check for unsaved changes against saved baseline
   const hasUnsavedChanges =
@@ -130,7 +173,7 @@ export default function AdminSettings({ healthStatus, currentAdminUser }) {
         <div className="adm-page-title-group">
           <h1>System Configuration &amp; Store Settings</h1>
           <p className="adm-page-subtitle">
-            Store identity parameters, security policies, tax configuration, infrastructure telemetry, and session operational preferences.
+            Store identity parameters, theme appearance, security policies, tax configuration, infrastructure telemetry, and session operational preferences.
           </p>
         </div>
         <div className="adm-page-actions">
@@ -218,7 +261,78 @@ export default function AdminSettings({ healthStatus, currentAdminUser }) {
       <div className="adm-notice-banner adm-notice-info" role="status">
         <span className="adm-notice-icon">🛡️</span>
         <div>
-          <strong>Configuration Scope &amp; Authority:</strong> Server environment parameters, authentication mechanisms, and tax brackets are enforced server-side. Operational UI preferences below customize your active administrator session without mutating database records.
+          <strong>Configuration Scope &amp; Authority:</strong> Server environment parameters, authentication mechanisms, and tax brackets are enforced server-side. Operational UI preferences and theme modes below customize your active administrator workspace without mutating production records.
+        </div>
+      </div>
+
+      {/* Section: Admin Portal Appearance & Themes */}
+      <div className="adm-settings-section-card" data-testid="admin-theme-settings-section">
+        <div className="adm-settings-section-header">
+          <div className="adm-settings-section-title-wrap">
+            <span className="adm-settings-section-icon" aria-hidden="true">🎨</span>
+            <div>
+              <h2 className="adm-settings-section-title">Portal Appearance &amp; Themes</h2>
+              <p className="adm-settings-section-desc">
+                Select your preferred administrative theme. Changes apply immediately across all portal pages and persist in browser storage.
+              </p>
+            </div>
+          </div>
+          <span className="adm-badge adm-badge-primary">
+            Active: {adminTheme.toUpperCase()}
+          </span>
+        </div>
+        <div className="adm-settings-section-body">
+          <div className="adm-theme-picker" role="radiogroup" aria-label="Admin Portal Theme Selection">
+            {THEMES.map((t) => {
+              const isSelected = adminTheme === t.id;
+              return (
+                <div
+                  key={t.id}
+                  className={`adm-theme-card ${isSelected ? "active" : ""}`}
+                  onClick={() => handleSelectTheme(t.id)}
+                  role="radio"
+                  aria-checked={isSelected}
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleSelectTheme(t.id);
+                    }
+                  }}
+                  data-testid={`theme-option-${t.id}`}
+                >
+                  <div className="adm-theme-card-header">
+                    <div className="adm-theme-card-title">
+                      <span>{t.id === "light" ? "☀️" : t.id === "dark" ? "🌙" : "🏢"}</span>
+                      <span>{t.title}</span>
+                    </div>
+                    {isSelected ? (
+                      <span className="adm-badge adm-badge-success" style={{ fontSize: "0.68rem" }}>
+                        ✓ Active
+                      </span>
+                    ) : (
+                      <span className="adm-badge adm-badge-neutral" style={{ fontSize: "0.68rem" }}>
+                        {t.badge}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="adm-theme-preview-palette" aria-hidden="true">
+                    {t.swatches.map((color, idx) => (
+                      <span
+                        key={idx}
+                        className="adm-theme-swatch"
+                        style={{ backgroundColor: color }}
+                        title={color}
+                      />
+                    ))}
+                  </div>
+
+                  <p className="adm-theme-card-desc">{t.description}</p>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -273,7 +387,7 @@ export default function AdminSettings({ healthStatus, currentAdminUser }) {
         </div>
       </div>
 
-      {/* Section 2: Store Identity & Commercial Defaults */}
+      {/* Section 2: Store Identity & Commercial Defaults (GST & Pricing Audit) */}
       <div className="adm-settings-section-card">
         <div className="adm-settings-section-header">
           <div className="adm-settings-section-title-wrap">
@@ -281,7 +395,7 @@ export default function AdminSettings({ healthStatus, currentAdminUser }) {
             <div>
               <h2 className="adm-settings-section-title">Store Identity &amp; Commercial Defaults</h2>
               <p className="adm-settings-section-desc">
-                Storefront commercial parameters and authoritative decimal currency definitions
+                Storefront commercial parameters, GST tax configuration, and authoritative decimal currency definitions
               </p>
             </div>
           </div>
@@ -298,19 +412,35 @@ export default function AdminSettings({ healthStatus, currentAdminUser }) {
             <div className="adm-settings-param-card">
               <span className="adm-settings-param-label">Commercial Currency</span>
               <div className="adm-settings-param-val">INR (₹) &mdash; Indian Rupee</div>
-              <span className="adm-settings-param-hint">Calculated as Decimal(10,2) on server</span>
+              <span className="adm-settings-param-hint">Calculated as Decimal(10,2) on server (en-IN locale)</span>
+            </div>
+
+            <div className="adm-settings-param-card">
+              <span className="adm-settings-param-label">Catalog Price Display Model</span>
+              <div className="adm-settings-param-val">
+                <span className="adm-badge adm-badge-primary">Tax-Exclusive (Excl. GST)</span>
+              </div>
+              <span className="adm-settings-param-hint">
+                Base prices shown on storefront; GST computed per item and added at checkout.
+              </span>
             </div>
 
             <div className="adm-settings-param-card">
               <span className="adm-settings-param-label">Default GST Tax Bracket</span>
               <div className="adm-settings-param-val">18.00% GST</div>
-              <span className="adm-settings-param-hint">Standard rate for microcontrollers &amp; hardware</span>
+              <span className="adm-settings-param-hint">
+                Standard rate: HSN 8542 (Electronics) &amp; HSN 7318 (Fasteners)
+              </span>
             </div>
 
             <div className="adm-settings-param-card">
-              <span className="adm-settings-param-label">Fulfillment Logistics</span>
-              <div className="adm-settings-param-val">Pan-India Delivery</div>
-              <span className="adm-settings-param-hint">Express parcel courier dispatch</span>
+              <span className="adm-settings-param-label">B2B Tax Invoicing</span>
+              <div className="adm-settings-param-val">
+                <span className="adm-badge adm-badge-success">15-Char GSTIN Validated</span>
+              </div>
+              <span className="adm-settings-param-hint">
+                Enforced Indian GSTIN format with legal business name binding
+              </span>
             </div>
 
             <div className="adm-settings-param-card">
@@ -319,14 +449,6 @@ export default function AdminSettings({ healthStatus, currentAdminUser }) {
                 <code>support@vertex.local</code>
               </div>
               <span className="adm-settings-param-hint">Primary escalation and wholesale inquiries</span>
-            </div>
-
-            <div className="adm-settings-param-card">
-              <span className="adm-settings-param-label">Storefront Catalog</span>
-              <div className="adm-settings-param-val">
-                <span className="adm-badge adm-badge-success">Live &amp; Connected</span>
-              </div>
-              <span className="adm-settings-param-hint">Public REST catalog endpoints active</span>
             </div>
           </div>
         </div>
@@ -451,6 +573,85 @@ export default function AdminSettings({ healthStatus, currentAdminUser }) {
                 <code>{currentHealth?.service || "vertex-backend"}</code>
               </div>
               <span className="adm-settings-param-hint">Node.js ES Modules environment</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Section: Integration Ecosystem & Service Boundaries (Audit Status) */}
+      <div className="adm-settings-section-card" data-testid="settings-integrations-section">
+        <div className="adm-settings-section-header">
+          <div className="adm-settings-section-title-wrap">
+            <span className="adm-settings-section-icon" aria-hidden="true">🔌</span>
+            <div>
+              <h2 className="adm-settings-section-title">E-Commerce Integrations &amp; Service Boundaries</h2>
+              <p className="adm-settings-section-desc">
+                Authoritative verification of third-party payment gateways, courier logistics, and notification providers
+              </p>
+            </div>
+          </div>
+          <span className="adm-badge adm-badge-neutral">Audit Verified</span>
+        </div>
+        <div className="adm-settings-section-body">
+          <div className="adm-settings-grid">
+            <div className="adm-settings-param-card">
+              <span className="adm-settings-param-label">Razorpay / UPI Payment Gateway</span>
+              <div className="adm-settings-param-val">
+                <span className="adm-badge adm-badge-warning">Sandbox / Webhook Boundary</span>
+              </div>
+              <span className="adm-settings-param-hint">
+                Orders initialize in PENDING status. Zero card/CVV storage (PCI-DSS boundary enforced).
+              </span>
+            </div>
+
+            <div className="adm-settings-param-card">
+              <span className="adm-settings-param-label">Cash on Delivery &amp; Bank Wire</span>
+              <div className="adm-settings-param-val">
+                <span className="adm-badge adm-badge-success">Configured &amp; Active</span>
+              </div>
+              <span className="adm-settings-param-hint">
+                Verified payment method for B2B procurement and commercial accounts.
+              </span>
+            </div>
+
+            <div className="adm-settings-param-card">
+              <span className="adm-settings-param-label">Courier Logistics (Delhivery / Bluedart)</span>
+              <div className="adm-settings-param-val">
+                <span className="adm-badge adm-badge-info">Integration Staged</span>
+              </div>
+              <span className="adm-settings-param-hint">
+                Pan-India postal pincode verification with customer address ownership isolation.
+              </span>
+            </div>
+
+            <div className="adm-settings-param-card">
+              <span className="adm-settings-param-label">Email Notifications (SMTP Transport)</span>
+              <div className="adm-settings-param-val">
+                <span className="adm-badge adm-badge-neutral">Unconfigured (Log Mode)</span>
+              </div>
+              <span className="adm-settings-param-hint">
+                Transactional emails (confirmations, password resets) output to local console logger.
+              </span>
+            </div>
+
+            <div className="adm-settings-param-card">
+              <span className="adm-settings-param-label">Inventory Concurrency Engine</span>
+              <div className="adm-settings-param-val">
+                <span className="adm-badge adm-badge-success">PostgreSQL Isolation Active</span>
+              </div>
+              <span className="adm-settings-param-hint">
+                Atomic database transactions prevent overselling during high concurrent checkouts.
+              </span>
+            </div>
+
+            <div className="adm-settings-param-card">
+              <span className="adm-settings-param-label">Public Customer Reviews Service</span>
+              <div className="adm-settings-param-val">
+                <span className="adm-badge adm-badge-neutral">Architecture Preview</span>
+              </div>
+              <span className="adm-settings-param-hint">
+                Moderation workflow staged; community schema persistence scheduled for catalog phase.
+              </span>
             </div>
           </div>
         </div>

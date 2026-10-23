@@ -28,9 +28,10 @@
   --adm-border: #222d3d;
   --adm-border-dark: #121923;
   --adm-border-input: #2b384a;
+  --adm-border-hover: #37465c;
   --adm-text-primary: #f4f6f8;
-  --adm-text-secondary: #a6afbc;
-  --adm-text-muted: #717d8f;
+  --adm-text-secondary: #cbd5e1;
+  --adm-text-muted: #94a3b8;
   --adm-primary: #ff7900;
   --adm-primary-hover: #e66d00;
   --adm-primary-active: #cc6100;
@@ -58,6 +59,257 @@
   --adm-shadow-md: 0 4px 12px -1px rgba(0, 0, 0, 0.55), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
   --adm-shadow-lg: 0 10px 20px -3px rgba(0, 0, 0, 0.65), 0 4px 8px -4px rgba(0, 0, 0, 0.45);
   --adm-shadow-xl: 0 20px 30px -5px rgba(0, 0, 0, 0.75), 0 8px 12px -6px rgba(0, 0, 0, 0.5);
+
+  /* Semantic Theme Tokens requested by specifications */
+  --admin-bg: var(--adm-bg);
+  --admin-surface: var(--adm-surface);
+  --admin-surface-alt: var(--adm-surface-alt);
+  --admin-text: var(--adm-text-primary);
+  --admin-text-muted: var(--adm-text-muted);
+  --admin-border: var(--adm-border);
+  --admin-input-bg: var(--adm-input-bg, var(--adm-surface-alt));
+  --admin-link: #38bdf8;
+  --admin-accent: var(--adm-accent);
+
+  /* Shared Dynamic Contrast Helpers */
+  --adm-th-bg: #141c26;
+  --adm-tr-hover: #1c2635;
+  --adm-code-color: #f4f6f8;
+  --adm-input-bg: #131b26;
+  --adm-input-disabled-bg: #151c27;
+  --adm-notice-info-text: #ffb066;
+  --adm-notice-warning-text: #fde68a;
+  --adm-notice-danger-text: #fca5a5;
+}
+
+/* ==========================================================================
+   Admin Theme Scopes: Default, Dark, and Light
+   ========================================================================== */
+
+/* 1. Default Enterprise Theme (Dark Charcoal & Slate Navy) */
+.adm-shell[data-admin-theme="default"],
+.adm-shell:not([data-admin-theme]) {
+  --adm-bg: #0b0f14;
+  --adm-surface: #171e28;
+  --adm-surface-alt: #1f2836;
+  --adm-sidebar-bg: #121923;
+  --adm-sidebar-hover: rgba(255, 255, 255, 0.05);
+  --adm-sidebar-active: #ff7900;
+  --adm-border: #222d3d;
+  --adm-border-dark: #121923;
+  --adm-border-input: #2b384a;
+  --adm-border-hover: #37465c;
+  --adm-text-primary: #f4f6f8;
+  --adm-text-secondary: #cbd5e1;
+  --adm-text-muted: #94a3b8;
+  --adm-input-bg: #131b26;
+  --adm-input-disabled-bg: #151c27;
+  --adm-th-bg: #141c26;
+  --adm-tr-hover: #1c2635;
+  --adm-code-color: #f4f6f8;
+  --admin-link: #38bdf8;
+  --admin-accent: #d99036;
+  --adm-notice-info-text: #ffb066;
+  --adm-notice-warning-text: #fde68a;
+  --adm-notice-danger-text: #fca5a5;
+}
+
+/* 2. Dark Theme (True OLED Pitch Black, Obsidian Surfaces & Electric Cyan Accents) */
+.adm-shell[data-admin-theme="dark"] {
+  --adm-bg: #000000;
+  --adm-surface: #09090b;
+  --adm-surface-alt: #121217;
+  --adm-sidebar-bg: #040406;
+  --adm-sidebar-hover: rgba(255, 255, 255, 0.08);
+  --adm-sidebar-active: #06b6d4;
+  --adm-border: #27272a;
+  --adm-border-dark: #18181b;
+  --adm-border-input: #3f3f46;
+  --adm-border-hover: #52525b;
+  --adm-text-primary: #ffffff;
+  --adm-text-secondary: #e4e4e7;
+  --adm-text-muted: #a1a1aa;
+  --adm-input-bg: #000000;
+  --adm-input-disabled-bg: #18181b;
+  --adm-th-bg: #050507;
+  --adm-tr-hover: #141418;
+  --adm-code-color: #38bdf8;
+  --admin-link: #38bdf8;
+  --admin-accent: #06b6d4;
+  --adm-notice-info-text: #38bdf8;
+  --adm-notice-warning-text: #fde047;
+  --adm-notice-danger-text: #f87171;
+}
+
+/* Visually distinct OLED Dark Mode component refinements */
+.adm-shell[data-admin-theme="dark"] .adm-card,
+.adm-shell[data-admin-theme="dark"] .adm-modal,
+.adm-shell[data-admin-theme="dark"] .adm-customer-kpi-card,
+.adm-shell[data-admin-theme="dark"] .adm-metric-card,
+.adm-shell[data-admin-theme="dark"] .adm-settings-section-card {
+  background: #09090b;
+  border-color: #27272a;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.adm-shell[data-admin-theme="dark"] .adm-sidebar {
+  background: #040406;
+  border-right: 1px solid #18181b;
+}
+
+.adm-shell[data-admin-theme="dark"] .adm-header {
+  background: #09090b;
+  border-bottom: 1px solid #27272a;
+}
+
+.adm-shell[data-admin-theme="dark"] .adm-nav-item.active button {
+  border-left-color: #06b6d4;
+  background: rgba(6, 182, 212, 0.12);
+  color: #38bdf8;
+}
+
+.adm-shell[data-admin-theme="dark"] .adm-table th {
+  background: #040406;
+  color: #a1a1aa;
+  border-bottom-color: #27272a;
+}
+
+.adm-shell[data-admin-theme="dark"] .adm-table td {
+  border-bottom-color: #1f1f23;
+}
+
+.adm-shell[data-admin-theme="dark"] .adm-table tbody tr:hover {
+  background: #141418;
+}
+
+.adm-shell[data-admin-theme="dark"] .adm-input,
+.adm-shell[data-admin-theme="dark"] .adm-select,
+.adm-shell[data-admin-theme="dark"] .adm-textarea,
+.adm-shell[data-admin-theme="dark"] .adm-search-input {
+  background-color: #000000;
+  border-color: #3f3f46;
+  color: #ffffff;
+}
+
+.adm-shell[data-admin-theme="dark"] .adm-badge-neutral {
+  background-color: #18181b;
+  color: #e4e4e7;
+  border-color: #3f3f46;
+}
+
+.adm-shell[data-admin-theme="dark"] .adm-badge-info,
+.adm-shell[data-admin-theme="dark"] .adm-badge-primary {
+  background-color: rgba(6, 182, 212, 0.15);
+  color: #38bdf8;
+  border-color: rgba(6, 182, 212, 0.35);
+}
+
+.adm-shell[data-admin-theme="dark"] .adm-metric-value {
+  color: #ffffff;
+}
+
+.adm-shell[data-admin-theme="dark"] .adm-header .adm-breadcrumbs button {
+  color: #a1a1aa;
+}
+
+.adm-shell[data-admin-theme="dark"] .adm-header .adm-breadcrumbs-current {
+  color: #ffffff;
+}
+
+/* 3. Light Theme (Clean Professional High-Contrast Light Mode) */
+.adm-shell[data-admin-theme="light"] {
+  --adm-bg: #f8fafc;
+  --adm-surface: #ffffff;
+  --adm-surface-alt: #f1f5f9;
+  --adm-sidebar-bg: #0f172a;
+  --adm-sidebar-hover: rgba(255, 255, 255, 0.08);
+  --adm-sidebar-active: #ff7900;
+  --adm-border: #cbd5e1;
+  --adm-border-dark: #94a3b8;
+  --adm-border-input: #cbd5e1;
+  --adm-border-hover: #94a3b8;
+  --adm-text-primary: #0f172a;
+  --adm-text-secondary: #334155;
+  --adm-text-muted: #64748b;
+  --adm-input-bg: #ffffff;
+  --adm-input-disabled-bg: #e2e8f0;
+  --adm-th-bg: #f1f5f9;
+  --adm-tr-hover: #f8fafc;
+  --adm-code-color: #0f172a;
+  --admin-link: #0284c7;
+  --admin-accent: #d97706;
+  --adm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --adm-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --adm-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --adm-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --adm-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  --adm-success-bg: #ecfdf5;
+  --adm-success-border: #a7f3d0;
+  --adm-success-text: #065f46;
+  --adm-warning-bg: #fffbeb;
+  --adm-warning-border: #fde68a;
+  --adm-warning-text: #92400e;
+  --adm-danger-bg: #fef2f2;
+  --adm-danger-border: #fecaca;
+  --adm-danger-text: #991b1b;
+  --adm-notice-info-text: #1e40af;
+  --adm-notice-warning-text: #92400e;
+  --adm-notice-danger-text: #991b1b;
+}
+
+/* Light Theme Component Overrides for Maximum Accessibility & Contrast */
+.adm-shell[data-admin-theme="light"] .adm-notice-info {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1e40af;
+}
+
+.adm-shell[data-admin-theme="light"] .adm-notice-warning {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.adm-shell[data-admin-theme="light"] .adm-notice-danger {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.adm-shell[data-admin-theme="light"] .adm-notice-success {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #065f46;
+}
+
+.adm-shell[data-admin-theme="light"] .adm-badge-neutral {
+  background-color: #f1f5f9;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+
+.adm-shell[data-admin-theme="light"] .adm-badge-info,
+.adm-shell[data-admin-theme="light"] .adm-badge-primary {
+  background-color: #fff7ed;
+  color: #c2410c;
+  border-color: #fed7aa;
+}
+
+.adm-shell[data-admin-theme="light"] .adm-header {
+  background: #ffffff;
+  border-bottom-color: #cbd5e1;
+}
+
+.adm-shell[data-admin-theme="light"] .adm-header .adm-breadcrumbs button {
+  color: #334155;
+}
+
+.adm-shell[data-admin-theme="light"] .adm-header .adm-breadcrumbs-current {
+  color: #0f172a;
+}
+
+.adm-shell[data-admin-theme="light"] .adm-user-name {
+  color: #0f172a;
 }
 
 /* ==========================================================================
@@ -1162,13 +1414,13 @@
 }
 
 .adm-table th {
-  background: #141c26;
+  background: var(--adm-th-bg, #141c26);
   padding: 13px 18px;
   font-size: 0.74rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--adm-text-secondary, #a6afbc);
+  color: var(--adm-text-secondary, #cbd5e1);
   border-bottom: 1px solid var(--adm-border);
   white-space: nowrap;
 }
@@ -1196,7 +1448,7 @@
 }
 
 .adm-table tbody tr:hover td {
-  background: #1c2635;
+  background: var(--adm-tr-hover, #1c2635);
 }
 
 .adm-table-actions {
@@ -1210,7 +1462,7 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 0.78rem;
   background: var(--adm-surface-alt);
-  color: #f4f6f8;
+  color: var(--adm-code-color, #f4f6f8);
   border: 1px solid var(--adm-border);
   padding: 2px 6px;
   border-radius: 4px;
@@ -1510,7 +1762,7 @@
 }
 
 .adm-input:disabled {
-  background: #151c27;
+  background: var(--adm-input-disabled-bg, #151c27);
   cursor: not-allowed;
   color: var(--adm-text-muted);
 }
@@ -1536,19 +1788,19 @@
 .adm-notice-info {
   background: rgba(255, 121, 0, 0.1);
   border: 1px solid rgba(255, 121, 0, 0.3);
-  color: #ffb066;
+  color: var(--adm-notice-info-text, #ffb066);
 }
 
 .adm-notice-warning {
   background: rgba(245, 158, 11, 0.1);
   border: 1px solid rgba(245, 158, 11, 0.3);
-  color: #fde68a;
+  color: var(--adm-notice-warning-text, #fde68a);
 }
 
 .adm-notice-danger {
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #fca5a5;
+  color: var(--adm-notice-danger-text, #fca5a5);
 }
 
 .adm-notice-icon {
@@ -3373,3 +3625,77 @@
     gap: 8px;
   }
 }
+
+/* ==========================================================================
+   Admin Theme Selector Styles (Admin Settings)
+   ========================================================================== */
+
+.adm-theme-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.adm-theme-card {
+  background: var(--adm-surface-alt);
+  border: 2px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+}
+
+.adm-theme-card:hover {
+  border-color: var(--adm-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--adm-shadow-md);
+}
+
+.adm-theme-card.active {
+  border-color: var(--adm-primary);
+  background: var(--adm-surface);
+  box-shadow: 0 0 0 2px rgba(255, 121, 0, 0.25), var(--adm-shadow-md);
+}
+
+.adm-theme-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.adm-theme-card-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--adm-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.adm-theme-preview-palette {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 6px 0;
+}
+
+.adm-theme-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.adm-theme-card-desc {
+  font-size: 0.8rem;
+  color: var(--adm-text-secondary);
+  line-height: 1.4;
+  margin: 0;
+}
+

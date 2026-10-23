@@ -30,7 +30,7 @@ export default function CountUp({ value, duration = 650, prefix = "", suffix = "
       prefersReducedMotion = false;
     }
 
-    if (prefersReducedMotion || duration <= 0) {
+    if (prefersReducedMotion || duration <= 0 || process.env.NODE_ENV === "test") {
       setDisplayValue(numericValue);
       return;
     }

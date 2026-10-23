@@ -25,6 +25,8 @@ export default function AdminHeader({
   currentUser,
   onLogout,
   healthStatus,
+  adminTheme = "default",
+  onThemeChange,
 }) {
   const currentTitle = sectionLabels[activeSection] || "Dashboard";
 
@@ -72,6 +74,30 @@ export default function AdminHeader({
               {healthStatus.status === "UP" ? "API Live" : "Degraded"}
             </span>
           </div>
+        )}
+
+        {/* Quick Theme Cycle Button */}
+        {onThemeChange && (
+          <button
+            type="button"
+            className="adm-btn adm-btn-secondary adm-btn-sm"
+            onClick={() => {
+              const nextTheme =
+                adminTheme === "default"
+                  ? "dark"
+                  : adminTheme === "dark"
+                  ? "light"
+                  : "default";
+              onThemeChange(nextTheme);
+            }}
+            title={`Active Theme: ${adminTheme.toUpperCase()} (Click to toggle)`}
+            aria-label={`Toggle admin theme, current theme is ${adminTheme}`}
+            data-testid="header-theme-toggle"
+            style={{ padding: "4px 10px", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: 5 }}
+          >
+            <span aria-hidden="true">{adminTheme === "light" ? "☀️" : adminTheme === "dark" ? "🌙" : "🎨"}</span>
+            <span style={{ textTransform: "capitalize" }}>{adminTheme}</span>
+          </button>
         )}
 
         {currentUser && (

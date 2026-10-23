@@ -2593,9 +2593,7 @@ describe("VERTEX Admin Portal Suite", () => {
     expect(screen.queryByText("Nut Types")).not.toBeInTheDocument();
     expect(screen.queryByText("Precision Tools")).not.toBeInTheDocument();
 
-    // 2. Expand Fasteners and verify all 6 subcategories
-    const expandFastenersBtn = screen.getByTestId("toggle-subcategories-fasteners");
-    fireEvent.click(expandFastenersBtn);
+    // 2. Subcategories are expanded by default - verify Fasteners subcategories
     expect(screen.getByText("Screws — Flat (Slotted)")).toBeInTheDocument();
     expect(screen.getByText("Screws — Cross (Phillips)")).toBeInTheDocument();
     expect(screen.getByText("Screws — Hex (Allen)")).toBeInTheDocument();
@@ -2603,9 +2601,14 @@ describe("VERTEX Admin Portal Suite", () => {
     expect(screen.getByText("Washers")).toBeInTheDocument();
     expect(screen.getByText("Brass Inserts")).toBeInTheDocument();
 
-    // 3. Expand Electronic Products and verify all 6 subcategories
-    const expandElectronicsBtn = screen.getByTestId("toggle-subcategories-electronics");
-    fireEvent.click(expandElectronicsBtn);
+    // Test collapse toggle
+    const toggleFastenersBtn = screen.getByTestId("toggle-subcategories-fasteners");
+    fireEvent.click(toggleFastenersBtn); // collapses
+    expect(screen.queryByText("Screws — Flat (Slotted)")).not.toBeInTheDocument();
+    fireEvent.click(toggleFastenersBtn); // re-expands
+    expect(screen.getByText("Screws — Flat (Slotted)")).toBeInTheDocument();
+
+    // 3. Verify Electronic Products subcategories (expanded by default)
     expect(screen.getByText("Lithium-Ion Batteries / Cells")).toBeInTheDocument();
     expect(screen.getByText("Electronic Components")).toBeInTheDocument();
     expect(screen.getByText("HVNEX – Microcontroller Boards")).toBeInTheDocument();
@@ -2618,5 +2621,412 @@ describe("VERTEX Admin Portal Suite", () => {
     expect(screen.getByText("Associated Products")).toBeInTheDocument();
     expect(screen.getByText("39")).toBeInTheDocument(); // 19 + 20
   });
+
+  test("37. Admin Product Catalog Management page displays exactly 39 official products, excludes all 8 demo fixtures, and reflects official categories", async () => {
+    const { MOCK_PRODUCTS: fullProducts, MOCK_CATEGORIES: fullCategories } = require("../../mock/mockData");
+    const { getProducts } = require("../../mock/mockCatalogApi");
+
+    // Mock API implementations using the live catalog logic with officialOnly
+    adminApi.getAdminProducts.mockImplementation(async (params) => {
+      return getProducts(params);
+    });
+    adminApi.getAdminCategories.mockResolvedValue({
+      categories: fullCategories,
+    });
+
+    render(<AdminLayout onNavigateHome={jest.fn()} onNavigateLogin={jest.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Admin Overview/i)).toBeInTheDocument();
+    });
+
+    // Navigate to Products section
+    fireEvent.click(screen.getByTitle("Products"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Product Catalog Management/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Loading products from PostgreSQL catalog/i)).not.toBeInTheDocument();
+    });
+
+    // 1. Verify KPI metrics: Total Products = 39, Active Categories = 2 (top-level)
+    await waitFor(() => {
+      expect(screen.getByText("Total Products")).toBeInTheDocument();
+      expect(screen.getByText("39")).toBeInTheDocument();
+      expect(screen.getByText("Active Categories")).toBeInTheDocument();
+      expect(screen.getByText("2")).toBeInTheDocument();
+    });
+
+    // 2. Verify all 8 demo fixtures are excluded from the page
+    expect(screen.queryByText("Arduino Uno R3 Microcontroller Board")).not.toBeInTheDocument();
+    expect(screen.queryByText("ELEC-ARD-UNO-R3")).not.toBeInTheDocument();
+    expect(screen.queryByText("Stainless Steel Hex Bolt (M8 x 30mm)")).not.toBeInTheDocument();
+    expect(screen.queryByText("FAST-HEX-M8-30-P10")).not.toBeInTheDocument();
+    expect(screen.queryByText("Raspberry Pi 4 Model B (4GB RAM)")).not.toBeInTheDocument();
+    expect(screen.queryByText("ELEC-RPI4-4GB")).not.toBeInTheDocument();
+    expect(screen.queryByText("L298N Dual H-Bridge Motor Driver Module")).not.toBeInTheDocument();
+    expect(screen.queryByText("Delta DVP-14SS2 Slim Programmable Logic Controller")).not.toBeInTheDocument();
+    expect(screen.queryByText("Single Phase Solid State Relay (SSR-40DA)")).not.toBeInTheDocument();
+    expect(screen.queryByText("Industrial Ball-End Hex Key Set (9-Piece)")).not.toBeInTheDocument();
+
+    // 3. Verify category dropdown options only include official categories and their subcategories
+    const categorySelect = screen.getByLabelText(/Filter by category/i);
+    expect(within(categorySelect).getByRole("option", { name: /Fasteners/i })).toBeInTheDocument();
+    expect(within(categorySelect).getByRole("option", { name: /Electronic Products/i })).toBeInTheDocument();
+    expect(within(categorySelect).queryByRole("option", { name: /Automation & Wiring/i })).not.toBeInTheDocument();
+    expect(within(categorySelect).queryByRole("option", { name: /Nut Types/i })).not.toBeInTheDocument();
+    expect(within(categorySelect).queryByRole("option", { name: /Precision Tools/i })).not.toBeInTheDocument();
+  });
+
+  test("38. Admin Dashboard and Admin Reports strictly display official catalog metrics and exclude fixtures", async () => {
+    const { MOCK_CATEGORIES: fullCategories } = require("../../mock/mockData");
+    const { getProducts } = require("../../mock/mockCatalogApi");
+
+    adminApi.getAdminProducts.mockImplementation(async (params) => {
+      return getProducts(params);
+    });
+    adminApi.getAdminCategories.mockResolvedValue({
+      categories: fullCategories,
+    });
+
+    // Render AdminLayout with mock mode (default)
+    render(<AdminLayout currentUser={{ id: "u-admin", role: "ADMIN", email: "admin@vertex.com" }} />);
+
+    // 1. Dashboard checks
+    await waitFor(() => {
+      expect(screen.getByText(/Admin Overview/i)).toBeInTheDocument();
+      expect(screen.getByText("Active Products")).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("39")).toBeInTheDocument();
+      expect(screen.getByText(/2 Categories • Verified Active/i)).toBeInTheDocument();
+    });
+
+    // Verify fixtures are not present in low stock alerts or variants
+    expect(screen.queryByText("Arduino Uno R3 Microcontroller Board")).not.toBeInTheDocument();
+    expect(screen.queryByText("Stainless Steel Hex Bolt (M8 x 30mm)")).not.toBeInTheDocument();
+
+    // 2. Navigate to Reports section
+    fireEvent.click(screen.getByTitle(/Reports/i));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Analytics & Operational Reports/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Computing analytics from PostgreSQL catalog/i)).not.toBeInTheDocument();
+    });
+
+    // Verify verified variant SKUs count displays exactly 41 (official catalog SKUs)
+    await waitFor(() => {
+      expect(screen.getByText(/Across 41 verified variant SKUs/i)).toBeInTheDocument();
+    });
+
+    // Verify Category Product Share breakdown only displays the 2 official top-level categories
+    expect(screen.getByText("Fasteners")).toBeInTheDocument();
+    expect(screen.getByText("Electronic Products")).toBeInTheDocument();
+    expect(screen.queryByText("Automation & Wiring")).not.toBeInTheDocument();
+    expect(screen.queryByText("Nut Types")).not.toBeInTheDocument();
+    expect(screen.queryByText("Precision Tools")).not.toBeInTheDocument();
+  });
+
+  test("39. Admin Themes: switching between Default, Dark, and Light themes updates data-admin-theme and persists to localStorage", async () => {
+    localStorage.clear();
+
+    const { unmount } = render(<AdminLayout currentUser={{ id: "u-admin", role: "ADMIN", email: "admin@vertex.com" }} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Admin Overview/i)).toBeInTheDocument();
+    });
+
+    const shell = document.querySelector(".adm-shell");
+    expect(shell).toHaveAttribute("data-admin-theme", "default");
+
+    // 1. Cycle theme using header quick-toggle button
+    const headerToggle = screen.getByTestId("header-theme-toggle");
+    fireEvent.click(headerToggle);
+
+    expect(shell).toHaveAttribute("data-admin-theme", "dark");
+    expect(localStorage.getItem("vertex_admin_theme")).toBe("dark");
+
+    fireEvent.click(headerToggle);
+    expect(shell).toHaveAttribute("data-admin-theme", "light");
+    expect(localStorage.getItem("vertex_admin_theme")).toBe("light");
+
+    unmount();
+
+    // 2. Render Settings page directly and test theme picker cards
+    render(<AdminLayout initialSection="settings" currentUser={{ id: "u-admin", role: "ADMIN", email: "admin@vertex.com" }} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Portal Appearance & Themes/i)).toBeInTheDocument();
+    });
+
+    const defaultThemeCard = screen.getByTestId("theme-option-default");
+    fireEvent.click(defaultThemeCard);
+
+    const updatedShell = document.querySelector(".adm-shell");
+    expect(updatedShell).toHaveAttribute("data-admin-theme", "default");
+    expect(localStorage.getItem("vertex_admin_theme")).toBe("default");
+  });
+
+  test("40. Admin Settings E-Commerce Audit: displays tax-exclusive pricing model and integration service boundaries", async () => {
+    render(<AdminLayout initialSection="settings" currentUser={{ id: "u-admin", role: "ADMIN", email: "admin@vertex.com" }} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Store Identity & Commercial Defaults/i)).toBeInTheDocument();
+      expect(screen.getByText(/E-Commerce Integrations & Service Boundaries/i)).toBeInTheDocument();
+    });
+
+    // Check Tax-Exclusive pricing model note
+    expect(screen.getByText(/Tax-Exclusive \(Excl\. GST\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/GST computed per item and added at checkout/i)).toBeInTheDocument();
+
+    // Check integration boundaries without secret leakage
+    expect(screen.getByText(/Razorpay \/ UPI Payment Gateway/i)).toBeInTheDocument();
+    expect(screen.getByText(/Courier Logistics \(Delhivery \/ Bluedart\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Email Notifications \(SMTP Transport\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Inventory Concurrency Engine/i)).toBeInTheDocument();
+  });
+
+  test("41. Coupon Management: supports Recipient Name, Delivery Address, and College Campus Address", async () => {
+    render(<AdminLayout initialSection="discounts" currentUser={{ id: "u-admin", role: "ADMIN", email: "admin@vertex.com" }} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Discounts & Promotions Management/i)).toBeInTheDocument();
+      expect(screen.getByTestId("create-discount-btn")).toBeInTheDocument();
+    });
+
+    // Verify existing coupons have recipient or college address
+    expect(screen.getByText(/Premier Heavy Industries/i)).toBeInTheDocument();
+
+    // Open Add Coupon Modal
+    fireEvent.click(screen.getByTestId("create-discount-btn"));
+
+    await waitFor(() => {
+      const modal = screen.getByRole("dialog");
+      expect(modal).toBeInTheDocument();
+      expect(within(modal).getByText(/Create New Promotion Campaign/i)).toBeInTheDocument();
+    });
+
+    // Check inputs for designated recipient name and address
+    expect(screen.getByLabelText(/Designated Recipient \/ Customer Name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Designated Delivery \/ Billing Address/i)).toBeInTheDocument();
+
+    // Switch to Educational / College Discount tab
+    const collegeTab = screen.getByRole("tab", { name: /College Educational Coupon/i });
+    fireEvent.click(collegeTab);
+
+    expect(screen.getByLabelText(/Campus \/ Department Address/i)).toBeInTheDocument();
+
+    // Close modal
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: /Cancel/i }));
+  });
+
+  test("42. Product Details & Edit Product: populates and saves price, stock, HSN, GST, and attachments without variant loss", async () => {
+    adminApi.updateAdminProduct.mockResolvedValueOnce({
+      success: true,
+      product: {
+        ...mockProducts[0],
+        price: 1399,
+        stockQuantity: 80,
+      },
+    });
+
+    render(<AdminLayout initialSection="products" currentUser={{ id: "u-admin", role: "ADMIN", email: "admin@vertex.com" }} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Product Catalog Management/i)).toBeInTheDocument();
+      expect(screen.getByTestId("edit-product-prod-1")).toBeInTheDocument();
+    });
+
+    // Click Edit on the first product card/row
+    fireEvent.click(screen.getByTestId("edit-product-prod-1"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Edit Product & Category Assignment/i)).toBeInTheDocument();
+    });
+
+    // Check that new fields are rendered and populated
+    expect(screen.getByLabelText(/Selling Price \(₹ Tax-Exclusive\)/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Stock Quantity \(Units\)/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/HSN \/ Tax Classification Code/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/GST Rate \(%\)/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Product Image URL \/ Asset Reference/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Technical Spec \/ PDF Attachment Reference/i)).toBeInTheDocument();
+
+    // Fill in a valid price and stock
+    const priceInput = screen.getByTestId("edit-prod-price-input");
+    fireEvent.change(priceInput, { target: { value: "1399.00" } });
+
+    const stockInput = screen.getByTestId("edit-prod-stock-input");
+    fireEvent.change(stockInput, { target: { value: "80" } });
+
+    // Submit form
+    fireEvent.click(screen.getByTestId("save-edit-product-btn"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/updated successfully across catalog/i)).toBeInTheDocument();
+    });
+  });
+
+  test("43. Official Catalog vs Inventory: Products lists 39 official products, and Inventory tracks 41 variant SKUs across 39 products", async () => {
+    const { MOCK_CATEGORIES: fullCategories } = require("../../mock/mockData");
+    const { getProducts } = require("../../mock/mockCatalogApi");
+
+    adminApi.getAdminProducts.mockImplementation(async (params) => {
+      return getProducts(params);
+    });
+    adminApi.getAdminCategories.mockResolvedValue({
+      categories: fullCategories,
+    });
+
+    render(<AdminLayout currentUser={{ id: "u-admin", role: "ADMIN", email: "admin@vertex.com" }} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Admin Overview/i)).toBeInTheDocument();
+    });
+
+    // 1. Products page check: 39 products
+    fireEvent.click(screen.getByTitle(/Products/i));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Product Catalog Management/i)).toBeInTheDocument();
+      expect(screen.getByText("39")).toBeInTheDocument();
+    });
+
+    // 2. Inventory page check: 41 variant SKUs across 39 parent products
+    fireEvent.click(screen.getByTitle(/Inventory/i));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Inventory Telemetry & Stock Control/i)).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("41")).toBeInTheDocument();
+      expect(screen.getByText(/Across 39 Parent Products/i)).toBeInTheDocument();
+      expect(screen.getByText(/Displaying 41 of 41 tracked variant SKUs across 39 official parent products/i)).toBeInTheDocument();
+    });
+  });
+
+  test("44. Product Specification & GST Audit: direct GST numeric entry, preset options, persistent PDF upload, view, replace, and delete", async () => {
+    const mockProduct = {
+      id: "prod-spec-test",
+      name: "Hex Socket Head Cap Screw M6",
+      slug: "hex-socket-m6",
+      brand: "VERTEX",
+      hsnCode: "7318",
+      gstRate: 18.0,
+      price: 250.0,
+      stockQuantity: 150,
+      tag: "Industrial Grade",
+      description: "Precision metric alloy steel socket head screw",
+      specificationFileName: null,
+      isActive: true,
+      categoryId: "cat-fasteners",
+      category: { id: "cat-fasteners", name: "Fasteners", slug: "fasteners" },
+      variants: [
+        {
+          id: "var-spec-1",
+          sku: "HEX-M6-25-A2",
+          name: "M6 x 25mm Pack of 50",
+          price: 250.0,
+          stockQuantity: 150,
+        },
+      ],
+    };
+
+    const { OFFICIAL_CATEGORIES } = require("../../mock/mockData");
+    adminApi.getAdminCategories.mockResolvedValue({
+      categories: OFFICIAL_CATEGORIES,
+    });
+    adminApi.updateAdminProduct.mockResolvedValue({
+      success: true,
+      product: { ...mockProduct, gstRate: 12.0, specificationFileName: "VERTEX-M6-Datasheet.pdf" },
+    });
+
+    adminApi.getAdminProducts.mockResolvedValue({
+      products: [mockProduct],
+      pagination: { totalCount: 1, totalPages: 1, currentPage: 1, limit: 10 },
+      summary: {
+        totalProducts: 1,
+        activeProducts: 1,
+        totalInventoryUnits: 150,
+        lowStockCount: 0,
+        outOfStockCount: 0,
+      },
+    });
+
+    render(
+      <AdminLayout
+        initialSection="products"
+        currentUser={{ id: "u-admin", role: "ADMIN", email: "admin@vertex.com" }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Product Catalog Management/i)).toBeInTheDocument();
+      expect(screen.getByTestId("edit-product-prod-spec-test")).toBeInTheDocument();
+    });
+
+    // Open Edit Modal
+    fireEvent.click(screen.getByTestId("edit-product-prod-spec-test"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Edit Product & Category Assignment/i)).toBeInTheDocument();
+    });
+
+    // 1. Verify and modify GST Rate directly via input
+    const gstInput = screen.getByTestId("edit-prod-gst-input");
+    expect(gstInput).toBeInTheDocument();
+    expect(gstInput.value).toBe("18");
+    fireEvent.change(gstInput, { target: { value: "12.00" } });
+    expect(gstInput.value).toBe("12.00");
+
+    // 2. Verify file upload input and upload a PDF
+    const fileInput = screen.getByTestId("edit-prod-spec-file-input");
+    expect(fileInput).toBeInTheDocument();
+
+    const pdfBlob = new Blob(["%PDF-1.4 Mock PDF Content"], { type: "application/pdf" });
+    const testFile = new File([pdfBlob], "VERTEX-M6-Datasheet.pdf", { type: "application/pdf" });
+
+    fireEvent.change(fileInput, { target: { files: [testFile] } });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Specification file "VERTEX-M6-Datasheet.pdf" uploaded and attached/i)).toBeInTheDocument();
+      expect(screen.getByTestId("view-edit-spec-btn")).toBeInTheDocument();
+      expect(screen.getByTestId("replace-edit-spec-btn")).toBeInTheDocument();
+      expect(screen.getByTestId("delete-edit-spec-btn")).toBeInTheDocument();
+    });
+
+    // 3. Test Delete attachment button
+    fireEvent.click(screen.getByTestId("delete-edit-spec-btn"));
+    await waitFor(() => {
+      expect(screen.getByText(/Specification attachment removed/i)).toBeInTheDocument();
+      expect(screen.getByTestId("upload-edit-spec-btn")).toBeInTheDocument();
+    });
+
+    // 4. Re-upload file and test View action
+    fireEvent.change(fileInput, { target: { files: [testFile] } });
+    await waitFor(() => {
+      expect(screen.getByTestId("view-edit-spec-btn")).toBeInTheDocument();
+    });
+
+    const windowOpenSpy = jest.spyOn(window, "open").mockImplementation(() => ({}));
+    fireEvent.click(screen.getByTestId("view-edit-spec-btn"));
+    windowOpenSpy.mockRestore();
+
+    // 5. Save product with updated GST rate and persistent attachment
+    fireEvent.click(screen.getByTestId("save-edit-product-btn"));
+
+    await waitFor(() => {
+      expect(adminApi.updateAdminProduct).toHaveBeenCalledWith(
+        "prod-spec-test",
+        expect.objectContaining({
+          gstRate: 12.0,
+          specificationFileName: "VERTEX-M6-Datasheet.pdf",
+        })
+      );
+    });
+  });
 });
+
+
 

@@ -212,6 +212,45 @@ describe("Phase 4 Catalog, Categories & Products Test Suite", () => {
     }
   });
 
+  test("10a. GET /api/products?sort=price_asc&minPrice=500&maxPrice=2000 verifies price-sorted branch filters correctly", async () => {
+    const res = await request(app).get("/api/products?sort=price_asc&minPrice=500&maxPrice=2000");
+
+    assert.equal(res.status, 200);
+    assert.ok(res.body.products.length >= 1);
+    for (const p of res.body.products) {
+      assert.ok(p.price >= 500 && p.price <= 2000, `Expected product price ${p.price} to be between 500 and 2000`);
+      for (const v of p.variants) {
+        assert.ok(v.price >= 500 && v.price <= 2000, `Expected variant price ${v.price} to be between 500 and 2000`);
+      }
+    }
+    // Verify ascending order
+    for (let i = 0; i < res.body.products.length - 1; i++) {
+      assert.ok(res.body.products[i].price <= res.body.products[i + 1].price);
+    }
+  });
+
+  test("10b. GET /api/products with out-of-range price filter returns empty list and 0 totalItems gracefully", async () => {
+    const res = await request(app).get("/api/products?minPrice=99999&maxPrice=100000");
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.products.length, 0);
+    assert.equal(res.body.pagination.totalItems, 0);
+  });
+
+  test("10c. Multi-variant price boundary: all returned variants strictly satisfy minPrice/maxPrice bounds", async () => {
+    const res = await request(app).get("/api/products?minPrice=499&maxPrice=1300");
+
+    assert.equal(res.status, 200);
+    assert.ok(res.body.products.length >= 1);
+    for (const p of res.body.products) {
+      assert.ok(p.price >= 499 && p.price <= 1300);
+      assert.ok(p.variants.length >= 1);
+      for (const v of p.variants) {
+        assert.ok(v.price >= 499 && v.price <= 1300, `Variant ${v.sku} price ${v.price} must satisfy [499, 1300]`);
+      }
+    }
+  });
+
   test("11. GET /api/products rejects minPrice greater than maxPrice", async () => {
     const res = await request(app).get("/api/products?minPrice=3000&maxPrice=500");
 

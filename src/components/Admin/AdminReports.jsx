@@ -11,10 +11,11 @@ export default function AdminReports() {
       try {
         setLoading(true);
         const [prodRes, catRes] = await Promise.all([
-          getAdminProducts({ limit: 50 }),
+          getAdminProducts({ limit: 50, officialOnly: true }),
           getAdminCategories(),
         ]);
-        setProducts(prodRes?.products || []);
+        const rawProducts = prodRes?.products || [];
+        setProducts(rawProducts.filter((p) => p.isOfficialCatalog !== false));
         setCategories(catRes?.categories || []);
       } catch (err) {
         // Handled
@@ -24,6 +25,15 @@ export default function AdminReports() {
     }
     loadData();
   }, []);
+
+  const officialCategories = categories.filter((c) => {
+    if (c.isOfficial === false) return false;
+    const legacyFixtureCategoryIds = new Set(["cat-nuts", "cat-automation", "cat-tools"]);
+    if (categories.some((cat) => cat.id === "cat-fasteners" || cat.id === "cat-electronics")) {
+      if (legacyFixtureCategoryIds.has(c.id)) return false;
+    }
+    return true;
+  });
 
   const allVariants = products.flatMap((p) => p.variants || []);
   const totalStockUnits = allVariants.reduce((sum, v) => sum + (v.stockQuantity || 0), 0);
@@ -104,7 +114,7 @@ export default function AdminReports() {
             </div>
             <div className="adm-card-body">
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
-                {categories.map((c) => (
+                {officialCategories.map((c) => (
                   <div
                     key={c.id}
                     style={{
