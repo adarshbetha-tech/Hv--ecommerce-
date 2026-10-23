@@ -139,7 +139,6 @@ export default function AdminReports() {
           <div className="adm-card">
             <div className="adm-card-header">
               <h2 className="adm-card-title">Financial &amp; Revenue Analytics Integration</h2>
-              <span className="adm-badge adm-badge-warning">Phase 6 Checkout</span>
             </div>
             <div className="adm-card-body">
               <p style={{ margin: "0 0 14px", color: "var(--adm-text-secondary)", fontSize: "0.9rem" }}>

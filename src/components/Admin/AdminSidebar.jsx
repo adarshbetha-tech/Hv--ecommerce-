@@ -6,11 +6,11 @@ const navGroups = [
     groupTitle: "Operations & Orders",
     items: [
       { id: "dashboard", label: "Dashboard", icon: "📊" },
-      { id: "orders", label: "Orders", icon: "🚚", badge: "Phase 6" },
+      { id: "orders", label: "Orders", icon: "🚚" },
       { id: "quotes", label: "Commercial RFQs", icon: "📑" },
-      { id: "refunds", label: "Refunds & Returns", icon: "↩️", badge: "Pending Gateway" },
-      { id: "discounts", label: "Discounts & Promos", icon: "🏷️", badge: "Roadmap" },
-      { id: "reviews", label: "Product Reviews", icon: "⭐", badge: "Roadmap" },
+      { id: "refunds", label: "Refunds & Returns", icon: "↩️" },
+      { id: "discounts", label: "Discounts & Promos", icon: "🏷️" },
+      { id: "reviews", label: "Product Reviews", icon: "⭐" },
     ],
   },
   {

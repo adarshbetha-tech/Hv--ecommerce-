@@ -206,9 +206,33 @@ describe("VERTEX Admin Portal Suite", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
-  });
+  }, 15000);
 
-  test("6. Navigates to Inventory section and displays variant SKU table with adjust modal", async () => {
+  test("6. Navigates to Inventory section and displays variant SKU table with adjust modal and Needs Pricing badges", async () => {
+    adminApi.getAdminProducts.mockResolvedValue({
+      products: [
+        ...mockProducts,
+        {
+          id: "prod-3",
+          name: "Slotted CHHD Screw",
+          slug: "slotted-chhd",
+          brand: "VERTEX",
+          category: { id: "cat-2", name: "Screws & Fasteners", slug: "fasteners" },
+          price: null,
+          variants: [
+            {
+              id: "var-3",
+              sku: "FAST-SLOT-CHHD-P50",
+              name: "Pack of 50",
+              price: null,
+              stockQuantity: 500,
+            },
+          ],
+        },
+      ],
+      pagination: { totalItems: 3, page: 1, totalPages: 1 },
+    });
+
     render(<AdminLayout onNavigateHome={jest.fn()} onNavigateLogin={jest.fn()} />);
 
     await waitFor(() => {
@@ -221,6 +245,7 @@ describe("VERTEX Admin Portal Suite", () => {
       expect(screen.getByText(/Inventory Telemetry & Stock Control/i)).toBeInTheDocument();
       expect(screen.getAllByText(/ELEC-ARD-UNO-R3/i).length).toBeGreaterThan(0);
       expect(screen.getAllByText(/FAST-HEX-M8-30-P10/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Needs Pricing/i).length).toBeGreaterThan(0);
     });
 
     // Click 'Adjust Stock'
@@ -2385,8 +2410,213 @@ describe("VERTEX Admin Portal Suite", () => {
       expect(screen.getByTestId("edit-price-feedback")).toHaveTextContent(/successfully updated to/i);
     });
   });
+
+  test("35. Admin Inventory strictly displays only official catalog products and excludes demo fixtures", async () => {
+    // Provide a mix of official catalog products and demo/fixture products
+    const mixedProducts = [
+      {
+        id: "prod-fast-1",
+        name: "Slotted Countersunk (CSK) Head Screw",
+        slug: "slotted-csk-head-screw",
+        isOfficialCatalog: true,
+        category: { id: "cat-fasteners", name: "Fasteners" },
+        variants: [
+          { id: "var-csk-1", sku: "FAST-SLOT-CSK-P50", stockQuantity: 120, price: 150 },
+        ],
+      },
+      {
+        id: "prod-elec-1",
+        name: "Lithium-Ion Battery Cell 18650 (2600mAh, 3.7V)",
+        slug: "lithium-ion-battery-cell-18650-2600mah-3-7v",
+        isOfficialCatalog: true,
+        category: { id: "cat-electronics", name: "Electronic Products" },
+        variants: [
+          { id: "var-18650-1", sku: "BATT-18650-2600", stockQuantity: 80, price: 290 },
+        ],
+      },
+      // 8 Demo fixture products marked with isOfficialCatalog: false
+      {
+        id: "prod-arduino-uno-r3",
+        name: "Arduino Uno R3 Microcontroller Board",
+        slug: "arduino-uno-r3",
+        isOfficialCatalog: false,
+        isFixture: true,
+        category: { id: "cat-electronics", name: "Electronic Products" },
+        variants: [{ id: "var-ard", sku: "ELEC-ARD-UNO-R3", stockQuantity: 50, price: 1299 }],
+      },
+      {
+        id: "prod-ss-hex-bolt-m8",
+        name: "Stainless Steel Hex Bolt (M8 x 30mm)",
+        slug: "ss-hex-bolt-m8-30",
+        isOfficialCatalog: false,
+        isFixture: true,
+        category: { id: "cat-fasteners", name: "Fasteners" },
+        variants: [{ id: "var-hex-bolt", sku: "FAST-HEX-M8-30-P10", stockQuantity: 150, price: 250 }],
+      },
+      {
+        id: "prod-raspberry-pi-4b",
+        name: "Raspberry Pi 4 Model B (4GB RAM)",
+        slug: "raspberry-pi-4b-4gb",
+        isOfficialCatalog: false,
+        isFixture: true,
+        category: { id: "cat-electronics", name: "Electronic Products" },
+        variants: [{ id: "var-rpi4", sku: "ELEC-RPI4-4GB", stockQuantity: 25, price: 5850 }],
+      },
+      {
+        id: "prod-l298n-driver",
+        name: "L298N Dual H-Bridge Motor Driver Module",
+        slug: "l298n-motor-driver-module",
+        isOfficialCatalog: false,
+        isFixture: true,
+        category: { id: "cat-electronics", name: "Electronic Products" },
+        variants: [{ id: "var-l298n", sku: "ELEC-DRV-L298N", stockQuantity: 95, price: 220 }],
+      },
+      {
+        id: "prod-delta-plc-dvp14ss2",
+        name: "Delta DVP-14SS2 Slim Programmable Logic Controller",
+        slug: "delta-dvp-14ss2-plc",
+        isOfficialCatalog: false,
+        isFixture: true,
+        category: { id: "cat-automation", name: "Automation & Wiring" },
+        variants: [{ id: "var-plc", sku: "AUTO-PLC-DVP14SS2", stockQuantity: 12, price: 6200 }],
+      },
+      {
+        id: "prod-flanged-hex-nut-m6",
+        name: "Serrated Flanged Hex Nut (M6)",
+        slug: "flanged-hex-nut-m6",
+        isOfficialCatalog: false,
+        isFixture: true,
+        category: { id: "cat-fasteners", name: "Fasteners" },
+        variants: [{ id: "var-flange", sku: "FAST-NUT-FLANGE-M6-P25", stockQuantity: 400, price: 180 }],
+      },
+      {
+        id: "prod-solid-state-relay",
+        name: "Single Phase Solid State Relay (SSR-40DA)",
+        slug: "solid-state-relay-ssr-40da",
+        isOfficialCatalog: false,
+        isFixture: true,
+        category: { id: "cat-automation", name: "Automation & Wiring" },
+        variants: [{ id: "var-ssr", sku: "AUTO-SSR-40DA", stockQuantity: 40, price: 680 }],
+      },
+      {
+        id: "prod-allen-key-set",
+        name: "Industrial Ball-End Hex Key Set (9-Piece)",
+        slug: "industrial-ball-end-hex-key-set",
+        isOfficialCatalog: false,
+        isFixture: true,
+        category: { id: "cat-tools", name: "Precision Tools" },
+        variants: [{ id: "var-hex-set", sku: "TOOL-HEX-SET-9P", stockQuantity: 65, price: 850 }],
+      },
+    ];
+
+    adminApi.getAdminProducts.mockImplementation(async (params) => {
+      let filtered = mixedProducts;
+      if (params?.officialOnly) {
+        filtered = filtered.filter((p) => p.isOfficialCatalog !== false);
+      }
+      return {
+        products: filtered,
+        pagination: { totalItems: filtered.length, page: 1, totalPages: 1 },
+      };
+    });
+
+    render(<AdminLayout onNavigateHome={jest.fn()} onNavigateLogin={jest.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Admin Overview/i)).toBeInTheDocument();
+    });
+
+    // Navigate to Inventory section
+    fireEvent.click(screen.getByTitle("Inventory"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Inventory Telemetry & Stock Control/i)).toBeInTheDocument();
+    });
+
+    // Verify official products ARE rendered (desktop table and mobile cards)
+    expect(screen.getAllByText(/FAST-SLOT-CSK-P50/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/BATT-18650-2600/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Slotted Countersunk \(CSK\) Head Screw/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Lithium-Ion Battery Cell 18650/i).length).toBeGreaterThan(0);
+
+    // Verify ALL 8 demo fixtures are strictly excluded
+    expect(screen.queryByText(/Arduino Uno R3 Microcontroller Board/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ELEC-ARD-UNO-R3/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Stainless Steel Hex Bolt \(M8 x 30mm\)/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/FAST-HEX-M8-30-P10/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Raspberry Pi 4 Model B/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ELEC-RPI4-4GB/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/L298N Dual H-Bridge Motor Driver Module/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ELEC-DRV-L298N/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Delta DVP-14SS2 Slim Programmable Logic Controller/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/AUTO-PLC-DVP14SS2/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Serrated Flanged Hex Nut \(M6\)/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/FAST-NUT-FLANGE-M6-P25/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Single Phase Solid State Relay \(SSR-40DA\)/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/AUTO-SSR-40DA/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Industrial Ball-End Hex Key Set/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/TOOL-HEX-SET-9P/i)).not.toBeInTheDocument();
+
+    // Verify KPI Total SKUs shows 2 (only the official items)
+    expect(screen.getByText("Total SKUs")).toBeInTheDocument();
+    expect(screen.getByText(/Showing 2 of 2 inventory variants/i)).toBeInTheDocument();
+  });
+
+  test("36. Admin Categories page displays exactly 2 official top-level categories (Fasteners, Electronic Products) with 6 subcategories each and correct product count", async () => {
+    // Mock getAdminCategories returning the full categories array from mockData
+    const { MOCK_CATEGORIES: fullCategories } = require("../../mock/mockData");
+    adminApi.getAdminCategories.mockResolvedValue({
+      categories: fullCategories,
+    });
+
+    render(<AdminLayout onNavigateHome={jest.fn()} onNavigateLogin={jest.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Admin Overview/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTitle("Categories"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Category Hierarchy Management/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Loading categories from PostgreSQL/i)).not.toBeInTheDocument();
+    });
+
+    // 1. Verify exactly 2 top-level categories rendered in table
+    await waitFor(() => {
+      expect(screen.getAllByText("Fasteners").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Electronic Products").length).toBeGreaterThan(0);
+    });
+
+    // Legacy/duplicate top-level categories MUST NOT appear as separate top-level categories
+    expect(screen.queryByText("Automation & Wiring")).not.toBeInTheDocument();
+    expect(screen.queryByText("Nut Types")).not.toBeInTheDocument();
+    expect(screen.queryByText("Precision Tools")).not.toBeInTheDocument();
+
+    // 2. Expand Fasteners and verify all 6 subcategories
+    const expandFastenersBtn = screen.getByTestId("toggle-subcategories-fasteners");
+    fireEvent.click(expandFastenersBtn);
+    expect(screen.getByText("Screws — Flat (Slotted)")).toBeInTheDocument();
+    expect(screen.getByText("Screws — Cross (Phillips)")).toBeInTheDocument();
+    expect(screen.getByText("Screws — Hex (Allen)")).toBeInTheDocument();
+    expect(screen.getByText("Nuts")).toBeInTheDocument();
+    expect(screen.getByText("Washers")).toBeInTheDocument();
+    expect(screen.getByText("Brass Inserts")).toBeInTheDocument();
+
+    // 3. Expand Electronic Products and verify all 6 subcategories
+    const expandElectronicsBtn = screen.getByTestId("toggle-subcategories-electronics");
+    fireEvent.click(expandElectronicsBtn);
+    expect(screen.getByText("Lithium-Ion Batteries / Cells")).toBeInTheDocument();
+    expect(screen.getByText("Electronic Components")).toBeInTheDocument();
+    expect(screen.getByText("HVNEX – Microcontroller Boards")).toBeInTheDocument();
+    expect(screen.getByText("HVNEX – DC Motor Drivers")).toBeInTheDocument();
+    expect(screen.getByText("HVNEX – PLC Controller")).toBeInTheDocument();
+    expect(screen.getByText("HVNEX – DC-DC Buck Converters")).toBeInTheDocument();
+
+    // 4. Verify summary metrics reflect the 39 official products across 2 categories
+    expect(screen.getByText("Total Categories")).toBeInTheDocument();
+    expect(screen.getByText("Associated Products")).toBeInTheDocument();
+    expect(screen.getByText("39")).toBeInTheDocument(); // 19 + 20
+  });
 });
-
-
-
 

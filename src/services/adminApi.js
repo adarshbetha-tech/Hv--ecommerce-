@@ -101,6 +101,7 @@ export async function getAdminProducts({
   sort = "newest",
   page = 1,
   limit = 12,
+  officialOnly = false,
 } = {}) {
   if (isMockApiEnabled()) {
     return mockAdminApi.getAdminProducts({
@@ -112,6 +113,7 @@ export async function getAdminProducts({
       sort,
       page,
       limit,
+      officialOnly,
     });
   }
 
@@ -124,6 +126,7 @@ export async function getAdminProducts({
   if (sort) query.set("sort", sort);
   if (page) query.set("page", page);
   if (limit) query.set("limit", limit);
+  if (officialOnly) query.set("officialOnly", "true");
 
   const response = await fetch(`${API_BASE}/api/products?${query.toString()}`, {
     method: "GET",

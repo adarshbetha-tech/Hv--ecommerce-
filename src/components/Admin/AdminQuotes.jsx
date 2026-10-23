@@ -287,26 +287,26 @@ export default function AdminQuotes() {
               {quotes.map((quote) => (
                 <tr key={quote.id}>
                   <td>
-                    <div style={{ fontWeight: 600, color: "#0b2a4a" }}>
+                    <div style={{ fontWeight: 600, color: "var(--adm-text-primary, #F4F6F8)" }}>
                       RFQ-{quote.id.slice(0, 8).toUpperCase()}
                     </div>
-                    <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                    <div style={{ fontSize: "0.8rem", color: "var(--adm-text-muted, #717D8F)" }}>
                       {quote.createdAt ? new Date(quote.createdAt).toLocaleDateString("en-IN") : "—"}
                     </div>
                   </td>
                   <td>
-                    <div style={{ fontWeight: 600, color: "#1e293b" }}>{quote.contactName}</div>
-                    <div style={{ fontSize: "0.82rem", color: "#64748b" }}>{quote.email}</div>
+                    <div style={{ fontWeight: 600, color: "var(--adm-text-primary, #F4F6F8)" }}>{quote.contactName}</div>
+                    <div style={{ fontSize: "0.82rem", color: "var(--adm-text-secondary, #A6AFBC)" }}>{quote.email}</div>
                     {quote.companyName && (
-                      <div style={{ fontSize: "0.8rem", color: "#0284c7" }}>🏢 {quote.companyName}</div>
+                      <div style={{ fontSize: "0.8rem", color: "var(--adm-accent, #D99036)" }}>🏢 {quote.companyName}</div>
                     )}
                   </td>
                   <td>
-                    <div style={{ fontWeight: 500, color: "#1e293b", maxWidth: "260px" }}>
+                    <div style={{ fontWeight: 500, color: "var(--adm-text-primary, #F4F6F8)", maxWidth: "260px" }}>
                       {quote.productDetails}
                     </div>
-                    <div style={{ fontSize: "0.82rem", color: "#64748b" }}>
-                      Quantity: <strong>{Number(quote.quantity).toLocaleString("en-IN")} units</strong>
+                    <div style={{ fontSize: "0.82rem", color: "var(--adm-text-secondary, #A6AFBC)" }}>
+                      Quantity: <strong style={{ color: "var(--adm-text-primary, #F4F6F8)" }}>{Number(quote.quantity).toLocaleString("en-IN")} units</strong>
                     </div>
                   </td>
                   <td>
@@ -390,62 +390,62 @@ export default function AdminQuotes() {
                 style={{
                   display: "grid",
                   gridTemplateColumns: "1fr 1fr",
-                  gap: "14px",
-                  background: "#f8fafc",
+                  gap: "16px",
+                  background: "var(--adm-surface-alt, #1F2836)",
                   padding: "16px",
                   borderRadius: "8px",
                   marginBottom: "20px",
-                  border: "1px solid #e2e8f0",
+                  border: "1px solid var(--adm-border, #222D3D)",
                 }}
               >
                 <div>
-                  <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "#64748b", fontWeight: 700 }}>
+                  <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--adm-text-muted, #717D8F)", fontWeight: 700 }}>
                     Contact Person
                   </div>
-                  <div style={{ fontWeight: 600, color: "#0f172a", marginTop: "2px" }}>
+                  <div style={{ fontWeight: 600, color: "var(--adm-text-primary, #F4F6F8)", marginTop: "2px" }}>
                     {inspectingQuote.contactName}
                   </div>
-                  <div style={{ fontSize: "0.85rem", color: "#475569" }}>{inspectingQuote.email}</div>
-                  <div style={{ fontSize: "0.85rem", color: "#475569" }}>{inspectingQuote.phone}</div>
+                  <div style={{ fontSize: "0.85rem", color: "var(--adm-text-secondary, #A6AFBC)" }}>{inspectingQuote.email}</div>
+                  <div style={{ fontSize: "0.85rem", color: "var(--adm-text-secondary, #A6AFBC)" }}>{inspectingQuote.phone}</div>
                 </div>
 
                 <div>
-                  <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "#64748b", fontWeight: 700 }}>
+                  <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--adm-text-muted, #717D8F)", fontWeight: 700 }}>
                     Company &amp; Tax ID
                   </div>
-                  <div style={{ fontWeight: 600, color: "#0f172a", marginTop: "2px" }}>
+                  <div style={{ fontWeight: 600, color: "var(--adm-text-primary, #F4F6F8)", marginTop: "2px" }}>
                     {inspectingQuote.companyName || "Independent Procurement"}
                   </div>
                   {inspectingQuote.gstin && (
-                    <div style={{ fontSize: "0.82rem", color: "#0284c7" }}>GSTIN: {inspectingQuote.gstin}</div>
+                    <div style={{ fontSize: "0.82rem", color: "var(--adm-accent, #D99036)" }}>GSTIN: {inspectingQuote.gstin}</div>
                   )}
                   {inspectingQuote.user && (
-                    <div style={{ fontSize: "0.8rem", color: "#16a34a", marginTop: "4px" }}>
+                    <div style={{ fontSize: "0.8rem", color: "var(--adm-success, #22C55E)", marginTop: "4px" }}>
                       ✓ Verified {inspectingQuote.user.role} Account
                     </div>
                   )}
                 </div>
 
-                <div style={{ gridColumn: "1 / -1", borderTop: "1px solid #e2e8f0", paddingTop: "12px" }}>
-                  <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "#64748b", fontWeight: 700 }}>
+                <div style={{ gridColumn: "1 / -1", borderTop: "1px solid var(--adm-border, #222D3D)", paddingTop: "12px" }}>
+                  <div style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--adm-text-muted, #717D8F)", fontWeight: 700 }}>
                     Product Requirement &amp; Volume
                   </div>
-                  <div style={{ fontWeight: 600, color: "#0b2a4a", marginTop: "2px" }}>
+                  <div style={{ fontWeight: 600, color: "var(--adm-text-primary, #F4F6F8)", marginTop: "2px" }}>
                     {inspectingQuote.productDetails}
                   </div>
-                  <div style={{ fontSize: "0.85rem", color: "#334155" }}>
-                    Requested Quantity: <strong>{Number(inspectingQuote.quantity).toLocaleString("en-IN")} units</strong>
+                  <div style={{ fontSize: "0.85rem", color: "var(--adm-text-secondary, #A6AFBC)" }}>
+                    Requested Quantity: <strong style={{ color: "var(--adm-text-primary, #F4F6F8)" }}>{Number(inspectingQuote.quantity).toLocaleString("en-IN")} units</strong>
                   </div>
                   {inspectingQuote.message && (
                     <div
                       style={{
                         marginTop: "8px",
                         fontSize: "0.85rem",
-                        color: "#475569",
-                        background: "#ffffff",
+                        color: "var(--adm-text-secondary, #A6AFBC)",
+                        background: "var(--adm-surface, #171E28)",
                         padding: "8px 12px",
                         borderRadius: "6px",
-                        border: "1px solid #e2e8f0",
+                        border: "1px solid var(--adm-border, #222D3D)",
                       }}
                     >
                       "{inspectingQuote.message}"

@@ -92,13 +92,18 @@ export default function AdminCategories() {
     };
   }, [isAddModalOpen, selectedCategorySlug, editingCategory]);
 
-  const toggleExpandCategory = (catId) => {
+  const toggleExpandCategory = (cat) => {
+    const idKey = typeof cat === "object" ? cat.id : cat;
+    const slugKey = typeof cat === "object" ? cat.slug : cat;
     setExpandedCategories((prev) => {
       const next = new Set(prev);
-      if (next.has(catId)) {
-        next.delete(catId);
+      const isAlreadyExpanded = next.has(idKey) || next.has(slugKey);
+      if (isAlreadyExpanded) {
+        if (idKey) next.delete(idKey);
+        if (slugKey) next.delete(slugKey);
       } else {
-        next.add(catId);
+        if (idKey) next.add(idKey);
+        if (slugKey) next.add(slugKey);
       }
       return next;
     });
@@ -233,8 +238,16 @@ export default function AdminCategories() {
   };
 
   // Resilient multi-criteria filtering & sorting (Fasteners 1st, Electronic Products 2nd)
+  // Display only official top-level categories matching the approved PDF
   const filteredCategories = categories
     .filter((c) => {
+      // 0. Only official top-level categories if isOfficial flag is present, or exclude legacy fixture categories
+      if (c.isOfficial === false) return false;
+      const legacyFixtureCategoryIds = new Set(["cat-nuts", "cat-automation", "cat-tools"]);
+      if (categories.some((cat) => cat.id === "cat-fasteners" || cat.id === "cat-electronics")) {
+        if (legacyFixtureCategoryIds.has(c.id)) return false;
+      }
+
       // 1. Search Query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
@@ -285,14 +298,24 @@ export default function AdminCategories() {
     setSortOrder("default");
   };
 
-  // Summary KPI Calculations
-  const totalCategoriesCount = categories.length;
-  const activeClassificationsCount = categories.filter((c) => c.isActive !== false).length;
-  const totalAssociatedProducts = categories.reduce(
+  // Base official category set for summary metrics
+  const displayedCategories = categories.filter((c) => {
+    if (c.isOfficial === false) return false;
+    const legacyFixtureCategoryIds = new Set(["cat-nuts", "cat-automation", "cat-tools"]);
+    if (categories.some((cat) => cat.id === "cat-fasteners" || cat.id === "cat-electronics")) {
+      if (legacyFixtureCategoryIds.has(c.id)) return false;
+    }
+    return true;
+  });
+
+  // Summary KPI Calculations reflecting the official catalog
+  const totalCategoriesCount = displayedCategories.length;
+  const activeClassificationsCount = displayedCategories.filter((c) => c.isActive !== false).length;
+  const totalAssociatedProducts = displayedCategories.reduce(
     (acc, c) => acc + (Number(c.productsCount || c._count?.products) || 0),
     0
   );
-  const topLevelTaxonomiesCount = categories.filter((c) => !c.parentId).length || categories.length;
+  const topLevelTaxonomiesCount = displayedCategories.filter((c) => !c.parentId).length || displayedCategories.length;
 
   return (
     <div className="adm-categories-view">
@@ -414,7 +437,7 @@ export default function AdminCategories() {
             onChange={(e) => setStatusFilter(e.target.value)}
             aria-label="Filter by product association"
           >
-            <option value="all">All Categories ({categories.length})</option>
+            <option value="all">All Categories ({totalCategoriesCount})</option>
             <option value="with_products">With Assigned Products</option>
             <option value="empty">Empty Categories (0 Products)</option>
             <option value="active">Active Categories Only</option>
@@ -506,7 +529,7 @@ export default function AdminCategories() {
                     {filteredCategories.map((cat) => {
                       const prodCount = Number(cat.productsCount || cat._count?.products || 0);
                       const hasChildren = Boolean(cat.children && cat.children.length > 0);
-                      const isExpanded = expandedCategories.has(cat.id || cat.slug);
+                      const isExpanded = expandedCategories.has(cat.id) || expandedCategories.has(cat.slug);
 
                       return (
                         <React.Fragment key={cat.id || cat.slug}>
@@ -529,7 +552,7 @@ export default function AdminCategories() {
                                         type="button"
                                         className="adm-btn adm-btn-secondary adm-btn-sm"
                                         style={{ fontSize: "0.68rem", padding: "1px 6px", height: "auto" }}
-                                        onClick={() => toggleExpandCategory(cat.id || cat.slug)}
+                                        onClick={() => toggleExpandCategory(cat)}
                                         data-testid={`toggle-subcategories-${cat.slug}`}
                                         title={isExpanded ? "Collapse subcategories" : "Expand subcategories"}
                                       >
@@ -732,7 +755,7 @@ export default function AdminCategories() {
             {filteredCategories.map((cat) => {
               const prodCount = Number(cat.productsCount || cat._count?.products || 0);
               const hasChildren = Boolean(cat.children && cat.children.length > 0);
-              const isExpanded = expandedCategories.has(cat.id || cat.slug);
+              const isExpanded = expandedCategories.has(cat.id) || expandedCategories.has(cat.slug);
 
               return (
                 <div key={cat.id || cat.slug} className="adm-category-card">

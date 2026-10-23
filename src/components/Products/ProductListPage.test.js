@@ -9,7 +9,8 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import ProductListPage from "./ProductListPage";
-import { MOCK_CATEGORIES, MOCK_PRODUCTS } from "../../mock/mockData";
+import { MOCK_CATEGORIES, MOCK_PRODUCTS, OFFICIAL_CATALOG_PRODUCTS, OFFICIAL_CATEGORIES } from "../../mock/mockData";
+import { getProducts } from "../../mock/mockCatalogApi";
 
 const mockCategories = [
   {
@@ -297,5 +298,138 @@ describe("VERTEX ProductListPage Component Suite", () => {
       seenIds.add(p.id);
     });
     expect(duplicateIds).toEqual([]);
+  });
+
+  test("11. Validates that OFFICIAL_CATALOG_PRODUCTS strictly contains exactly the 39 named products", () => {
+    expect(OFFICIAL_CATALOG_PRODUCTS).toHaveLength(39);
+
+    const fasteners = OFFICIAL_CATALOG_PRODUCTS.filter((p) => p.categoryId === "cat-fasteners");
+    const electronics = OFFICIAL_CATALOG_PRODUCTS.filter((p) => p.categoryId === "cat-electronics");
+
+    expect(fasteners).toHaveLength(19);
+    expect(electronics).toHaveLength(20);
+
+    // Calculate total variant SKUs (1 item has 3 variants, 38 have 1 variant = 41 total SKUs)
+    const totalSkus = OFFICIAL_CATALOG_PRODUCTS.reduce((sum, p) => sum + (p.variants?.length || 0), 0);
+    expect(totalSkus).toBe(41);
+  });
+
+  test("12. Customer-facing getProducts() returns only official catalog products when officialOnly is true", async () => {
+    const res = await getProducts({ limit: 100, officialOnly: true });
+    expect(res.success).toBe(true);
+    expect(res.products).toHaveLength(39);
+
+    // Verify demo products are excluded from customer storefront listing
+    const names = res.products.map((p) => p.name);
+    expect(names).not.toContain("Arduino Uno R3 Microcontroller Board");
+    expect(names).not.toContain("Stainless Steel Hex Bolt (M8 x 30mm)");
+    expect(names).not.toContain("Raspberry Pi 4 Development Board");
+    expect(names).not.toContain("Single Phase Solid State Relay (SSR-40DA)");
+    expect(names).not.toContain("Industrial Ball-End Hex Key Set (9-Piece)");
+
+    // But default/fixture query keeps fixtures accessible for tests
+    const defaultRes = await getProducts({ limit: 100 });
+    expect(defaultRes.products.length).toBeGreaterThan(39);
+  });
+
+  test("13. ProductListPage customer-facing view displays only official catalog products and excludes all 8 demo fixtures", () => {
+    // Render ProductListPage with full MOCK_PRODUCTS (which contains 39 official + 8 demo fixtures = 47)
+    render(
+      <ProductListPage
+        categories={MOCK_CATEGORIES}
+        products={MOCK_PRODUCTS}
+      />
+    );
+
+    // Verify product count pill displays exactly 39 products found
+    const countPill = screen.getByText("39");
+    expect(countPill).toBeInTheDocument();
+    expect(screen.getByText("Products Found")).toBeInTheDocument();
+
+    // Verify that NONE of the 8 demo fixtures are rendered in the document
+    const demoFixtures = [
+      "Arduino Uno R3 Microcontroller Board",
+      "Raspberry Pi 4 Development Board",
+      "Stainless Steel Hex Bolt (M8 x 30mm)",
+      "Serrated Flanged Hex Nut (M6)",
+      "L298N Dual H-Bridge Motor Driver Module",
+      "Delta DVP-14SS2 Slim Programmable Logic Controller",
+      "Single Phase Solid State Relay (SSR-40DA)",
+      "Industrial Ball-End Hex Key Set (9-Piece)",
+    ];
+
+    demoFixtures.forEach((fixtureName) => {
+      expect(screen.queryByText(fixtureName)).not.toBeInTheDocument();
+    });
+
+    // Verify official parent products are present (e.g. Hex Nut, Nyloc Nut, DMEGC cell, Slotted CHHD)
+    expect(screen.getByText("Hex Nut")).toBeInTheDocument();
+    expect(screen.getByText("Nyloc Nut")).toBeInTheDocument();
+    expect(screen.getByText("Slotted CHHD")).toBeInTheDocument();
+    expect(screen.getByText("Pan Head Screw")).toBeInTheDocument();
+  });
+
+  test("14. Official catalog strictly consists of 39 parent products: 19 Fasteners and 20 Electronic Products", () => {
+    expect(OFFICIAL_CATALOG_PRODUCTS).toHaveLength(39);
+
+    const fasteners = OFFICIAL_CATALOG_PRODUCTS.filter((p) => p.categoryId === "cat-fasteners");
+    const electronics = OFFICIAL_CATALOG_PRODUCTS.filter((p) => p.categoryId === "cat-electronics");
+
+    expect(fasteners).toHaveLength(19);
+    expect(electronics).toHaveLength(20);
+
+    // Verify none of the 8 fixtures are marked as official
+    const fixtureIds = [
+      "prod-arduino-uno-r3",
+      "prod-rpi-4b",
+      "prod-ss-hex-bolt-m8",
+      "prod-flanged-nut-m6",
+      "prod-drv-l298n",
+      "prod-plc-delta-dvp",
+      "prod-solid-state-relay",
+      "prod-allen-key-set",
+    ];
+
+    fixtureIds.forEach((id) => {
+      expect(OFFICIAL_CATALOG_PRODUCTS.some((p) => p.id === id)).toBe(false);
+    });
+  });
+
+  test("15. Category structure has exactly 2 official top-level categories and 6 official subcategories each from PDF", () => {
+    // Official categories check
+    expect(OFFICIAL_CATEGORIES).toHaveLength(2);
+    expect(OFFICIAL_CATEGORIES[0].id).toBe("cat-fasteners");
+    expect(OFFICIAL_CATEGORIES[0].name).toBe("Fasteners");
+    expect(OFFICIAL_CATEGORIES[0].productsCount).toBe(19);
+
+    expect(OFFICIAL_CATEGORIES[1].id).toBe("cat-electronics");
+    expect(OFFICIAL_CATEGORIES[1].name).toBe("Electronic Products");
+    expect(OFFICIAL_CATEGORIES[1].productsCount).toBe(20);
+
+    // Fasteners 6 subcategories from PDF
+    const fastenerSubNames = OFFICIAL_CATEGORIES[0].children.map((s) => s.name);
+    expect(fastenerSubNames).toEqual([
+      "Screws — Flat (Slotted)",
+      "Screws — Cross (Phillips)",
+      "Screws — Hex (Allen)",
+      "Nuts",
+      "Washers",
+      "Brass Inserts",
+    ]);
+
+    // Electronic Products 6 subcategories from PDF
+    const electronicSubNames = OFFICIAL_CATEGORIES[1].children.map((s) => s.name);
+    expect(electronicSubNames).toEqual([
+      "Lithium-Ion Batteries / Cells",
+      "Electronic Components",
+      "HVNEX – Microcontroller Boards",
+      "HVNEX – DC Motor Drivers",
+      "HVNEX – PLC Controller",
+      "HVNEX – DC-DC Buck Converters",
+    ]);
+
+    // Total products assigned across both official categories is 39
+    const totalCount = OFFICIAL_CATEGORIES.reduce((acc, c) => acc + c.productsCount, 0);
+    expect(totalCount).toBe(39);
   });
 });

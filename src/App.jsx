@@ -332,6 +332,7 @@ export default function App() {
       setProductsError(null);
       const params = {
         limit: 12,
+        officialOnly: true,
       };
       if (activeSearch) params.q = activeSearch;
       if (selectedCategory && selectedCategory !== "all") params.category = selectedCategory;
@@ -1593,6 +1594,8 @@ export default function App() {
   ];
 
   const visibleProducts = products.filter((p) => {
+    // 0. Only official catalog products (excludes demo fixtures)
+    if (p.isOfficialCatalog === false) return false;
     // 1. Only active products
     if (p.isActive === false) return false;
     // 2. Only products in active categories

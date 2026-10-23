@@ -129,12 +129,12 @@ export default function AdminNewsletter() {
             <div>Loading subscriber directory...</div>
           </div>
         ) : subscriptions.length === 0 ? (
-          <div style={{ padding: "48px 24px", textAlign: "center", color: "#64748b" }}>
+          <div style={{ padding: "48px 24px", textAlign: "center", color: "var(--adm-text-secondary, #A6AFBC)" }}>
             <div style={{ fontSize: "2rem", marginBottom: "8px" }}>✉️</div>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#1e293b", margin: "0 0 6px" }}>
+            <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--adm-text-primary, #F4F6F8)", margin: "0 0 6px" }}>
               No Subscribers Found
             </h3>
-            <p style={{ margin: 0, fontSize: "0.9rem" }}>
+            <p style={{ margin: 0, fontSize: "0.9rem", color: "var(--adm-text-secondary, #A6AFBC)" }}>
               {searchQuery
                 ? "No subscribers match your search term."
                 : "No email subscribers have opted in yet."}
@@ -153,7 +153,9 @@ export default function AdminNewsletter() {
               {subscriptions.map((sub) => (
                 <tr key={sub.id}>
                   <td>
-                    <div style={{ fontWeight: 600, color: "#0f172a" }}>{sub.email}</div>
+                    <div style={{ fontWeight: 600, color: "var(--adm-text-primary, #F4F6F8)" }}>
+                      {sub.email}
+                    </div>
                   </td>
                   <td>
                     <span
@@ -165,7 +167,7 @@ export default function AdminNewsletter() {
                     </span>
                   </td>
                   <td>
-                    <span style={{ fontSize: "0.85rem", color: "#64748b" }}>
+                    <span style={{ fontSize: "0.85rem", color: "var(--adm-text-secondary, #A6AFBC)" }}>
                       {sub.createdAt ? new Date(sub.createdAt).toLocaleString("en-IN") : "—"}
                     </span>
                   </td>

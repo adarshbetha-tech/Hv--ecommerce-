@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import CountUp from "./CountUp";
 import {
   getAdminProducts,
   getAdminCategories,
@@ -154,7 +155,9 @@ export default function AdminDashboard({ onNavigateSection, onNavigateStorefront
         >
           <div className="adm-metric-info">
             <span className="adm-metric-label">Active Products</span>
-            <span className="adm-metric-value">{totalProductsCount}</span>
+            <span className="adm-metric-value">
+              <CountUp value={totalProductsCount} />
+            </span>
             <span className="adm-metric-sub">
               {categories.length} Categories • Verified Active
             </span>
@@ -180,11 +183,11 @@ export default function AdminDashboard({ onNavigateSection, onNavigateStorefront
         >
           <div className="adm-metric-info">
             <span className="adm-metric-label">Orders &amp; Revenue</span>
-            <span className="adm-metric-value" style={{ fontSize: "1.2rem", marginTop: 4 }}>
-              Phase 6 Ready
+            <span className="adm-metric-value">
+              <CountUp value={totalOrders} />
             </span>
             <span className="adm-metric-sub">
-              {totalOrders > 0 ? `${totalOrders} Orders Recorded` : "Awaiting checkout order placement"}
+              {totalOrders > 0 ? `${totalOrders} Orders Recorded` : "Awaiting checkout orders"}
             </span>
           </div>
           <div className="adm-metric-icon icon-orange" aria-hidden="true">
@@ -208,7 +211,9 @@ export default function AdminDashboard({ onNavigateSection, onNavigateStorefront
         >
           <div className="adm-metric-info">
             <span className="adm-metric-label">Low Stock Alerts</span>
-            <span className="adm-metric-value">{lowStockItems.length}</span>
+            <span className="adm-metric-value">
+              <CountUp value={lowStockItems.length} />
+            </span>
             <span className="adm-metric-sub">
               {lowStockItems.length > 0 ? "Variants at or below 50 units" : "All variants well-stocked"}
             </span>
@@ -405,7 +410,7 @@ export default function AdminDashboard({ onNavigateSection, onNavigateStorefront
             >
               <span className="adm-order-kpi-count">0</span>
               <span className="adm-order-kpi-title">Refund Requests</span>
-              <span className="adm-order-kpi-hint">Gateway Pending</span>
+              <span className="adm-order-kpi-hint">0 claims</span>
             </div>
           </div>
         </div>

@@ -82,7 +82,7 @@ export default function ProductDetailPage({
   const activePrice = selectedVariant?.price !== undefined && selectedVariant?.price !== null
     ? selectedVariant.price
     : product.price;
-  const hasPrice = activePrice !== null && activePrice !== undefined;
+  const hasPrice = activePrice !== null && activePrice !== undefined && Number(activePrice) > 0;
   const inStock = product.inStock !== false && (selectedVariant ? selectedVariant.stockQuantity !== 0 : true);
   const skuCode = selectedVariant?.sku || product.sku || (product.slug ? `VTX-${product.slug.toUpperCase()}` : "VTX-GEN-SKU");
   const partNumber = selectedVariant?.partNumber || product.partNumber;

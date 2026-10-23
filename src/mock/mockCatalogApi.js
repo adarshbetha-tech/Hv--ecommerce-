@@ -7,16 +7,19 @@
 
 import { MOCK_CATEGORIES, MOCK_PRODUCTS } from "./mockData";
 
-export async function getCategories() {
+export async function getCategories({ officialOnly = false } = {}) {
   await new Promise((r) => setTimeout(r, 40));
+  const list = officialOnly
+    ? MOCK_CATEGORIES.filter((c) => c.isOfficial !== false)
+    : [...MOCK_CATEGORIES];
   return {
     success: true,
-    count: MOCK_CATEGORIES.length,
-    categories: [...MOCK_CATEGORIES],
+    count: list.length,
+    categories: list,
   };
 }
 
-export async function getCategoryBySlug(slug) {
+export async function getCategoryBySlug(slug, { officialOnly = true } = {}) {
   await new Promise((r) => setTimeout(r, 40));
   const decoded = decodeURIComponent(slug).toLowerCase();
   const category = MOCK_CATEGORIES.find(
@@ -30,11 +33,15 @@ export async function getCategoryBySlug(slug) {
     throw error;
   }
 
-  const products = MOCK_PRODUCTS.filter(
+  let products = MOCK_PRODUCTS.filter(
     (p) =>
       p.categoryId === category.id ||
       p.category?.slug?.toLowerCase() === category.slug.toLowerCase()
   );
+
+  if (officialOnly) {
+    products = products.filter((p) => p.isOfficialCatalog !== false);
+  }
 
   return {
     success: true,
@@ -55,10 +62,13 @@ export async function getProducts({
   sort = "newest",
   page = 1,
   limit = 12,
+  officialOnly = false,
 } = {}) {
   await new Promise((r) => setTimeout(r, 50));
 
-  let filtered = [...MOCK_PRODUCTS];
+  let filtered = officialOnly
+    ? MOCK_PRODUCTS.filter((p) => p.isOfficialCatalog !== false)
+    : [...MOCK_PRODUCTS];
 
   // 1. Keyword search (case-insensitive across name, description, brand, tag, SKU, partNumber, specs)
   if (q && q.trim()) {
@@ -206,6 +216,7 @@ export async function getProductBySlug(slug) {
   const related = MOCK_PRODUCTS.filter(
     (p) =>
       p.id !== product.id &&
+      (product.isOfficialCatalog !== false ? p.isOfficialCatalog !== false : true) &&
       (p.subcategory?.slug === product.subcategory?.slug ||
         p.category?.slug === product.category?.slug)
   ).slice(0, 4);

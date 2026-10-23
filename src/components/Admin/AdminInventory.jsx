@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import CountUp from "./CountUp";
 import { getAdminProducts, updateVariantStock } from "../../services/adminApi";
 
 // Currency Formatter
@@ -6,6 +7,19 @@ const formatINR = (val) => {
   const num = Number(val);
   if (isNaN(num)) return "₹0.00";
   return `₹${num.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+// Price Display Helper - Renders real price or 'Needs Pricing' status badge
+const renderPrice = (price) => {
+  const num = Number(price);
+  if (price === null || price === undefined || price === "" || isNaN(num) || num <= 0) {
+    return (
+      <span className="adm-badge adm-badge-warning" style={{ fontSize: "0.74rem", fontWeight: 600 }}>
+        Needs Pricing
+      </span>
+    );
+  }
+  return <strong>{formatINR(price)}</strong>;
 };
 
 // Stock Health Badge Helper
@@ -41,9 +55,10 @@ export default function AdminInventory() {
     try {
       setLoading(true);
       setError(null);
-      const res = await getAdminProducts({ limit: 50 });
+      const res = await getAdminProducts({ limit: 50, officialOnly: true });
       if (res?.products) {
-        const flattened = res.products.flatMap((p) =>
+        const officialProducts = res.products.filter((p) => p.isOfficialCatalog !== false);
+        const flattened = officialProducts.flatMap((p) =>
           (p.variants || []).map((v) => ({
             ...v,
             productName: p.name,
@@ -103,10 +118,20 @@ export default function AdminInventory() {
       const stockB = Number(b.stockQuantity) || 0;
       if (sortOrder === "stock_asc") return stockA - stockB;
       if (sortOrder === "stock_desc") return stockB - stockA;
-      const priceA = Number(a.price) || 0;
-      const priceB = Number(b.price) || 0;
-      if (sortOrder === "price_desc") return priceB - priceA;
-      if (sortOrder === "price_asc") return priceA - priceB;
+      const priceA = a.price != null && !isNaN(Number(a.price)) && Number(a.price) > 0 ? Number(a.price) : null;
+      const priceB = b.price != null && !isNaN(Number(b.price)) && Number(b.price) > 0 ? Number(b.price) : null;
+      if (sortOrder === "price_desc") {
+        if (priceA === null && priceB === null) return 0;
+        if (priceA === null) return 1;
+        if (priceB === null) return -1;
+        return priceB - priceA;
+      }
+      if (sortOrder === "price_asc") {
+        if (priceA === null && priceB === null) return 0;
+        if (priceA === null) return 1;
+        if (priceB === null) return -1;
+        return priceA - priceB;
+      }
       return 0;
     });
 
@@ -226,7 +251,9 @@ export default function AdminInventory() {
           <div className="adm-customer-kpi-card">
             <div className="adm-customer-kpi-info">
               <span className="adm-customer-kpi-label">Total SKUs</span>
-              <span className="adm-customer-kpi-val">{totalTrackedSkus}</span>
+              <span className="adm-customer-kpi-val">
+                <CountUp value={totalTrackedSkus} />
+              </span>
             </div>
             <div className="adm-customer-kpi-icon icon-blue" aria-hidden="true">
               🏷️
@@ -236,7 +263,9 @@ export default function AdminInventory() {
           <div className="adm-customer-kpi-card">
             <div className="adm-customer-kpi-info">
               <span className="adm-customer-kpi-label">Total Stock Units</span>
-              <span className="adm-customer-kpi-val">{totalStockUnits.toLocaleString("en-IN")}</span>
+              <span className="adm-customer-kpi-val">
+                <CountUp value={totalStockUnits} />
+              </span>
             </div>
             <div className="adm-customer-kpi-icon icon-purple" aria-hidden="true">
               📦
@@ -246,7 +275,9 @@ export default function AdminInventory() {
           <div className="adm-customer-kpi-card">
             <div className="adm-customer-kpi-info">
               <span className="adm-customer-kpi-label">Low Stock Alerts</span>
-              <span className="adm-customer-kpi-val">{lowStockCount}</span>
+              <span className="adm-customer-kpi-val">
+                <CountUp value={lowStockCount} />
+              </span>
             </div>
             <div className="adm-customer-kpi-icon icon-amber" aria-hidden="true">
               ⚠️
@@ -256,7 +287,9 @@ export default function AdminInventory() {
           <div className="adm-customer-kpi-card">
             <div className="adm-customer-kpi-info">
               <span className="adm-customer-kpi-label">Out of Stock</span>
-              <span className="adm-customer-kpi-val">{outOfStockCount}</span>
+              <span className="adm-customer-kpi-val">
+                <CountUp value={outOfStockCount} />
+              </span>
             </div>
             <div className="adm-customer-kpi-icon icon-red" aria-hidden="true">
               ⛔
@@ -406,7 +439,7 @@ export default function AdminInventory() {
                           {item.dimensions && ` (${item.dimensions})`}
                         </td>
                         <td>
-                          <strong>{formatINR(item.price)}</strong>
+                          {renderPrice(item.price)}
                         </td>
                         <td>
                           <span style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--adm-text-primary)" }}>
@@ -477,7 +510,7 @@ export default function AdminInventory() {
                     <div className="adm-inventory-card-item">
                       <span className="adm-inventory-card-label">Unit Price</span>
                       <span className="adm-inventory-card-value" style={{ color: "var(--adm-primary)" }}>
-                        {formatINR(item.price)}
+                        {renderPrice(item.price)}
                       </span>
                     </div>
 

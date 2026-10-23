@@ -25,7 +25,7 @@ import buttonHeadImg from "../assets/hardware/screws/button-head.svg";
 import allenCountersunkCskImg from "../assets/hardware/screws/allen-countersunk-csk.svg";
 import hexBoltImg from "../assets/hardware/screws/hex-bolt.svg";
 
-export const MOCK_CATEGORIES = [
+export const OFFICIAL_CATEGORIES = [
   {
     id: "cat-fasteners",
     name: "Fasteners",
@@ -35,6 +35,7 @@ export const MOCK_CATEGORIES = [
     description: "Slotted, Phillips, and Hex screws, nuts, washers, and 3D printing brass inserts.",
     productsCount: 19,
     isActive: true,
+    isOfficial: true,
     children: [
       { id: "sub-screws-flat", name: "Screws — Flat (Slotted)", slug: "screws-flat-slotted", parentId: "cat-fasteners", isActive: true },
       { id: "sub-screws-cross", name: "Screws — Cross (Phillips)", slug: "screws-cross-phillips", parentId: "cat-fasteners", isActive: true },
@@ -53,6 +54,7 @@ export const MOCK_CATEGORIES = [
     description: "Lithium-ion cells, microcontroller boards, motor drivers, PLCs, and buck converters.",
     productsCount: 20,
     isActive: true,
+    isOfficial: true,
     children: [
       { id: "sub-lithium-cells", name: "Lithium-Ion Batteries / Cells", slug: "lithium-ion-batteries", parentId: "cat-electronics", isActive: true },
       { id: "sub-electronic-components", name: "Electronic Components", slug: "electronic-components", parentId: "cat-electronics", isActive: true },
@@ -62,16 +64,22 @@ export const MOCK_CATEGORIES = [
       { id: "sub-hvnex-buck", name: "HVNEX – DC-DC Buck Converters", slug: "hvnex-buck-converters", parentId: "cat-electronics", isActive: true },
     ],
   },
+];
+
+export const MOCK_CATEGORIES = [
+  ...OFFICIAL_CATEGORIES,
   {
     id: "cat-nuts",
     name: "Nut Types",
     slug: "nuts",
     icon: "⬡",
     tint: "tint-green",
-    description: "Hex nuts, Nyloc lock nuts, wing nuts, and serrated flange nuts.",
-    productsCount: 4,
+    description: "Hex nuts, Nyloc lock nuts, and wing nuts.",
+    productsCount: 3,
+    isActive: true,
+    isOfficial: false,
     children: [
-      { id: "sub-nuts", name: "Nuts", slug: "nuts" },
+      { id: "sub-nuts", name: "Nuts", slug: "nuts", parentId: "cat-nuts", isActive: true },
     ],
   },
   {
@@ -82,6 +90,8 @@ export const MOCK_CATEGORIES = [
     tint: "tint-blue",
     description: "Sensors, solid state relays, and prototyping hardware.",
     productsCount: 2,
+    isActive: true,
+    isOfficial: false,
     children: [],
   },
   {
@@ -92,6 +102,8 @@ export const MOCK_CATEGORIES = [
     tint: "tint-orange",
     description: "Ball-end hex key sets and precision assembly hand tools.",
     productsCount: 1,
+    isActive: true,
+    isOfficial: false,
     children: [],
   },
 ];
@@ -599,6 +611,8 @@ export const MOCK_PRODUCTS = [
     rating: 4.9,
     reviews: 29,
     unit: "Pack of 10",
+    isOfficialCatalog: false,
+    isFixture: true,
     variants: [
       {
         id: "var-hex-m8-p10",
@@ -738,8 +752,8 @@ export const MOCK_PRODUCTS = [
     name: "Serrated Flanged Hex Nut (M6)",
     slug: "flanged-hex-nut-m6",
     description: "Zinc-plated serrated flange nuts that distribute clamping load and eliminate the requirement for loose washers.",
-    categoryId: "cat-nuts",
-    category: { id: "cat-nuts", name: "Nut Types", slug: "nuts" },
+    categoryId: "cat-fasteners",
+    category: { id: "cat-fasteners", name: "Fasteners", slug: "fasteners" },
     subcategory: { id: "sub-nuts", name: "Nuts", slug: "nuts" },
     brand: "VERTEX",
     specs: {
@@ -758,6 +772,8 @@ export const MOCK_PRODUCTS = [
     rating: 4.8,
     reviews: 27,
     unit: "Pack of 25",
+    isOfficialCatalog: false,
+    isFixture: true,
     variants: [
       {
         id: "var-flange-m6-p25",
@@ -1577,6 +1593,8 @@ export const MOCK_PRODUCTS = [
     rating: 4.9,
     reviews: 58,
     unit: "1 Unit",
+    isOfficialCatalog: false,
+    isFixture: true,
     variants: [
       {
         id: "var-ard-uno-r3",
@@ -1615,6 +1633,8 @@ export const MOCK_PRODUCTS = [
     rating: 4.8,
     reviews: 64,
     unit: "1 Unit",
+    isOfficialCatalog: false,
+    isFixture: true,
     variants: [
       {
         id: "var-rpi-4b",
@@ -1734,6 +1754,8 @@ export const MOCK_PRODUCTS = [
     rating: 4.7,
     reviews: 34,
     unit: "1 Unit",
+    isOfficialCatalog: false,
+    isFixture: true,
     variants: [
       {
         id: "var-drv-l298n",
@@ -1813,6 +1835,8 @@ export const MOCK_PRODUCTS = [
     rating: 5.0,
     reviews: 16,
     unit: "1 Unit",
+    isOfficialCatalog: false,
+    isFixture: true,
     variants: [
       {
         id: "var-plc-delta",
@@ -1940,6 +1964,8 @@ export const MOCK_PRODUCTS = [
     rating: 4.9,
     reviews: 19,
     unit: "1 Unit",
+    isOfficialCatalog: false,
+    isFixture: true,
     variants: [
       {
         id: "var-ssr-40da",
@@ -1978,6 +2004,8 @@ export const MOCK_PRODUCTS = [
     rating: 4.9,
     reviews: 51,
     unit: "Set of 9",
+    isOfficialCatalog: false,
+    isFixture: true,
     variants: [
       {
         id: "var-hex-set-9p",
@@ -1993,6 +2021,16 @@ export const MOCK_PRODUCTS = [
     ],
   },
 ];
+
+/**
+ * Curated official 39-product catalog matching Product_Categories_Fasteners_First_Electronics_Second.pdf.
+ */
+export const OFFICIAL_CATALOG_PRODUCTS = MOCK_PRODUCTS.filter((p) => p.isOfficialCatalog !== false);
+
+/**
+ * Preserved demo & test fixture products required by legacy tests, carts, and checkout tests.
+ */
+export const DEMO_FIXTURE_PRODUCTS = MOCK_PRODUCTS.filter((p) => p.isOfficialCatalog === false);
 
 export const MOCK_USERS = {
   customer: {

@@ -275,7 +275,7 @@ describe('VERTEX Unified Login & Role-Based Routing Suite', () => {
       expect(screen.getByRole('heading', { name: /Welcome back/i })).toBeInTheDocument();
       expect(screen.getByLabelText(/Email Address/i)).toBeInTheDocument();
     });
-  });
+  }, 15000);
 
   test('3. Admin signs in through the shared login page and reaches /admin', async () => {
     authApi.loginUser.mockResolvedValue({

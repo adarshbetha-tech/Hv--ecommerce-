@@ -50,7 +50,7 @@ export default function ProductCard({
   const unitLabel = primaryVariant?.packSize || product.unit || null;
   const inStock = product.inStock !== false && primaryVariant?.stockQuantity !== 0;
   const skuCode = primaryVariant?.sku || product.sku || (product.slug ? `VTX-${product.slug.toUpperCase()}` : "VTX-GEN-SKU");
-  const hasPrice = product.price !== null && product.price !== undefined;
+  const hasPrice = product.price !== null && product.price !== undefined && Number(product.price) > 0;
 
   // Determine screw / fastener drive characteristics
   const isScrewOrFastener =

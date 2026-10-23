@@ -102,6 +102,7 @@ export async function getProducts({
   sort = "newest",
   page = 1,
   limit = 12,
+  officialOnly = true,
 } = {}) {
   if (isMockApiEnabled()) {
     return mockCatalogApi.getProducts({
@@ -115,6 +116,7 @@ export async function getProducts({
       sort,
       page,
       limit,
+      officialOnly,
     });
   }
 
@@ -129,6 +131,7 @@ export async function getProducts({
   if (sort) query.set("sort", sort);
   if (page) query.set("page", page);
   if (limit) query.set("limit", limit);
+  if (officialOnly !== undefined) query.set("officialOnly", String(officialOnly));
 
   try {
     const response = await fetch(`${API_BASE}/api/products?${query.toString()}`, {
@@ -150,6 +153,7 @@ export async function getProducts({
       sort,
       page,
       limit,
+      officialOnly,
     });
   }
 }

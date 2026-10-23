@@ -111,12 +111,14 @@ export default function ProductListPage({
     return allSubs;
   }, [activeParentCategory, categories]);
 
-  // Derive list of all unique brands in the catalog
+  // Derive list of all unique brands in the catalog (official products only)
   const availableBrands = useMemo(() => {
     const brandsSet = new Set();
-    products.forEach((p) => {
-      if (p.brand) brandsSet.add(p.brand);
-    });
+    products
+      .filter((p) => p.isOfficialCatalog !== false)
+      .forEach((p) => {
+        if (p.brand) brandsSet.add(p.brand);
+      });
     return Array.from(brandsSet).sort();
   }, [products]);
 
@@ -136,7 +138,10 @@ export default function ProductListPage({
   const filteredProducts = useMemo(() => {
     let list = [...products];
 
-    // 0. Only active products & products in active categories (Storefront requirement)
+    // 0. Only official catalog products (excludes demo / test fixtures)
+    list = list.filter((p) => p.isOfficialCatalog !== false);
+
+    // 1. Only active products & products in active categories (Storefront requirement)
     list = list.filter((p) => p.isActive !== false);
     if (categories.length > 0) {
       const activeCategoryIds = new Set(
