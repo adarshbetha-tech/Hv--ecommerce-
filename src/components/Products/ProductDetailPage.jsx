@@ -150,7 +150,7 @@ export default function ProductDetailPage({
     if (onAddToCart) {
       onAddToCart(product, selectedVariant, quantity);
       setAddSuccessFeedback(true);
-      setTimeout(() => setAddSuccessFeedback(false), 2500);
+      setTimeout(() => setAddSuccessFeedback(false), 1800);
     }
   };
 
@@ -440,7 +440,7 @@ export default function ProductDetailPage({
                     disabled={!inStock}
                     data-testid={`detail-add-to-cart-${product.slug}`}
                   >
-                    🛒 Add to Shopping Cart ({quantity})
+                    {addSuccessFeedback ? "✓ Added" : `🛒 Add to Shopping Cart (${quantity})`}
                   </button>
 
                   <button
@@ -460,11 +460,6 @@ export default function ProductDetailPage({
                   </div>
                 )}
 
-                {addSuccessFeedback && (
-                  <div className="vtx-add-success-banner" role="status">
-                    ✓ Added {quantity} unit(s) of "{product.name}" to your cart.
-                  </div>
-                )}
               </div>
             ) : (
               <div className="vtx-rfq-actions-row">
