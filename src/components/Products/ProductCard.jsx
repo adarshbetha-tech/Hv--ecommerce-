@@ -23,6 +23,7 @@ import {
 } from "framer-motion";
 import { isItemInWishlist, toggleWishlistItem } from "../../utils/wishlist";
 import ScrollReveal from "../Common/ScrollReveal";
+import { isTextOnlyProduct } from "../../assets/hardware/componentVisuals";
 
 // Safe prefers-reduced-motion detector that gracefully handles SSR and test environments
 function useSafeReducedMotion() {
@@ -151,6 +152,7 @@ export default function ProductCard({
   const inStock = product.inStock !== false && primaryVariant?.stockQuantity !== 0;
   const skuCode = primaryVariant?.sku || product.sku || (product.slug ? `VTX-${product.slug.toUpperCase()}` : "VTX-GEN-SKU");
   const hasPrice = product.price !== null && product.price !== undefined && Number(product.price) > 0;
+  const isTextOnly = isTextOnlyProduct(product);
 
   // Determine screw / fastener drive characteristics
   const isScrewOrFastener =
@@ -193,7 +195,7 @@ export default function ProductCard({
     >
       <motion.div
         ref={cardRef}
-        className={`product-card vtx-reveal is-revealed ${viewMode === "list" ? "product-card-list-mode" : ""} ${isScrewOrFastener ? "product-card-hardware" : ""} ${variant === "compact" ? "product-card-compact" : ""} ${isHovered ? "is-tilting" : ""}`}
+        className={`product-card vtx-reveal is-revealed ${viewMode === "list" ? "product-card-list-mode" : ""} ${isScrewOrFastener ? "product-card-hardware" : ""} ${variant === "compact" ? "product-card-compact" : ""} ${isTextOnly ? "product-card-text-only" : ""} ${isHovered ? "is-tilting" : ""}`}
         data-testid={`product-card-${product.id || product.slug}`}
         onPointerEnter={handlePointerEnter}
         onPointerMove={handlePointerMove}
@@ -256,9 +258,10 @@ export default function ProductCard({
         </span>
       )}
 
-      {/* Product Thumbnail / Hardware Studio Showcase */}
-      <div
-        className={`product-thumb ${isScrewOrFastener ? "product-thumb-screw" : ""}`}
+      {/* Product Thumbnail / Hardware Studio Showcase (Hidden for text-only HVNEX products) */}
+      {!isTextOnly && (
+        <div
+          className={`product-thumb ${isScrewOrFastener ? "product-thumb-screw" : ""}`}
         onClick={() => onViewDetails && onViewDetails(product)}
         role="button"
         tabIndex={0}
@@ -315,7 +318,8 @@ export default function ProductCard({
             {standardNorm.split("/")[0].trim()}
           </span>
         )}
-      </div>
+        </div>
+      )}
 
       {/* Card Body */}
       <div className="product-body">
@@ -341,7 +345,7 @@ export default function ProductCard({
           {product.name}
         </h3>
 
-        {/* Clear Size & Dimension Indicator (OnlyScrews pattern) */}
+        {/* Clear Size & Dimension Indicator */}
         {(dimensions || unitLabel) && (
           <div
             className="product-size-indicator"

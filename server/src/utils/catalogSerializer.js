@@ -90,6 +90,19 @@ export function formatProduct(product) {
 export function formatCategory(category) {
   if (!category) return null;
 
+  const children = (category.children || [])
+    .filter((c) => c.isActive)
+    .map(formatCategory);
+
+  let productsCount = category._count?.products ?? undefined;
+  if (productsCount !== undefined && children.length > 0) {
+    const childrenSum = children.reduce(
+      (sum, child) => sum + (child.productsCount || 0),
+      0
+    );
+    productsCount += childrenSum;
+  }
+
   return {
     id: category.id,
     name: category.name,
@@ -99,9 +112,7 @@ export function formatCategory(category) {
     tint: category.tint || null,
     imageUrl: category.imageUrl || null,
     parentId: category.parentId || null,
-    children: (category.children || [])
-      .filter((c) => c.isActive)
-      .map(formatCategory),
-    productsCount: category._count?.products ?? undefined,
+    children,
+    productsCount,
   };
 }

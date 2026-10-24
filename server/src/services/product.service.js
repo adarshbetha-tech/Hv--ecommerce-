@@ -7,9 +7,11 @@ import { formatProduct, formatVariant } from "../utils/catalogSerializer.js";
 export async function listProducts({
   q,
   category,
+  subcat,
   brand,
   minPrice,
   maxPrice,
+  inStockOnly,
   sort = "newest",
   page = 1,
   limit = 12,
@@ -21,11 +23,21 @@ export async function listProducts({
     },
   };
 
-  // Category filter by slug or ID
-  if (category) {
+  // Subcategory filter has highest specificity
+  if (subcat) {
     where.category = {
       isActive: true,
-      OR: [{ slug: category.toLowerCase() }, { id: category }],
+      OR: [{ slug: subcat.toLowerCase() }, { id: subcat }],
+    };
+  } else if (category) {
+    // Category filter matches direct category or any child subcategories
+    where.category = {
+      isActive: true,
+      OR: [
+        { slug: category.toLowerCase() },
+        { id: category },
+        { parent: { OR: [{ slug: category.toLowerCase() }, { id: category }] } },
+      ],
     };
   }
 
@@ -66,17 +78,41 @@ export async function listProducts({
     ];
   }
 
-  // Price range filtering on active variants
-  if (minPrice !== undefined || maxPrice !== undefined) {
+  // In-stock filtering on active variants
+  if (inStockOnly) {
     where.variants = {
       ...(where.variants || {}),
       some: {
         ...(where.variants?.some || {}),
         isActive: true,
-        price: {
-          ...(minPrice !== undefined ? { gte: minPrice } : {}),
-          ...(maxPrice !== undefined ? { lte: maxPrice } : {}),
-        },
+        stockQuantity: { gt: 0 },
+      },
+    };
+  }
+
+  // Price range filtering based on product base price (minimum active variant price)
+  if (minPrice !== undefined) {
+    where.variants = {
+      ...(where.variants || {}),
+      none: {
+        ...(where.variants?.none || {}),
+        isActive: true,
+        price: { lt: minPrice },
+      },
+      some: {
+        ...(where.variants?.some || {}),
+        isActive: true,
+      },
+    };
+  }
+
+  if (maxPrice !== undefined) {
+    where.variants = {
+      ...(where.variants || {}),
+      some: {
+        ...(where.variants?.some || {}),
+        isActive: true,
+        price: { lte: maxPrice },
       },
     };
   }
@@ -89,6 +125,7 @@ export async function listProducts({
     const variantWhere = {
       isActive: true,
       product: where,
+      ...(inStockOnly ? { stockQuantity: { gt: 0 } } : {}),
       ...(minPrice !== undefined || maxPrice !== undefined
         ? {
             price: {

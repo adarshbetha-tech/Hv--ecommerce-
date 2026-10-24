@@ -5,14 +5,28 @@ import * as productService from "../services/product.service.js";
  */
 export async function listProducts(req, res, next) {
   try {
-    const { q, category, brand, minPrice, maxPrice, sort, page, limit } = req.query;
+    const {
+      q,
+      category,
+      subcat,
+      subcategory,
+      brand,
+      minPrice,
+      maxPrice,
+      inStockOnly,
+      sort,
+      page,
+      limit,
+    } = req.query;
 
     const result = await productService.listProducts({
       q,
       category,
+      subcat: subcat || subcategory,
       brand,
       minPrice,
       maxPrice,
+      inStockOnly,
       sort,
       page,
       limit,

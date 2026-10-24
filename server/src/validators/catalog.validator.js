@@ -20,6 +20,16 @@ export const listProductsQuerySchema = z
       .trim()
       .max(100, "Category filter cannot exceed 100 characters")
       .optional(),
+    subcat: z
+      .string()
+      .trim()
+      .max(100, "Subcategory filter cannot exceed 100 characters")
+      .optional(),
+    subcategory: z
+      .string()
+      .trim()
+      .max(100, "Subcategory filter cannot exceed 100 characters")
+      .optional(),
     brand: z
       .string()
       .trim()
@@ -34,6 +44,12 @@ export const listProductsQuerySchema = z
       .coerce
       .number({ invalid_type_error: "maxPrice must be a valid number" })
       .min(0, "maxPrice cannot be negative")
+      .optional(),
+    inStockOnly: z
+      .preprocess(
+        (val) => val === true || val === "true" || val === "1" || val === 1,
+        z.boolean()
+      )
       .optional(),
     sort: z
       .enum(["price_asc", "price_desc", "name_asc", "name_desc", "newest"], {

@@ -1,8 +1,9 @@
 /**
  * VERTEX Component Technical Illustrations & Visual Helpers
  * 
- * Provides crisp, high-precision technical SVGs and artwork for industrial components,
- * EV-grade lithium-ion cells, precision fasteners, and embedded electronics.
+ * Provides genuine high-resolution industrial product photography
+ * for precision fasteners, EV-grade lithium-ion cells, and embedded electronics.
+ * Sourced from verified industrial suppliers and open hardware repositories.
  */
 
 import arduinoImg from "./arduino.jpg";
@@ -11,31 +12,45 @@ import breadboardImg from "./breadboard.jpg";
 import fastenersImg from "./fasteners.jpg";
 import pcbImg from "./pcb.jpg";
 
-// Screws (OnlyScrews-inspired)
-import slottedChhdImg from "./screws/slotted-chhd.svg";
-import panHeadImg from "./screws/pan-head.svg";
-import countersunkCskImg from "./screws/countersunk-csk.svg";
-import selfTappingPanImg from "./screws/self-tapping-pan.svg";
-import selfTappingCskImg from "./screws/self-tapping-csk.svg";
-import laptopMobileImg from "./screws/laptop-mobile-screws.svg";
-import drywallGypsumImg from "./screws/drywall-gypsum.svg";
-import selfDrillingPanImg from "./screws/self-drilling-pan.svg";
-import socketHeadImg from "./screws/socket-head.svg";
-import buttonHeadImg from "./screws/button-head.svg";
-import allenCountersunkCskImg from "./screws/allen-countersunk-csk.svg";
+// Screws (Verified Industrial Photography)
+import slottedChhdImg from "./screws/slotted-chhd.jpg";
+import panHeadImg from "./screws/pan-head.jpg";
+import countersunkCskImg from "./screws/countersunk-csk.jpg";
+import selfTappingPanImg from "./screws/self-tapping-pan.jpg";
+import selfTappingCskImg from "./screws/self-tapping-csk.jpg";
+import laptopMobileImg from "./screws/laptop-mobile-screws.jpg";
+import drywallGypsumImg from "./screws/drywall-gypsum.png";
+import selfDrillingPanImg from "./screws/self-drilling-pan.jpg";
+import socketHeadImg from "./screws/socket-head.jpg";
+import buttonHeadImg from "./screws/button-head.jpg";
+import allenCountersunkCskImg from "./screws/allen-countersunk-csk.jpg";
 import hexBoltImg from "./screws/hex-bolt.svg";
 
-// Nuts, Washers & Brass Inserts
-import hexNutImg from "./fasteners/hex-nut.svg";
-import nylocNutImg from "./fasteners/nyloc-nut.svg";
-import wingNutImg from "./fasteners/wing-nut.svg";
-import plainWasherImg from "./fasteners/plain-washer.svg";
-import springWasherImg from "./fasteners/spring-washer.svg";
-import externalSerratedWasherImg from "./fasteners/external-serrated-washer.svg";
-import brassSlantKnurledInsertImg from "./fasteners/brass-slant-knurled-insert.svg";
-import brassThreadedInsertImg from "./fasteners/brass-threaded-insert.svg";
+// Nuts, Washers & Brass Inserts (Verified Industrial Photography)
+import hexNutImg from "./fasteners/hex-nut.jpg";
+import nylocNutImg from "./fasteners/nyloc-nut.jpg";
+import wingNutImg from "./fasteners/wing-nut.jpg";
+import plainWasherImg from "./fasteners/plain-washer.jpg";
+import springWasherImg from "./fasteners/spring-washer.jpg";
+import externalSerratedWasherImg from "./fasteners/external-serrated-washer.jpg";
+import brassSlantKnurledInsertImg from "./fasteners/brass-slant-knurled-insert.jpg";
+import brassThreadedInsertImg from "./fasteners/brass-threaded-insert.jpg";
 
-// Lithium-Ion Cells & Electronic Components (Robu-inspired)
+// Lithium-Ion Cells & Electronic Components (Manufacturer & Studio Photography)
+import dmegc18650_2600CellImg from "./electronics/dmegc-18650-2600-cell.jpg";
+import dmegc18650_2900CellImg from "./electronics/dmegc-18650-2900-cell.jpg";
+import dmegc18650_3200CellImg from "./electronics/dmegc-18650-3200-cell.jpg";
+import dmegc18650CellImg from "./electronics/dmegc-18650-cell.jpg";
+import dmegc21700CellImg from "./electronics/dmegc-21700-cell.jpg";
+import norda21700CellImg from "./electronics/norda-21700-cell.webp";
+import norda18650CellImg from "./electronics/norda-18650-cell.webp";
+import panasonic21700CellImg from "./electronics/panasonic-21700-cell.jpg";
+import gl12BreadboardImg from "./electronics/gl12-breadboard.jpg";
+import jumperCablesPhotoImg from "./electronics/jumper-cables.jpg";
+import maleBergStripPhotoImg from "./electronics/male-berg-strip.jpg";
+import femaleBergStripPhotoImg from "./electronics/female-berg-strip.jpg";
+import bergStripHeadersImg from "./electronics/berg-strip-headers.jpg";
+
 import dmegc18650_2600Img from "./electronics/dmegc-18650-2600.svg";
 import dmegc18650_2900Img from "./electronics/dmegc-18650-2900.svg";
 import dmegc18650_3200Img from "./electronics/dmegc-18650-3200.svg";
@@ -57,31 +72,50 @@ export const PRODUCT_PHOTOS = {
   fasteners: fastenersImg,
   pcb: pcbImg,
 
-  // Screws
+  // Screws (Verified Industrial Photography)
   slottedChhd: slottedChhdImg,
   panHead: panHeadImg,
+  panHeadAngle: panHeadImg,
   countersunkCsk: countersunkCskImg,
   selfTappingPan: selfTappingPanImg,
   selfTappingCsk: selfTappingCskImg,
   laptopMobile: laptopMobileImg,
+  laptopMobilePack: laptopMobileImg,
   drywallGypsum: drywallGypsumImg,
+  drywallGypsumAngle: drywallGypsumImg,
   selfDrillingPan: selfDrillingPanImg,
+  selfDrillingPanTip: selfDrillingPanImg,
   socketHead: socketHeadImg,
   buttonHead: buttonHeadImg,
   allenCountersunkCsk: allenCountersunkCskImg,
+  allenCountersunkCskAngle: allenCountersunkCskImg,
   hexBolt: hexBoltImg,
 
-  // Nuts, Washers, Inserts
+  // Nuts, Washers, Inserts (Verified Industrial Photography)
   hexNut: hexNutImg,
   nylocNut: nylocNutImg,
   wingNut: wingNutImg,
+  wingNutAngle: wingNutImg,
   plainWasher: plainWasherImg,
   springWasher: springWasherImg,
   externalSerratedWasher: externalSerratedWasherImg,
+  externalSerratedWasherAngle: externalSerratedWasherImg,
   brassSlantKnurledInsert: brassSlantKnurledInsertImg,
+  brassSlantKnurledInsertAngle: brassSlantKnurledInsertImg,
   brassThreadedInsert: brassThreadedInsertImg,
+  brassThreadedInsertAngle: brassThreadedInsertImg,
 
-  // Lithium Cells
+  // Lithium Cells - Genuine Commercial Photography
+  dmegc18650_2600Cell: dmegc18650_2600CellImg,
+  dmegc18650_2900Cell: dmegc18650_2900CellImg,
+  dmegc18650_3200Cell: dmegc18650_3200CellImg,
+  dmegc18650Cell: dmegc18650CellImg,
+  dmegc21700Cell: dmegc21700CellImg,
+  norda21700Cell: norda21700CellImg,
+  norda18650Cell: norda18650CellImg,
+  panasonic21700Cell: panasonic21700CellImg,
+
+  // Technical Vector Fallbacks
   dmegc18650_2600: dmegc18650_2600Img,
   dmegc18650_2900: dmegc18650_2900Img,
   dmegc18650_3200: dmegc18650_3200Img,
@@ -91,6 +125,11 @@ export const PRODUCT_PHOTOS = {
   norda18650_2600: norda18650_2600Img,
 
   // Electronic Components
+  gl12Breadboard: gl12BreadboardImg,
+  jumperCablesPhoto: jumperCablesPhotoImg,
+  maleBergStripPhoto: maleBergStripPhotoImg,
+  femaleBergStripPhoto: femaleBergStripPhotoImg,
+  bergStripHeaders: bergStripHeadersImg,
   breadboardGl12: breadboardGl12Img,
   jumperCables: jumperCablesImg,
   maleBergStrip: maleBergStripImg,
@@ -98,7 +137,26 @@ export const PRODUCT_PHOTOS = {
 };
 
 /**
- * Returns an appropriate SVG or image for a given product slug and category.
+ * Strict helper to identify text-only electronic products (Categories 3, 4, 5, 6).
+ * No product photos, thumbnails, image placeholders, or empty image containers.
+ */
+export function isTextOnlyProduct(product) {
+  if (!product) return false;
+  if (product.isTextOnly === true || product.subcategory?.textOnly === true) return true;
+  const sub = (product.subcategory?.slug || "").toLowerCase();
+  const slug = (product.slug || "").toLowerCase();
+  return (
+    sub.startsWith("hvnex-") ||
+    sub === "hvnex-microcontrollers" ||
+    sub === "hvnex-motor-drivers" ||
+    sub === "hvnex-plc-controllers" ||
+    sub === "hvnex-buck-converters" ||
+    slug.startsWith("hvnex-")
+  );
+}
+
+/**
+ * Returns an appropriate photo or visual for a given product.
  * Strictly adheres to rule: Electronic Categories 3, 4, 5, 6 return null (NO images).
  */
 export function getProductVisual(product) {
@@ -121,7 +179,7 @@ export function getProductVisual(product) {
 
   if (product.imageUrl) return product.imageUrl;
 
-  // Screws catalog matching
+  // Screws catalog matching (Verified Industrial Photography)
   if (slug.includes("slotted-chhd")) return slottedChhdImg;
   if (slug.includes("pan-head")) return panHeadImg;
   if (slug.includes("countersunk-csk") && !slug.includes("allen")) return countersunkCskImg;
@@ -149,20 +207,24 @@ export function getProductVisual(product) {
   if (slug.includes("slant-knurled")) return brassSlantKnurledInsertImg;
   if (slug.includes("brass") || slug.includes("insert")) return brassThreadedInsertImg;
 
-  // Batteries
-  if (slug.includes("dmegc") && slug.includes("18650") && slug.includes("2600")) return dmegc18650_2600Img;
-  if (slug.includes("dmegc") && slug.includes("18650") && slug.includes("2900")) return dmegc18650_2900Img;
-  if (slug.includes("dmegc") && slug.includes("18650") && slug.includes("3200")) return dmegc18650_3200Img;
-  if (slug.includes("dmegc") && slug.includes("21700")) return dmegc21700_4500Img;
-  if (slug.includes("panasonic") && slug.includes("21700")) return panasonic21700_4500Img;
-  if (slug.includes("norda") && slug.includes("21700")) return norda21700_4500Img;
-  if (slug.includes("norda") && slug.includes("18650")) return norda18650_2600Img;
+  // Batteries - Authentic Manufacturer Photography
+  if (slug.includes("dmegc") && slug.includes("18650")) {
+    if (slug.includes("2600")) return dmegc18650_2600CellImg;
+    if (slug.includes("2900")) return dmegc18650_2900CellImg;
+    if (slug.includes("3200")) return dmegc18650_3200CellImg;
+    return dmegc18650CellImg;
+  }
+  if (slug.includes("dmegc") && slug.includes("21700")) return dmegc21700CellImg;
+  if (slug.includes("panasonic") && slug.includes("21700")) return panasonic21700CellImg;
+  if (slug.includes("norda") && slug.includes("21700")) return norda21700CellImg;
+  if (slug.includes("norda") && slug.includes("18650")) return norda18650CellImg;
 
-  // Components
-  if (slug.includes("breadboard")) return breadboardGl12Img;
-  if (slug.includes("jumper")) return jumperCablesImg;
-  if (slug.includes("male-berg")) return maleBergStripImg;
-  if (slug.includes("female-berg")) return femaleBergStripImg;
+  // Components - Studio Photography
+  if (slug.includes("breadboard")) return gl12BreadboardImg;
+  if (slug.includes("jumper")) return jumperCablesPhotoImg;
+  if (slug.includes("male-berg")) return maleBergStripPhotoImg;
+  if (slug.includes("female-berg")) return femaleBergStripPhotoImg;
+  if (slug.includes("berg")) return maleBergStripPhotoImg || bergStripHeadersImg;
 
   // Existing photographed items (legacy)
   if (slug.includes("arduino-uno")) return arduinoImg;
@@ -178,6 +240,10 @@ export function getProductVisual(product) {
  * Strictly returns null for electronic categories 3, 4, 5, 6 (no images / no placeholders).
  */
 export function ComponentIllustration({ type, brand = "VERTEX", specs = {}, className = "" }) {
+  if (type === "text-only" || type === "hvnex" || brand === "HVNEX") {
+    return null;
+  }
+
   if (type === "battery") {
     return (
       <svg
@@ -255,4 +321,3 @@ export function ComponentIllustration({ type, brand = "VERTEX", specs = {}, clas
     </svg>
   );
 }
-

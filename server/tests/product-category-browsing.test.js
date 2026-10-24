@@ -29,6 +29,8 @@ describe("Customer Product Browsing & Category Integration Test Suite", () => {
     test("accepts valid category filtering and search queries", () => {
       const parsed = listProductsQuerySchema.parse({
         category: "fasteners",
+        subcat: "screws-hex-allen",
+        inStockOnly: "true",
         q: "socket head",
         brand: "VERTEX",
         sort: "price_asc",
@@ -36,11 +38,22 @@ describe("Customer Product Browsing & Category Integration Test Suite", () => {
         limit: "24",
       });
       assert.strictEqual(parsed.category, "fasteners");
+      assert.strictEqual(parsed.subcat, "screws-hex-allen");
+      assert.strictEqual(parsed.inStockOnly, true);
       assert.strictEqual(parsed.q, "socket head");
       assert.strictEqual(parsed.brand, "VERTEX");
       assert.strictEqual(parsed.sort, "price_asc");
       assert.strictEqual(parsed.page, 2);
       assert.strictEqual(parsed.limit, 24);
+    });
+
+    test("accepts subcategory alias and boolean inStockOnly", () => {
+      const parsed = listProductsQuerySchema.parse({
+        subcategory: "microcontrollers",
+        inStockOnly: true,
+      });
+      assert.strictEqual(parsed.subcategory, "microcontrollers");
+      assert.strictEqual(parsed.inStockOnly, true);
     });
 
     test("rejects invalid sort options and pagination values", () => {

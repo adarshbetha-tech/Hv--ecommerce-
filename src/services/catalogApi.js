@@ -101,7 +101,7 @@ export async function getProducts({
   inStockOnly = false,
   sort = "newest",
   page = 1,
-  limit = 12,
+  limit = 100,
   officialOnly = true,
 } = {}) {
   if (isMockApiEnabled()) {

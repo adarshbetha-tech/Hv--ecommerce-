@@ -72,10 +72,11 @@ export async function getCategoryBySlug(slug) {
     throw error;
   }
 
-  // Fetch active products in this category
+  // Fetch active products in this category or its subcategories
+  const categoryIds = [category.id, ...(category.children || []).map((c) => c.id)];
   const products = await prisma.product.findMany({
     where: {
-      categoryId: category.id,
+      categoryId: { in: categoryIds },
       isActive: true,
     },
     include: {

@@ -5,7 +5,7 @@
  * with hierarchical parent/subcategory navigation, live search, faceted filters,
  * sorting, grid/list view toggle, and URL query persistence.
  * 
- * Updated with OnlyScrews.in inspired screw catalogue browsing patterns:
+ * Professional industrial hardware and electronics browsing patterns:
  * - Dedicated screw-type category navigation & subcategory filters
  * - Authentic screw drive and head type filter chips
  * - Clean industrial hardware grid presentation
@@ -22,7 +22,7 @@ import {
   SCREW_HEAD_GROUPS,
   extractScrewFilterOptions,
 } from "../../utils/screwCategoriesData";
-
+import { expandProductSizeListings } from "../../mock/mockData";
 
 
 /**
@@ -45,7 +45,19 @@ function isTextOnlyProduct(product) {
 function isFastenerProduct(product) {
   if (!product) return false;
   const cat = (product.category?.slug || product.categoryId || "").toLowerCase();
-  return cat === "fasteners" || cat === "cat-fasteners" || cat === "nuts" || cat === "cat-nuts";
+  const sub = (product.subcategory?.slug || product.subcategory?.id || "").toLowerCase();
+  return (
+    cat === "fasteners" ||
+    cat === "cat-fasteners" ||
+    cat === "nuts" ||
+    cat === "cat-nuts" ||
+    sub === "nuts" ||
+    sub === "washers" ||
+    sub === "brass-inserts" ||
+    sub.startsWith("screws-") ||
+    product.categoryIds?.includes("cat-fasteners") ||
+    product.categoryIds?.includes("cat-nuts")
+  );
 }
 
 /**
@@ -174,6 +186,7 @@ export default function ProductListPage({
   // Filter & Search states
   const [selectedCategory, setSelectedCategory] = useState(initialCategory || "all");
   const [selectedSubcat, setSelectedSubcat] = useState(initialSubcat || "all");
+  const [selectedProductSubtype, setSelectedProductSubtype] = useState("all");
   const [selectedBrand, setSelectedBrand] = useState("all");
   const [selectedDrive, setSelectedDrive] = useState("all");
   const [selectedHead, setSelectedHead] = useState("all");
@@ -224,6 +237,7 @@ export default function ProductListPage({
     const params = new URLSearchParams();
     if (selectedCategory && selectedCategory !== "all") params.set("category", selectedCategory);
     if (selectedSubcat && selectedSubcat !== "all") params.set("subcat", selectedSubcat);
+    if (selectedProductSubtype && selectedProductSubtype !== "all") params.set("subtype", selectedProductSubtype);
     if (selectedBrand && selectedBrand !== "all") params.set("brand", selectedBrand);
     if (selectedDrive && selectedDrive !== "all") params.set("drive", selectedDrive);
     if (selectedHead && selectedHead !== "all") params.set("head", selectedHead);
@@ -244,6 +258,7 @@ export default function ProductListPage({
   }, [
     selectedCategory,
     selectedSubcat,
+    selectedProductSubtype,
     selectedBrand,
     selectedDrive,
     selectedHead,
@@ -284,8 +299,8 @@ export default function ProductListPage({
   // Derive list of all unique brands in the catalog (official products only)
   const availableBrands = useMemo(() => {
     const brandsSet = new Set();
-    products
-      .filter((p) => p.isOfficialCatalog !== false)
+    (products || [])
+      .filter((p) => p.isOfficialCatalog !== false && !p.isTestFixture && !p.isCompatibilityFixture)
       .forEach((p) => {
         if (p.brand) brandsSet.add(p.brand);
       });
@@ -297,6 +312,9 @@ export default function ProductListPage({
     return (
       selectedCategory === "fasteners" ||
       selectedCategory === "cat-fasteners" ||
+      selectedCategory === "nuts" ||
+      selectedCategory === "cat-nuts" ||
+      selectedSubcat === "screws" ||
       selectedSubcat.startsWith("screws-") ||
       selectedSubcat === "nuts" ||
       selectedSubcat === "washers" ||
@@ -306,7 +324,8 @@ export default function ProductListPage({
 
   // Filter products locally (or from props)
   const filteredProducts = useMemo(() => {
-    let list = [...products];
+    // Ensure customer-facing catalogue contains only official products (19 Fasteners, 20 Electronics)
+    let list = (products || []).filter((p) => !p.isTestFixture && !p.isCompatibilityFixture);
 
     // 0. Only official catalog products (excludes demo / test fixtures)
     list = list.filter((p) => p.isOfficialCatalog !== false);
@@ -358,24 +377,39 @@ export default function ProductListPage({
     // 2. Parent Category
     if (selectedCategory && selectedCategory !== "all") {
       const catSlug = selectedCategory.toLowerCase();
-      list = list.filter(
-        (p) =>
+      list = list.filter((p) => {
+        if (catSlug === "nuts" || catSlug === "cat-nuts") {
+          return (
+            p.category?.slug?.toLowerCase() === "nuts" ||
+            p.categoryId?.toLowerCase() === "cat-nuts" ||
+            p.subcategory?.slug?.toLowerCase() === "nuts" ||
+            p.subcategory?.id === "sub-nuts" ||
+            p.categoryIds?.includes("cat-nuts")
+          );
+        }
+        return (
           p.category?.slug?.toLowerCase() === catSlug ||
-          p.categoryId?.toLowerCase() === catSlug
-      );
+          p.categoryId?.toLowerCase() === catSlug ||
+          p.categoryIds?.map((c) => c.toLowerCase()).includes(catSlug)
+        );
+      });
     }
 
-    // 3. Subcategory
+    // 3. Subcategory & Hardware Group Filtering
     if (selectedSubcat && selectedSubcat !== "all") {
       const subSlug = selectedSubcat.toLowerCase();
-      list = list.filter(
-        (p) =>
-          p.subcategory?.slug?.toLowerCase() === subSlug ||
-          p.subcategory?.id?.toLowerCase() === subSlug
-      );
+      if (subSlug === "screws") {
+        list = list.filter((p) => p.subcategory?.slug?.toLowerCase().startsWith("screws-"));
+      } else {
+        list = list.filter(
+          (p) =>
+            p.subcategory?.slug?.toLowerCase() === subSlug ||
+            p.subcategory?.id?.toLowerCase() === subSlug
+        );
+      }
     }
 
-    // 4. Drive Type Filter (OnlyScrews pattern)
+    // 4. Drive Type Filter (Hex, Cross, Slotted)
     if (selectedDrive && selectedDrive !== "all") {
       const driveTerm = selectedDrive.toLowerCase();
       list = list.filter((p) => {
@@ -520,6 +554,7 @@ export default function ProductListPage({
   const handleClearAllFilters = () => {
     setSelectedCategory("all");
     setSelectedSubcat("all");
+    setSelectedProductSubtype("all");
     setSelectedBrand("all");
     setSelectedDrive("all");
     setSelectedHead("all");
@@ -535,13 +570,34 @@ export default function ProductListPage({
 
   const handleCategoryTabClick = (catSlug) => {
     setSelectedCategory(catSlug);
-    setSelectedSubcat("all"); // Reset subcategory when switching parent
+    setSelectedSubcat("all");
+    setSelectedProductSubtype("all");
     setSelectedDrive("all");
     setSelectedHead("all");
     setSelectedDiameter("all");
     setSelectedLength("all");
     setSelectedMaterial("all");
   };
+
+
+  // Derive items for product cards (expands into individual verified size cards when viewing a subtype)
+  const displayProducts = useMemo(() => {
+    if (selectedProductSubtype && selectedProductSubtype !== "all") {
+      const target = filteredProducts.find(
+        (p) => p.slug === selectedProductSubtype || p.id === selectedProductSubtype
+      );
+      if (target) {
+        return expandProductSizeListings([target]);
+      }
+    }
+    return filteredProducts;
+  }, [filteredProducts, selectedProductSubtype]);
+
+  const displayCount = displayProducts.length;
+  const selectedSubtypeProduct = useMemo(() => {
+    if (!selectedProductSubtype || selectedProductSubtype === "all") return null;
+    return products.find((p) => p.slug === selectedProductSubtype || p.id === selectedProductSubtype) || null;
+  }, [products, selectedProductSubtype]);
 
   const hasActiveFilters =
     (selectedCategory && selectedCategory !== "all") ||
@@ -561,7 +617,7 @@ export default function ProductListPage({
 
   return (
     <div className="vtx-catalog-page" data-testid="product-catalogue-page">
-      {/* Breadcrumb Navigation */}
+      {/* Multi-Level Hierarchy Breadcrumb Navigation */}
       <nav className="vtx-breadcrumbs" aria-label="Breadcrumb">
         <div className="vtx-breadcrumbs-inner">
           <button
@@ -574,47 +630,114 @@ export default function ProductListPage({
           <span className="vtx-breadcrumb-separator" aria-hidden="true">/</span>
           <button
             type="button"
-            className={`vtx-breadcrumb-link ${selectedCategory === "all" ? "active" : ""}`}
+            className={`vtx-breadcrumb-link ${selectedCategory === "all" && selectedSubcat === "all" && selectedProductSubtype === "all" ? "active" : ""}`}
             onClick={() => handleCategoryTabClick("all")}
           >
             Catalog
           </button>
-          {activeParentCategory && (
+
+          {/* Screws branch: Catalog -> Screws -> [Screw Type] -> [Product Subtype] */}
+          {(selectedSubcat === "screws" || selectedSubcat.startsWith("screws-")) ? (
             <>
               <span className="vtx-breadcrumb-separator" aria-hidden="true">/</span>
               <button
                 type="button"
-                className={`vtx-breadcrumb-link ${selectedSubcat === "all" ? "active" : ""}`}
+                className={`vtx-breadcrumb-link ${selectedSubcat === "screws" && selectedProductSubtype === "all" ? "active" : ""}`}
                 onClick={() => {
-                  setSelectedSubcat("all");
+                  setSelectedCategory("fasteners");
+                  setSelectedSubcat("screws");
                   setSelectedHead("all");
+                  setSelectedProductSubtype("all");
                 }}
               >
-                {activeParentCategory.name}
+                Screws
               </button>
-            </>
-          )}
-          {selectedSubcat !== "all" && (
-            <>
-              <span className="vtx-breadcrumb-separator" aria-hidden="true">/</span>
-              {selectedHead !== "all" && selectedHead !== "browse-all" ? (
+              {selectedSubcat.startsWith("screws-") && (
                 <>
+                  <span className="vtx-breadcrumb-separator" aria-hidden="true">/</span>
                   <button
                     type="button"
-                    className="vtx-breadcrumb-link"
-                    onClick={() => setSelectedHead("all")}
+                    className={`vtx-breadcrumb-link ${selectedProductSubtype === "all" && (selectedHead === "all" || selectedHead === "browse-all") ? "active" : ""}`}
+                    onClick={() => {
+                      setSelectedHead("all");
+                      setSelectedProductSubtype("all");
+                    }}
                   >
                     {activeSubcatObj?.name || selectedSubcat}
                   </button>
+                </>
+              )}
+              {selectedHead !== "all" && selectedHead !== "browse-all" ? (
+                <>
                   <span className="vtx-breadcrumb-separator" aria-hidden="true">/</span>
                   <span className="vtx-breadcrumb-current" aria-current="page">
                     {selectedHead}
                   </span>
                 </>
-              ) : (
-                <span className="vtx-breadcrumb-current">
-                  {activeSubcatObj?.name || selectedSubcat}
-                </span>
+              ) : selectedProductSubtype !== "all" ? (
+                <>
+                  <span className="vtx-breadcrumb-separator" aria-hidden="true">/</span>
+                  <span className="vtx-breadcrumb-current">
+                    {selectedSubtypeProduct?.name || selectedProductSubtype}
+                  </span>
+                </>
+              ) : null}
+            </>
+          ) : (
+            <>
+              {activeParentCategory && (
+                <>
+                  <span className="vtx-breadcrumb-separator" aria-hidden="true">/</span>
+                  <button
+                    type="button"
+                    className={`vtx-breadcrumb-link ${selectedSubcat === "all" && selectedProductSubtype === "all" ? "active" : ""}`}
+                    onClick={() => {
+                      setSelectedSubcat("all");
+                      setSelectedHead("all");
+                      setSelectedProductSubtype("all");
+                    }}
+                  >
+                    {activeParentCategory.name}
+                  </button>
+                </>
+              )}
+              {selectedSubcat !== "all" && (
+                <>
+                  <span className="vtx-breadcrumb-separator" aria-hidden="true">/</span>
+                  {selectedHead !== "all" && selectedHead !== "browse-all" ? (
+                    <>
+                      <button
+                        type="button"
+                        className="vtx-breadcrumb-link"
+                        onClick={() => setSelectedHead("all")}
+                      >
+                        {activeSubcatObj?.name || selectedSubcat}
+                      </button>
+                      <span className="vtx-breadcrumb-separator" aria-hidden="true">/</span>
+                      <span className="vtx-breadcrumb-current" aria-current="page">
+                        {selectedHead}
+                      </span>
+                    </>
+                  ) : selectedProductSubtype !== "all" ? (
+                    <>
+                      <button
+                        type="button"
+                        className="vtx-breadcrumb-link"
+                        onClick={() => setSelectedProductSubtype("all")}
+                      >
+                        {activeSubcatObj?.name || selectedSubcat}
+                      </button>
+                      <span className="vtx-breadcrumb-separator" aria-hidden="true">/</span>
+                      <span className="vtx-breadcrumb-current">
+                        {selectedSubtypeProduct?.name || selectedProductSubtype}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="vtx-breadcrumb-current">
+                      {activeSubcatObj?.name || selectedSubcat}
+                    </span>
+                  )}
+                </>
               )}
             </>
           )}
@@ -650,9 +773,9 @@ export default function ProductListPage({
           </div>
           <div className="vtx-catalog-header-actions">
             <div className="vtx-catalog-count-pill" aria-live="polite">
-            <span className="vtx-count-number">{filteredProducts.length}</span>
+            <span className="vtx-count-number">{displayCount}</span>
             <span className="vtx-count-label">
-              {filteredProducts.length === 1 ? "Product Found" : "Products Found"}
+              {displayCount === 1 ? "Product Found" : (selectedProductSubtype !== "all" ? "Verified Sizes Available" : "Products Found")}
             </span>
           </div>
             <button
@@ -691,12 +814,12 @@ export default function ProductListPage({
         </div>
       </section>
 
-      {/* Screws & Fasteners Subcategory Strip (OnlyScrews inspired quick category navigation) */}
+      {/* Subcategory Strip with Fastener Hierarchy Navigation */}
       {availableSubcategories.length > 0 && (
         <section className="vtx-subcat-strip" aria-label="Subcategories">
           <div className="vtx-subcat-inner">
             <span className="vtx-subcat-label">
-              {isViewingFastenersOrScrews ? "Screw & Fastener Types:" : "Subcategories:"}
+              {isViewingFastenersOrScrews ? "Fasteners:" : "Subcategories:"}
             </span>
             <button
               type="button"
@@ -705,8 +828,17 @@ export default function ProductListPage({
             >
               All {activeParentCategory ? activeParentCategory.name : "Subcategories"}
             </button>
+            {isViewingFastenersOrScrews && (
+              <button
+                type="button"
+                aria-label="All Screws"
+                className={`vtx-subcat-pill ${selectedSubcat === "screws" ? "is-active" : ""}`}
+                onClick={() => setSelectedSubcat("screws")}
+              >
+                🔩 All Screws
+              </button>
+            )}
             {availableSubcategories.map((sub) => {
-              // Add subtle drive icon for screw types
               let icon = "";
               if (sub.slug === "screws-flat-slotted") icon = "━ ";
               else if (sub.slug === "screws-cross-phillips") icon = "✚ ";
@@ -877,7 +1009,10 @@ export default function ProductListPage({
                 value={selectedSubcat}
                 onChange={(e) => setSelectedSubcat(e.target.value)}
               >
-                <option value="all">All Subcategories</option>
+                <option value="all">All {isViewingFastenersOrScrews ? "Fasteners" : "Subcategories"}</option>
+                {isViewingFastenersOrScrews && (
+                  <option value="screws">Screws (All Drives)</option>
+                )}
                 {availableSubcategories.map((s) => (
                   <option key={s.slug} value={s.slug}>
                     {s.name}
@@ -887,7 +1022,7 @@ export default function ProductListPage({
             </div>
           )}
 
-          {/* Screw Drive Type Filter (OnlyScrews inspired) */}
+          {/* Screw Drive Type Filter */}
           {isViewingFastenersOrScrews && (
             <div className="vtx-filter-group">
               <label className="vtx-filter-title" htmlFor="drive-filter-select">
@@ -907,7 +1042,7 @@ export default function ProductListPage({
             </div>
           )}
 
-          {/* Screw Head Type Filter (OnlyScrews inspired) */}
+          {/* Screw Head Type Filter */}
           {isViewingFastenersOrScrews && (
             <div className="vtx-filter-group">
               <label className="vtx-filter-title" htmlFor="head-filter-select">
@@ -1147,6 +1282,29 @@ export default function ProductListPage({
             </div>
           )}
 
+          {/* Visual Multi-Level Hierarchy Navigation (Level 4 Verified Size Catalogue) */}
+          {!activeSearch && selectedProductSubtype !== "all" && selectedSubtypeProduct && (
+            <div className="vtx-hierarchy-container" data-testid="catalogue-hierarchy-section">
+              <div className="vtx-hierarchy-level vtx-hierarchy-level-4">
+                <div className="vtx-hierarchy-header">
+                  <div className="vtx-hierarchy-title-col">
+                    <span className="vtx-hierarchy-level-tag">Level 4 — Verified Size Catalogue</span>
+                    <h2 className="vtx-hierarchy-title">{selectedSubtypeProduct.name} — Verified Sizes</h2>
+                    <p className="vtx-hierarchy-sub">
+                      Displaying all {selectedSubtypeProduct.variants?.length || 1} factory-verified size and pack configurations. Each size is an individual purchasable product listing.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="vtx-hierarchy-back-btn"
+                    onClick={() => setSelectedProductSubtype("all")}
+                  >
+                    ← Back to {activeSubcatObj?.name || "Subtypes"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Controls Bar: Active Filter Chips, Sort Dropdown, Grid/List view */}
           <div className="vtx-catalog-controls-bar">
             {/* Active filter chips */}
@@ -1346,7 +1504,7 @@ export default function ProductListPage({
             /* Product Catalogue: Fasteners First, Electronic Products Second */
             viewMode === "list" ? (
               <div className="product-list-view">
-                {filteredProducts.map((p, idx) => (
+                {displayProducts.map((p, idx) => (
                   isTextOnlyProduct(p) ? (
                     <TextProductRow
                       key={p.id || p.slug}
@@ -1371,45 +1529,93 @@ export default function ProductListPage({
             ) : (
               /* Grid Mode with Structured Catalogue Sections */
               <div className="vtx-catalogue-sections-wrap">
-                {/* 1. Fasteners Section (FIRST per PDF specification) */}
-                {filteredProducts.some(isFastenerProduct) && (
+                {/* Level 4: Individual Verified Size Listings Grid */}
+                {selectedProductSubtype !== "all" ? (
                   <section className="vtx-catalogue-section vtx-fasteners-catalogue-section">
                     <div className="vtx-section-banner">
                       <div className="vtx-section-banner-title">
-                        <span className="vtx-section-num-tag">SECTION 1</span>
-                        <h2>Precision Fasteners & Screws</h2>
+                        <span className="vtx-section-num-tag">VERIFIED SIZES</span>
+                        <h2>{selectedSubtypeProduct?.name || "Product Sizes"}</h2>
                       </div>
                       <span className="vtx-section-count-tag">
-                        {filteredProducts.filter(isFastenerProduct).length} Products
+                        {displayProducts.length} Verified Sizes Available
                       </span>
                     </div>
 
                     <div className="product-grid">
-                      {filteredProducts.filter(isFastenerProduct).map((p, idx) => (
+                      {displayProducts.map((p, idx) => (
                         <ProductCard
-                          key={p.id || p.slug}
+                          key={p.id || p.sku || idx}
                           product={p}
                           viewMode="grid"
-                          onAddToCart={onAddToCart}
-                          onViewDetails={onViewDetails}
+                          onAddToCart={(prod, v) => onAddToCart && onAddToCart(prod, p.selectedVariant || v)}
+                          onViewDetails={(prod) =>
+                            onViewDetails &&
+                            onViewDetails({ ...prod, selectedVariantId: p.selectedVariantId, variantId: p.selectedVariantId })
+                          }
                           onRequestQuote={(prod) => setQuoteProduct(prod)}
                           revealIndex={idx}
                         />
                       ))}
                     </div>
                   </section>
-                )}
+                ) : (
+                  <>
+                    {/* 1. Fasteners Section (FIRST per PDF specification) */}
+                    {displayProducts.some(isFastenerProduct) && (
+                      <section className="vtx-catalogue-section vtx-fasteners-catalogue-section">
+                        <div className="vtx-section-banner">
+                          <div className="vtx-section-banner-title">
+                            <span className="vtx-section-num-tag">
+                              {selectedCategory === "nuts" || selectedCategory === "cat-nuts" ? "NUTS" : "FASTENERS"}
+                            </span>
+                            <h2>
+                              {selectedCategory === "nuts" || selectedCategory === "cat-nuts" ? "Nut Types & Lock Assemblies" : "Precision Fasteners & Screws"}
+                            </h2>
+                          </div>
+                          <span className="vtx-section-count-tag">
+                            {displayProducts.filter(isFastenerProduct).length} Products
+                          </span>
+                        </div>
 
-                {/* 2. Electronic Products Section (SECOND per PDF specification) */}
-                {filteredProducts.some((p) => !isFastenerProduct(p)) && (
+                        <div className="product-grid">
+                          {displayProducts.filter(isFastenerProduct).map((p, idx) => (
+                            <ProductCard
+                              key={p.id || p.slug}
+                              product={p}
+                              viewMode="grid"
+                              onAddToCart={onAddToCart}
+                              onViewDetails={onViewDetails}
+                              onRequestQuote={(prod) => setQuoteProduct(prod)}
+                              revealIndex={idx}
+                            />
+                          ))}
+                        </div>
+                      </section>
+                    )}
+
+                    {/* 2. Electronic Products Section (SECOND per PDF specification) */}
+                    {displayProducts.some((p) => !isFastenerProduct(p)) && (
                   <section className="vtx-catalogue-section vtx-electronics-catalogue-section">
                     <div className="vtx-section-banner vtx-section-banner-electronics">
                       <div className="vtx-section-banner-title">
-                        <span className="vtx-section-num-tag">SECTION 2</span>
-                        <h2>Electronic Products & Embedded Systems</h2>
+                        <span className="vtx-section-num-tag">
+                          {selectedCategory === "tools"
+                            ? "TOOLS"
+                            : selectedCategory === "automation"
+                            ? "AUTOMATION"
+                            : "ELECTRONIC PRODUCTS"}
+                        </span>
+                        <h2>
+                          {selectedCategory === "tools"
+                            ? "Precision Engineering Tools"
+                            : selectedCategory === "automation"
+                            ? "Automation & Wiring Components"
+                            : "Electronic Products & Embedded Systems"}
+                        </h2>
                       </div>
                       <span className="vtx-section-count-tag">
-                        {filteredProducts.filter((p) => !isFastenerProduct(p)).length} Products
+                        {displayProducts.filter((p) => !isFastenerProduct(p)).length} Products
                       </span>
                     </div>
 
@@ -1420,7 +1626,6 @@ export default function ProductListPage({
                         {filteredProducts.filter((p) => p.subcategory?.slug === "hvnex-microcontrollers").length > 0 && (
                           <div className="vtx-text-category-card">
                             <div className="vtx-text-category-header">
-                              <span className="vtx-text-cat-num">3</span>
                               <div className="vtx-text-cat-headings">
                                 <h3>HVNEX – Microcontroller Boards</h3>
                                 <span className="vtx-text-cat-subtitle">Compact Technical Listing • No Images</span>
@@ -1446,7 +1651,6 @@ export default function ProductListPage({
                         {filteredProducts.filter((p) => p.subcategory?.slug === "hvnex-motor-drivers").length > 0 && (
                           <div className="vtx-text-category-card">
                             <div className="vtx-text-category-header">
-                              <span className="vtx-text-cat-num">4</span>
                               <div className="vtx-text-cat-headings">
                                 <h3>HVNEX – DC Motor Drivers</h3>
                                 <span className="vtx-text-cat-subtitle">Compact Technical Listing • No Images</span>
@@ -1472,7 +1676,6 @@ export default function ProductListPage({
                         {filteredProducts.filter((p) => p.subcategory?.slug === "hvnex-plc-controllers").length > 0 && (
                           <div className="vtx-text-category-card">
                             <div className="vtx-text-category-header">
-                              <span className="vtx-text-cat-num">5</span>
                               <div className="vtx-text-cat-headings">
                                 <h3>HVNEX – PLC Controller</h3>
                                 <span className="vtx-text-cat-subtitle">Compact Technical Listing • No Images</span>
@@ -1498,7 +1701,6 @@ export default function ProductListPage({
                         {filteredProducts.filter((p) => p.subcategory?.slug === "hvnex-buck-converters").length > 0 && (
                           <div className="vtx-text-category-card">
                             <div className="vtx-text-category-header">
-                              <span className="vtx-text-cat-num">6</span>
                               <div className="vtx-text-cat-headings">
                                 <h3>HVNEX – DC-DC Buck Converters</h3>
                                 <span className="vtx-text-cat-subtitle">Compact Technical Listing • No Images</span>
@@ -1530,7 +1732,6 @@ export default function ProductListPage({
                         ).length > 0 && (
                           <div className="vtx-text-category-card">
                             <div className="vtx-text-category-header">
-                              <span className="vtx-text-cat-num">HVNEX</span>
                               <div className="vtx-text-cat-headings">
                                 <h3>HVNEX Specialized Controllers</h3>
                                 <span className="vtx-text-cat-subtitle">Technical Listing • No Images</span>
@@ -1567,7 +1768,6 @@ export default function ProductListPage({
                         {filteredProducts.filter((p) => p.subcategory?.slug === "lithium-ion-batteries").length > 0 && (
                           <div className="vtx-subcat-group-block">
                             <div className="vtx-subcat-group-header">
-                              <span className="vtx-group-badge">Category 1</span>
                               <h3 className="vtx-group-title">Lithium-Ion Batteries / Cells</h3>
                               <span className="vtx-group-count">
                                 {filteredProducts.filter((p) => p.subcategory?.slug === "lithium-ion-batteries").length} Verified Cells
@@ -1595,7 +1795,6 @@ export default function ProductListPage({
                         {filteredProducts.filter((p) => p.subcategory?.slug === "electronic-components").length > 0 && (
                           <div className="vtx-subcat-group-block">
                             <div className="vtx-subcat-group-header">
-                              <span className="vtx-group-badge">Category 2</span>
                               <h3 className="vtx-group-title">Electronic Components</h3>
                               <span className="vtx-group-count">
                                 {filteredProducts.filter((p) => p.subcategory?.slug === "electronic-components").length} Components
@@ -1628,7 +1827,6 @@ export default function ProductListPage({
                         ).length > 0 && (
                           <div className="vtx-subcat-group-block">
                             <div className="vtx-subcat-group-header">
-                              <span className="vtx-group-badge">Hardware</span>
                               <h3 className="vtx-group-title">Additional Prototyping Electronics</h3>
                               <span className="vtx-group-count">
                                 {filteredProducts.filter((p) =>
@@ -1665,8 +1863,10 @@ export default function ProductListPage({
                     )}
                   </section>
                 )}
-              </div>
-            )
+              </>
+            )}
+          </div>
+        )
           )}
         </main>
       </div>

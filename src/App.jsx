@@ -25,6 +25,7 @@ import FloatingSupport from "./components/Home/FloatingSupport";
 import PolicyModal from "./components/Home/PolicyModal";
 import SiteFooter from "./components/Home/SiteFooter";
 import ScrollReveal from "./components/Common/ScrollReveal";
+import WebsiteTour from "./components/Common/WebsiteTour";
 import { subscribeNewsletter } from "./services/newsletterApi";
 import { getCurrentUser, logoutUser } from "./services/authApi";
 import { getCategories, getProducts, getProductBySlug } from "./services/catalogApi";
@@ -181,6 +182,14 @@ export default function App() {
     return null;
   });
 
+  const [selectedVariantId, setSelectedVariantId] = useState(() => {
+    if (typeof window !== "undefined" && window.location.search) {
+      const p = new URLSearchParams(window.location.search);
+      return p.get("variant") || p.get("size") || null;
+    }
+    return null;
+  });
+
   const [selectedCatalogCategory, setSelectedCatalogCategory] = useState(() => {
     if (typeof window !== "undefined" && window.location.search) {
       const p = new URLSearchParams(window.location.search);
@@ -327,7 +336,9 @@ export default function App() {
         setCurrentView("orders");
       } else if (path.startsWith("/product/")) {
         const slug = decodeURIComponent(path.replace("/product/", "").split("/")[0] || "");
+        const p = new URLSearchParams(window.location.search);
         setSelectedProductSlug(slug);
+        setSelectedVariantId(p.get("variant") || p.get("size") || null);
         setCurrentView("product-detail");
       } else if (path === "/products" || path === "/catalog") {
         const p = new URLSearchParams(window.location.search);
@@ -361,7 +372,7 @@ export default function App() {
       setProductsLoading(true);
       setProductsError(null);
       const params = {
-        limit: 12,
+        limit: currentView === "products" ? 100 : 12,
         officialOnly: true,
       };
       if (activeSearch) params.q = activeSearch;
@@ -377,7 +388,7 @@ export default function App() {
     } finally {
       setProductsLoading(false);
     }
-  }, [activeSearch, selectedCategory]);
+  }, [activeSearch, selectedCategory, currentView]);
 
   useEffect(() => {
     loadCategories();
@@ -528,10 +539,13 @@ export default function App() {
     }
   };
 
-  const handleOpenProductDetail = (productOrSlug) => {
+  const handleOpenProductDetail = (productOrSlug, variantId = null) => {
     const slug = typeof productOrSlug === "string" ? productOrSlug : productOrSlug.slug || productOrSlug.id;
+    const targetVariantId = variantId || (typeof productOrSlug === "object" ? productOrSlug.selectedVariantId || productOrSlug.variantId : null);
     setSelectedProductSlug(slug);
-    navigate("product-detail", "dashboard", null, slug);
+    setSelectedVariantId(targetVariantId);
+    const searchParam = targetVariantId ? `variant=${encodeURIComponent(targetVariantId)}` : "";
+    navigate("product-detail", "dashboard", null, slug, searchParam);
   };
 
   const handleNavigateCatalogWithCategory = (catSlug = "all", subcatSlug = "all") => {
@@ -1079,7 +1093,7 @@ export default function App() {
             </div>
           </div>
 
-          <form onSubmit={handleSearchSubmit} className="search-bar" role="search">
+          <form onSubmit={handleSearchSubmit} className="search-bar" role="search" data-tour="search">
             <span className="search-icon-prefix" aria-hidden="true">🔍</span>
             <input
               type="text"
@@ -1160,6 +1174,7 @@ export default function App() {
             <button
               type="button"
               className="header-action header-action-btn wishlist-action"
+              data-tour="wishlist"
               onClick={() => navigate("wishlist-page")}
               aria-label={`Saved Wishlist with ${wishlistCount} items`}
               title="View saved wishlist components"
@@ -1175,7 +1190,8 @@ export default function App() {
             <button
               type="button"
               className="header-action cart-action"
-              onClick={() => setCartOpen(true)}
+              data-tour="cart"
+              onClick={() => navigate("cart-page")}
               aria-label={`Shopping cart with ${cart?.totalQuantity || 0} items`}
               data-testid="cart-button"
             >
@@ -1710,6 +1726,7 @@ export default function App() {
         ) : (
           <ProductDetailPage
             product={detailProduct}
+            initialVariantId={selectedVariantId}
             relatedProducts={detailRelated}
             onAddToCart={handleAddToCart}
             onNavigateHome={() => navigate("home")}
@@ -1803,6 +1820,9 @@ export default function App() {
     (p) =>
       p.category?.slug === "nuts" ||
       p.categoryId === "cat-nuts" ||
+      p.subcategory?.slug === "nuts" ||
+      p.subcategory?.id === "sub-nuts" ||
+      p.categoryIds?.includes("cat-nuts") ||
       p.category?.slug?.includes("nut")
   );
 
@@ -1826,6 +1846,7 @@ export default function App() {
         onNavigate={navigate}
       />
       {renderSharedHeader()}
+      <WebsiteTour />
 
       {/* Hero Section — 4-Slide Interactive Slider */}
       <HeroSlider
@@ -1854,7 +1875,7 @@ export default function App() {
       />
 
       {/* Featured Products Section */}
-      <section className="section" id="featured-products">
+      <section className="section" id="featured-products" data-tour="products">
         <div className="section-head">
           <div style={{ display: "flex", alignItems: "baseline", gap: "12px", flexWrap: "wrap" }}>
             <h2>Featured Products</h2>
