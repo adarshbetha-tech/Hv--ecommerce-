@@ -20,7 +20,13 @@ import {
   adminCustomerParamSchema,
   adminCustomerDetailsQuerySchema,
   adminAuditLogsQuerySchema,
+  updateUserRoleSchema,
+  uploadSpecificationSchema,
+  adminPaymentsQuerySchema,
+  reconcilePaymentParamSchema,
+  reconcilePaymentSchema,
 } from "../validators/admin.validator.js";
+import { updatePaymentConfigSchema } from "../validators/payment.validator.js";
 import {
   adminQuotesQuerySchema,
   adminQuoteParamSchema,
@@ -29,6 +35,7 @@ import {
 import {
   adminNewsletterQuerySchema,
 } from "../validators/newsletter.validator.js";
+import { reviewReplacementSchema } from "../validators/order.validator.js";
 
 export const adminRouter = Router();
 
@@ -65,6 +72,17 @@ adminRouter.get(
   validateParams(adminCustomerParamSchema),
   validateQuery(adminCustomerDetailsQuerySchema),
   adminController.getCustomer
+);
+
+/**
+ * PATCH /api/admin/users/:id/role
+ * Updates a user account's system role (CUSTOMER, B2B, ADMIN) and active status with audit logging.
+ */
+adminRouter.patch(
+  "/users/:id/role",
+  validateParams(adminCustomerParamSchema),
+  validateBody(updateUserRoleSchema),
+  adminController.updateUserRole
 );
 
 
@@ -153,6 +171,27 @@ adminRouter.patch(
 );
 
 /**
+ * POST /api/admin/products/:id/specification
+ * Saves a specification document (PDF, Excel, CSV) to server storage with audit logging.
+ */
+adminRouter.post(
+  "/products/:id/specification",
+  validateParams(adminProductParamSchema),
+  validateBody(uploadSpecificationSchema),
+  adminController.uploadSpecification
+);
+
+/**
+ * DELETE /api/admin/products/:id/specification
+ * Deletes a product's stored specification document with audit logging.
+ */
+adminRouter.delete(
+  "/products/:id/specification",
+  validateParams(adminProductParamSchema),
+  adminController.deleteSpecification
+);
+
+/**
  * PATCH /api/admin/inventory/variants/:id
  * Updates variant stock quantity safely and writes an audit log record.
  */
@@ -203,4 +242,74 @@ adminRouter.get(
   validateQuery(adminNewsletterQuerySchema),
   adminController.listNewsletterSubscriptions
 );
+
+/**
+ * GET /api/admin/payments
+ * Lists all payments with aggregated summary metrics, status breakdowns, and unresolved issues.
+ */
+adminRouter.get(
+  "/payments",
+  validateQuery(adminPaymentsQuerySchema),
+  adminController.listPayments
+);
+
+/**
+ * POST /api/admin/payments/:id/reconcile
+ * Safe payment issue resolution, offline settlement recording, or boundary reconciliation with audit logging.
+ */
+adminRouter.post(
+  "/payments/:id/reconcile",
+  validateParams(reconcilePaymentParamSchema),
+  validateBody(reconcilePaymentSchema),
+  adminController.reconcilePayment
+);
+
+/**
+ * GET /api/admin/payments/config
+ * Retrieves full merchant UPI & payment configuration and audit trail.
+ */
+adminRouter.get(
+  "/payments/config",
+  adminController.getPaymentConfig
+);
+
+/**
+ * PUT /api/admin/payments/config
+ * Updates merchant UPI configuration, instructions, and static QR image with audit logging.
+ */
+adminRouter.put(
+  "/payments/config",
+  validateBody(updatePaymentConfigSchema),
+  adminController.updatePaymentConfig
+);
+
+/**
+ * DELETE /api/admin/payments/config/qr
+ * Removes uploaded static QR code image and reverts to dynamic QR generation.
+ */
+adminRouter.delete(
+  "/payments/config/qr",
+  adminController.removePaymentQr
+);
+
+/**
+ * GET /api/admin/replacements
+ * Lists all customer replacement requests with 7-day delivery eligibility status.
+ */
+adminRouter.get(
+  "/replacements",
+  adminController.listReplacements
+);
+
+/**
+ * POST /api/admin/replacements/:id/review
+ * Reviews and updates replacement status with immutable audit logging.
+ */
+adminRouter.post(
+  "/replacements/:id/review",
+  validateParams(adminOrderParamSchema),
+  validateBody(reviewReplacementSchema),
+  adminController.reviewReplacement
+);
+
 

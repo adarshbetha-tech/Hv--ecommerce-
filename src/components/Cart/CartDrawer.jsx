@@ -13,6 +13,7 @@ export default function CartDrawer({
   onClearError,
   onNavigateLogin,
   onProceedToCheckout,
+  onViewCartPage,
   currentUser = null,
 }) {
   const drawerRef = useRef(null);
@@ -308,6 +309,22 @@ export default function CartDrawer({
                 Proceed to Checkout →
               </button>
             </div>
+            {onViewCartPage && (
+              <div style={{ textAlign: "center", marginTop: "10px" }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost vtx-cart-full-page-btn"
+                  onClick={() => {
+                    onClose();
+                    onViewCartPage();
+                  }}
+                  data-testid="view-full-cart-btn"
+                  style={{ fontSize: "0.88rem", textDecoration: "underline", cursor: "pointer", background: "none", border: "none", color: "var(--color-navy, #0b1e36)" }}
+                >
+                  View Full Cart Page →
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

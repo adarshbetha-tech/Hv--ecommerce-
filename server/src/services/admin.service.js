@@ -1,5 +1,9 @@
+import fs from "fs";
+import path from "path";
 import { prisma } from "../config/db.js";
 import { formatOrder } from "../utils/orderSerializer.js";
+
+const SPECIFICATIONS_DIR = path.resolve(process.cwd(), "uploads", "specifications");
 
 function createHttpError(message, code, status) {
   const err = new Error(message);
@@ -841,14 +845,30 @@ export async function updateOrderStatus(orderIdentifier, updateData, actorId = n
     }
 
     // 4. Update the order
+    let finalNotes = notes !== undefined ? (notes || null) : order.notes;
+    let deliveredAtTimestamp = null;
+    if (targetStatus === "DELIVERED") {
+      deliveredAtTimestamp = new Date().toISOString();
+      if (!finalNotes || !finalNotes.includes("[DeliveredAt:")) {
+        const tag = `[DeliveredAt: ${deliveredAtTimestamp}]`;
+        finalNotes = finalNotes ? `${finalNotes} | ${tag}` : tag;
+      }
+    }
+
+    const updatePayload = {
+      orderStatus: targetStatus,
+      carrier: carrier !== undefined ? (carrier || null) : order.carrier,
+      trackingNumber: trackingNumber !== undefined ? (trackingNumber || null) : order.trackingNumber,
+      notes: finalNotes,
+    };
+
+    if (updateData.paymentStatus !== undefined && updateData.paymentStatus !== null) {
+      updatePayload.paymentStatus = updateData.paymentStatus;
+    }
+
     const updatedOrder = await tx.order.update({
       where: { id: order.id },
-      data: {
-        orderStatus: targetStatus,
-        carrier: carrier !== undefined ? (carrier || null) : order.carrier,
-        trackingNumber: trackingNumber !== undefined ? (trackingNumber || null) : order.trackingNumber,
-        notes: notes !== undefined ? (notes || null) : order.notes,
-      },
+      data: updatePayload,
       include: {
         items: true,
         user: {
@@ -864,20 +884,25 @@ export async function updateOrderStatus(orderIdentifier, updateData, actorId = n
     });
 
     // 5. Create immutable audit log record
+    const isRefundAction = updateData.paymentStatus === "REFUNDED";
     const auditRecord = await tx.auditLog.create({
       data: {
         actorId,
-        action: "ORDER_STATUS_UPDATE",
+        action: isRefundAction ? "ORDER_REFUND_RECORD" : "ORDER_STATUS_UPDATE",
         entityType: "Order",
         entityId: order.id,
         metadata: {
           orderNumber: order.orderNumber,
           previousStatus,
           newStatus: targetStatus,
+          previousPaymentStatus: order.paymentStatus,
+          newPaymentStatus: updatedOrder.paymentStatus,
+          refundAmount: updateData.refundAmount !== undefined ? updateData.refundAmount : null,
           actorEmail: actorEmail || "admin@vertex.local",
           carrier: updatedOrder.carrier,
           trackingNumber: updatedOrder.trackingNumber,
           notes: updatedOrder.notes,
+          deliveredAt: deliveredAtTimestamp || undefined,
         },
       },
     });
@@ -1287,5 +1312,767 @@ export async function getAdminCustomerById(customerId, { ordersPage = 1, ordersL
     },
   };
 }
+
+/**
+ * Updates a user account's system role (CUSTOMER, B2B, ADMIN) and active status.
+ * Enforces security controls:
+ * - Prevents an administrator from modifying their own role or deactivating their own account.
+ * - Prevents removing or deactivating the last remaining active administrator.
+ * - Records an immutable audit log entry.
+ */
+export async function updateUserRole(userId, updateData, actorId = null, actorEmail = null) {
+  const { role, isActive } = updateData;
+
+  const targetUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      fullName: true,
+      role: true,
+      isActive: true,
+    },
+  });
+
+  if (!targetUser) {
+    throw createHttpError(`User with ID '${userId}' not found.`, "USER_NOT_FOUND", 404);
+  }
+
+  // 1. Guardrail: Prevent self-demotion or self-deactivation
+  if (actorId && actorId === userId) {
+    if ((role && role !== "ADMIN") || isActive === false) {
+      throw createHttpError(
+        "Self-demotion or self-deactivation is prohibited. Another administrator must adjust your privileges.",
+        "SELF_DEMOTION_PROHIBITED",
+        400
+      );
+    }
+  }
+
+  // 2. Guardrail: Prevent demoting or deactivating the last active administrator
+  if (targetUser.role === "ADMIN" && ((role && role !== "ADMIN") || isActive === false)) {
+    const activeAdminCount = await prisma.user.count({
+      where: {
+        role: "ADMIN",
+        isActive: true,
+        id: { not: userId },
+      },
+    });
+
+    if (activeAdminCount === 0) {
+      throw createHttpError(
+        "Cannot demote or deactivate the last remaining active administrator.",
+        "LAST_ADMIN_PROTECTED",
+        400
+      );
+    }
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.user.update({
+      where: { id: userId },
+      data: {
+        ...(role !== undefined ? { role } : {}),
+        ...(isActive !== undefined ? { isActive } : {}),
+      },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        isActive: true,
+        companyName: true,
+        gstin: true,
+        phone: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    const auditRecord = await tx.auditLog.create({
+      data: {
+        actorId,
+        action: "USER_ROLE_UPDATE",
+        entityType: "User",
+        entityId: userId,
+        metadata: {
+          targetEmail: targetUser.email,
+          previousRole: targetUser.role,
+          newRole: updated.role,
+          previousActive: targetUser.isActive,
+          newActive: updated.isActive,
+          actorEmail: actorEmail || "system",
+        },
+      },
+    });
+
+    return {
+      user: updated,
+      auditLog: {
+        id: auditRecord.id,
+        action: auditRecord.action,
+        createdAt: auditRecord.createdAt,
+      },
+    };
+  }, { maxWait: 15000, timeout: 35000 });
+}
+
+/**
+ * Saves a specification document (PDF/spreadsheet) to server-side persistent storage.
+ */
+export async function uploadProductSpecification(productId, { fileName, fileData, fileType, fileSize }, actorId = null, actorEmail = null) {
+  // 1. Verify product exists
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    select: { id: true, name: true, slug: true },
+  });
+
+  if (!product) {
+    throw createHttpError(`Product with ID '${productId}' not found.`, "PRODUCT_NOT_FOUND", 404);
+  }
+
+  // 2. Ensure destination directory exists
+  if (!fs.existsSync(SPECIFICATIONS_DIR)) {
+    fs.mkdirSync(SPECIFICATIONS_DIR, { recursive: true });
+  }
+
+  // 3. Clean base64 data and write binary file to disk
+  const base64Clean = fileData.replace(/^data:.*?;base64,/, "");
+  const buffer = Buffer.from(base64Clean, "base64");
+  const ext = path.extname(fileName) || ".pdf";
+  const safeBaseName = path.basename(fileName, ext).replace(/[^a-zA-Z0-9_-]/g, "_");
+  const storedFileName = `${productId}_${safeBaseName}${ext}`;
+  const filePath = path.join(SPECIFICATIONS_DIR, storedFileName);
+  const metaPath = path.join(SPECIFICATIONS_DIR, `${productId}.meta.json`);
+
+  fs.writeFileSync(filePath, buffer);
+
+  const meta = {
+    productId,
+    fileName,
+    storedFileName,
+    fileType: fileType || "application/pdf",
+    fileSize: fileSize || buffer.length,
+    uploadedAt: new Date().toISOString(),
+    uploadedBy: actorEmail || "admin@vertex.local",
+  };
+
+  fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2), "utf8");
+
+  // 4. Record audit log
+  const auditRecord = await prisma.auditLog.create({
+    data: {
+      actorId,
+      action: "PRODUCT_SPECIFICATION_UPLOAD",
+      entityType: "Product",
+      entityId: productId,
+      metadata: {
+        productName: product.name,
+        fileName,
+        fileSize: meta.fileSize,
+        fileType: meta.fileType,
+        actorEmail: actorEmail || "admin@vertex.local",
+      },
+    },
+  });
+
+  return {
+    success: true,
+    specification: meta,
+    auditLog: {
+      id: auditRecord.id,
+      action: auditRecord.action,
+      createdAt: auditRecord.createdAt,
+    },
+  };
+}
+
+/**
+ * Retrieves specification metadata and absolute file path for a product.
+ */
+export async function getProductSpecification(productId) {
+  const metaPath = path.join(SPECIFICATIONS_DIR, `${productId}.meta.json`);
+  if (!fs.existsSync(metaPath)) {
+    return null;
+  }
+  const metaRaw = fs.readFileSync(metaPath, "utf8");
+  const meta = JSON.parse(metaRaw);
+  const filePath = path.join(SPECIFICATIONS_DIR, meta.storedFileName);
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+  return { meta, filePath };
+}
+
+/**
+ * Deletes a stored specification file and its metadata.
+ */
+export async function deleteProductSpecification(productId, actorId = null, actorEmail = null) {
+  const metaPath = path.join(SPECIFICATIONS_DIR, `${productId}.meta.json`);
+  let removedFileName = "specification.pdf";
+  if (fs.existsSync(metaPath)) {
+    try {
+      const meta = JSON.parse(fs.readFileSync(metaPath, "utf8"));
+      removedFileName = meta.fileName || removedFileName;
+      const filePath = path.join(SPECIFICATIONS_DIR, meta.storedFileName);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      fs.unlinkSync(metaPath);
+    } catch {
+      // Ignore cleanup error if already removed
+    }
+  }
+
+  // Record audit log
+  const auditRecord = await prisma.auditLog.create({
+    data: {
+      actorId,
+      action: "PRODUCT_SPECIFICATION_DELETE",
+      entityType: "Product",
+      entityId: productId,
+      metadata: {
+        fileName: removedFileName,
+        actorEmail: actorEmail || "admin@vertex.local",
+      },
+    },
+  });
+
+  return {
+    success: true,
+    message: "Specification document deleted successfully.",
+    auditLog: {
+      id: auditRecord.id,
+      action: auditRecord.action,
+      createdAt: auditRecord.createdAt,
+    },
+  };
+}
+
+/**
+ * Lists all payments across the system with live KPI metrics, search, status, method, and date filters.
+ */
+export async function getAdminPayments(queryParams = {}) {
+  const page = Math.max(1, parseInt(queryParams.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(queryParams.limit, 10) || 10));
+  const skip = (page - 1) * limit;
+
+  // 1. Live Aggregate Metrics across the entire Order table
+  const [
+    totalOrdersCount,
+    paidOrders,
+    pendingOrders,
+    failedOrders,
+    refundedOrders,
+    allOrdersGross,
+  ] = await Promise.all([
+    prisma.order.count(),
+    prisma.order.findMany({
+      where: { paymentStatus: "PAID" },
+      select: { totalAmount: true },
+    }),
+    prisma.order.findMany({
+      where: { paymentStatus: "PENDING" },
+      select: { totalAmount: true },
+    }),
+    prisma.order.findMany({
+      where: { paymentStatus: "FAILED" },
+      select: { totalAmount: true },
+    }),
+    prisma.order.findMany({
+      where: { paymentStatus: "REFUNDED" },
+      select: { totalAmount: true },
+    }),
+    prisma.order.findMany({
+      select: { totalAmount: true },
+    }),
+  ]);
+
+  const sumAmounts = (arr) => arr.reduce((acc, o) => acc + Number(o.totalAmount || 0), 0);
+
+  const summary = {
+    totalCount: totalOrdersCount,
+    totalGrossVolume: sumAmounts(allOrdersGross),
+    paidCount: paidOrders.length,
+    paidVolume: sumAmounts(paidOrders),
+    pendingCount: pendingOrders.length,
+    pendingVolume: sumAmounts(pendingOrders),
+    failedCount: failedOrders.length,
+    failedVolume: sumAmounts(failedOrders),
+    refundedCount: refundedOrders.length,
+    refundedVolume: sumAmounts(refundedOrders),
+  };
+
+  // 2. Build Filter Where clause
+  const where = {};
+
+  const statusParam = (queryParams.paymentStatus || "").trim().toUpperCase();
+  if (statusParam && statusParam !== "ALL") {
+    where.paymentStatus = statusParam;
+  }
+
+  const methodParam = (queryParams.paymentMethod || "").trim().toUpperCase();
+  if (methodParam && methodParam !== "ALL") {
+    where.paymentMethod = methodParam;
+  }
+
+  const searchTerm = (queryParams.search || queryParams.q || "").trim();
+  if (searchTerm) {
+    where.OR = [
+      { orderNumber: { contains: searchTerm, mode: "insensitive" } },
+      { paymentId: { contains: searchTerm, mode: "insensitive" } },
+      { shippingRecipient: { contains: searchTerm, mode: "insensitive" } },
+      { user: { email: { contains: searchTerm, mode: "insensitive" } } },
+      { user: { fullName: { contains: searchTerm, mode: "insensitive" } } },
+    ];
+  }
+
+  const dateRange = (queryParams.dateRange || "all").toLowerCase();
+  if (dateRange !== "all") {
+    const now = new Date();
+    if (dateRange === "today") {
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      where.createdAt = { gte: todayStart };
+    } else if (dateRange === "week") {
+      const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      where.createdAt = { gte: weekStart };
+    } else if (dateRange === "month") {
+      const monthStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      where.createdAt = { gte: monthStart };
+    }
+  }
+
+  let orderBy = { createdAt: "desc" };
+  if (queryParams.sort === "oldest") {
+    orderBy = { createdAt: "asc" };
+  } else if (queryParams.sort === "amount_desc") {
+    orderBy = { totalAmount: "desc" };
+  } else if (queryParams.sort === "amount_asc") {
+    orderBy = { totalAmount: "asc" };
+  }
+
+  const [totalItems, orders] = await Promise.all([
+    prisma.order.count({ where }),
+    prisma.order.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy,
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            fullName: true,
+            role: true,
+            companyName: true,
+          },
+        },
+        items: true,
+      },
+    }),
+  ]);
+
+  // Fetch recent audit logs for orders in this list
+  const orderIds = orders.map((o) => o.id);
+  const auditLogs = orderIds.length > 0 ? await prisma.auditLog.findMany({
+    where: {
+      entityType: "Order",
+      entityId: { in: orderIds },
+    },
+    orderBy: { createdAt: "desc" },
+    include: {
+      actor: { select: { email: true, fullName: true, role: true } },
+    },
+  }) : [];
+
+  const payments = orders.map((o) => {
+    const relatedLogs = auditLogs.filter((l) => l.entityId === o.id);
+    return {
+      id: o.id,
+      orderId: o.id,
+      orderNumber: o.orderNumber,
+      orderStatus: o.orderStatus,
+      paymentStatus: o.paymentStatus,
+      paymentMethod: o.paymentMethod,
+      paymentId: o.paymentId || null,
+      amount: Number(o.totalAmount),
+      subtotal: Number(o.subtotal),
+      taxAmount: Number(o.taxAmount),
+      shippingFee: Number(o.shippingFee),
+      customer: o.user
+        ? {
+            id: o.user.id,
+            email: o.user.email,
+            fullName: o.user.fullName,
+            role: o.user.role,
+            companyName: o.user.companyName || null,
+          }
+        : {
+            id: o.userId,
+            email: "guest@vertex.in",
+            fullName: o.shippingRecipient,
+            role: "CUSTOMER",
+          },
+      recipientName: o.shippingRecipient,
+      phone: o.shippingPhone,
+      city: o.shippingCity,
+      state: o.shippingState,
+      notes: o.notes || null,
+      createdAt: o.createdAt,
+      updatedAt: o.updatedAt,
+      auditHistory: relatedLogs.map((l) => ({
+        id: l.id,
+        action: l.action,
+        actor: l.actor ? l.actor.email : "System / Admin",
+        metadata: l.metadata,
+        createdAt: l.createdAt,
+      })),
+    };
+  });
+
+  // Identify unresolved payments that require administrator attention
+  const unresolvedIssues = payments.filter(
+    (p) =>
+      p.paymentStatus === "FAILED" ||
+      (p.paymentStatus === "PENDING" && p.orderStatus === "CANCELLED") ||
+      (p.paymentMethod === "UPI" && p.paymentStatus === "PENDING")
+  );
+
+  let upiConfig = null;
+  try {
+    const { getPublicPaymentConfig } = await import("./paymentConfig.service.js");
+    upiConfig = await getPublicPaymentConfig();
+  } catch {}
+
+  const totalPages = Math.ceil(totalItems / limit) || 1;
+
+  return {
+    summary,
+    payments,
+    unresolvedIssues,
+    upiConfig,
+    gatewayIntegration: {
+      isConfigured: false,
+      provider: "RAZORPAY / STRIPE (Safe Boundary)",
+      message:
+        "External payment gateway merchant credentials (RAZORPAY_KEY_ID or STRIPE_SECRET_KEY) are not configured in environment. The system records verifiable local database transactions and immutable administrative audit logs.",
+    },
+    pagination: {
+      totalItems,
+      page,
+      limit,
+      totalPages,
+    },
+  };
+}
+
+/**
+ * Reconciles or resolves payment issue safely with audit logging.
+ */
+export async function reconcileAdminPayment(orderIdentifier, reconcileData, actorUser) {
+  const actorId = actorUser?.id || null;
+  const actorEmail = actorUser?.email || "admin@vertex.local";
+
+  const order = await prisma.order.findFirst({
+    where: {
+      OR: [{ id: orderIdentifier }, { orderNumber: orderIdentifier }],
+    },
+    include: { user: true },
+  });
+
+  if (!order) {
+    const error = new Error(`Order with identifier '${orderIdentifier}' not found.`);
+    error.status = 404;
+    error.code = "ORDER_NOT_FOUND";
+    throw error;
+  }
+
+  const { action, notes, settlementReference, refundAmount, confirmed } = reconcileData;
+
+  if (!confirmed) {
+    const error = new Error("Explicit administrator confirmation is required before performing financial reconciliation.");
+    error.status = 400;
+    error.code = "CONFIRMATION_REQUIRED";
+    throw error;
+  }
+
+  const previousPaymentStatus = order.paymentStatus;
+  let newPaymentStatus = previousPaymentStatus;
+  let auditAction = "PAYMENT_RECONCILE_RECORD";
+  let responseMessage = "";
+  const updateData = {};
+
+  if (action === "RECORD_REFUND") {
+    if (order.paymentStatus === "REFUNDED") {
+      const error = new Error("Order is already marked as REFUNDED; duplicate refunds are prohibited.");
+      error.status = 400;
+      error.code = "DUPLICATE_REFUND_PROHIBITED";
+      throw error;
+    }
+    newPaymentStatus = "REFUNDED";
+    updateData.paymentStatus = "REFUNDED";
+    updateData.notes = order.notes
+      ? `${order.notes} | [Refund Recorded: ₹${refundAmount || order.totalAmount} - ${notes}]`
+      : `[Refund Recorded: ₹${refundAmount || order.totalAmount} - ${notes}]`;
+    auditAction = "ORDER_REFUND_RECORD";
+    responseMessage = `Refund of ₹${refundAmount || order.totalAmount} recorded for order ${order.orderNumber}.`;
+  } else if (action === "VERIFY_OFFLINE_SETTLEMENT") {
+    if (order.paymentStatus === "PAID") {
+      const error = new Error("Order payment is already recorded as PAID; duplicate settlement is prohibited.");
+      error.status = 400;
+      error.code = "DUPLICATE_PAYMENT_PROHIBITED";
+      throw error;
+    }
+    newPaymentStatus = "PAID";
+    updateData.paymentStatus = "PAID";
+    if (settlementReference && settlementReference.trim()) {
+      updateData.paymentId = settlementReference.trim();
+    }
+    updateData.notes = order.notes
+      ? `${order.notes} | [Verified Offline Settlement: ${notes}]`
+      : `[Verified Offline Settlement: ${notes}]`;
+    auditAction = "PAYMENT_OFFLINE_SETTLEMENT";
+    responseMessage = `Payment marked as PAID via offline settlement for order ${order.orderNumber}.`;
+  } else if (action === "FLAG_UNRESOLVED") {
+    newPaymentStatus = "FAILED";
+    updateData.paymentStatus = "FAILED";
+    updateData.notes = order.notes
+      ? `${order.notes} | [Flagged Unresolved: ${notes}]`
+      : `[Flagged Unresolved: ${notes}]`;
+    auditAction = "PAYMENT_ISSUE_FLAGGED";
+    responseMessage = `Payment flagged as FAILED/unresolved for order ${order.orderNumber}.`;
+  } else if (action === "RETRY_RECONCILIATION") {
+    auditAction = "PAYMENT_GATEWAY_RECONCILE_ATTEMPT";
+    responseMessage =
+      "Payment gateway API credentials (RAZORPAY_KEY_ID / STRIPE_SECRET_KEY) are not configured in environment. Automated webhook sync is unavailable; transaction remains in its verified local state.";
+  }
+
+  // Update order if any field changed
+  let updatedOrder = order;
+  if (Object.keys(updateData).length > 0) {
+    updatedOrder = await prisma.order.update({
+      where: { id: order.id },
+      data: updateData,
+      include: { user: true, items: true },
+    });
+  }
+
+  // Record audit log entry
+  const auditRecord = await prisma.auditLog.create({
+    data: {
+      actorId,
+      action: auditAction,
+      entityType: "Order",
+      entityId: order.id,
+      metadata: {
+        orderNumber: order.orderNumber,
+        previousPaymentStatus,
+        newPaymentStatus,
+        action,
+        settlementReference: settlementReference || null,
+        refundAmount: refundAmount || null,
+        notes,
+        actorEmail,
+        gatewayBoundaries: "OFFLINE_SAFE_MODE",
+      },
+    },
+  });
+
+  return {
+    success: true,
+    message: responseMessage,
+    order: {
+      id: updatedOrder.id,
+      orderNumber: updatedOrder.orderNumber,
+      orderStatus: updatedOrder.orderStatus,
+      paymentStatus: updatedOrder.paymentStatus,
+      paymentMethod: updatedOrder.paymentMethod,
+      paymentId: updatedOrder.paymentId,
+      totalAmount: Number(updatedOrder.totalAmount),
+      notes: updatedOrder.notes,
+    },
+    auditLog: {
+      id: auditRecord.id,
+      action: auditRecord.action,
+      createdAt: auditRecord.createdAt,
+    },
+  };
+}
+
+/**
+ * Lists all customer replacement requests with delivery timestamp, remaining window, and review history.
+ */
+export async function listAdminReplacements() {
+  const replacementLogs = await prisma.auditLog.findMany({
+    where: {
+      entityType: "Order",
+      action: "CUSTOMER_REPLACEMENT_REQUESTED",
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const orderIds = [...new Set(replacementLogs.map((l) => l.entityId))];
+
+  const orders = await prisma.order.findMany({
+    where: { id: { in: orderIds } },
+    include: {
+      items: true,
+      user: {
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          companyName: true,
+        },
+      },
+    },
+  });
+
+  const orderMap = new Map(orders.map((o) => [o.id, o]));
+
+  const statusLogs = await prisma.auditLog.findMany({
+    where: {
+      entityType: "Order",
+      action: "ADMIN_REPLACEMENT_STATUS_UPDATE",
+      entityId: { in: orderIds },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const latestStatusMap = new Map();
+  for (const slog of statusLogs) {
+    if (!latestStatusMap.has(slog.entityId)) {
+      latestStatusMap.set(slog.entityId, slog);
+    }
+  }
+
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const now = new Date();
+
+  const replacements = [];
+  for (const log of replacementLogs) {
+    const order = orderMap.get(log.entityId);
+    if (!order) continue;
+
+    const latestStatus = latestStatusMap.get(log.entityId);
+    const meta = log.metadata || {};
+    const deliveryDateStr = meta.deliveryDate || (order.updatedAt ? new Date(order.updatedAt).toISOString() : null);
+    const deliveryDate = deliveryDateStr ? new Date(deliveryDateStr) : null;
+    const isWithinWindow = deliveryDate
+      ? now.getTime() - deliveryDate.getTime() <= SEVEN_DAYS_MS && now.getTime() >= deliveryDate.getTime()
+      : false;
+
+    const currentStatus = latestStatus
+      ? latestStatus.metadata?.newStatus
+      : meta.status || "PENDING_REVIEW";
+
+    replacements.push({
+      id: log.id,
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      orderStatus: order.orderStatus,
+      paymentStatus: order.paymentStatus,
+      customer: order.user
+        ? {
+            id: order.user.id,
+            email: order.user.email,
+            fullName: order.user.fullName,
+            companyName: order.user.companyName,
+          }
+        : { email: meta.customerEmail || "customer@vertex.local" },
+      deliveryDate: deliveryDateStr,
+      windowDeadline: deliveryDate ? new Date(deliveryDate.getTime() + SEVEN_DAYS_MS).toISOString() : null,
+      isWithinWindow,
+      status: currentStatus,
+      reason: meta.reason,
+      details: meta.details,
+      items: meta.items || [],
+      requestedAt: log.createdAt,
+      lastReviewedAt: latestStatus ? latestStatus.createdAt : null,
+      adminNotes: latestStatus?.metadata?.adminNotes || null,
+      reviewedBy: latestStatus?.metadata?.actorEmail || null,
+    });
+  }
+
+  return {
+    success: true,
+    count: replacements.length,
+    replacements,
+  };
+}
+
+/**
+ * Reviews and updates a replacement request status with immutable audit logging.
+ */
+export async function reviewAdminReplacement(orderIdentifier, reviewData, actorId, actorEmail) {
+  const trimmed = (orderIdentifier || "").trim();
+  const order = await prisma.order.findFirst({
+    where: {
+      OR: [{ id: trimmed }, { orderNumber: trimmed }],
+    },
+  });
+
+  if (!order) {
+    throw createHttpError(`Order with identifier '${trimmed}' not found.`, "ORDER_NOT_FOUND", 404);
+  }
+
+  const latestRequest = await prisma.auditLog.findFirst({
+    where: {
+      entityType: "Order",
+      entityId: order.id,
+      action: "CUSTOMER_REPLACEMENT_REQUESTED",
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!latestRequest) {
+    throw createHttpError(
+      `No replacement request found for order '${trimmed}'.`,
+      "REPLACEMENT_NOT_FOUND",
+      404
+    );
+  }
+
+  const { status, adminNotes } = reviewData;
+
+  // Append note to order
+  const reviewTag = `[Replacement ${status}: ${adminNotes}]`;
+  const updatedNotes = order.notes ? `${order.notes} | ${reviewTag}` : reviewTag;
+  await prisma.order.update({
+    where: { id: order.id },
+    data: { notes: updatedNotes },
+  });
+
+  // Record audit log entry
+  const auditRecord = await prisma.auditLog.create({
+    data: {
+      actorId: actorId || null,
+      action: "ADMIN_REPLACEMENT_STATUS_UPDATE",
+      entityType: "Order",
+      entityId: order.id,
+      metadata: {
+        orderNumber: order.orderNumber,
+        previousStatus: latestRequest.metadata?.status || "PENDING_REVIEW",
+        newStatus: status,
+        adminNotes,
+        actorEmail: actorEmail || "admin@vertex.local",
+        reviewedAt: new Date().toISOString(),
+      },
+    },
+  });
+
+  return {
+    success: true,
+    message: `Replacement request for order ${order.orderNumber} updated to ${status}.`,
+    orderNumber: order.orderNumber,
+    status,
+    adminNotes,
+    reviewedAt: auditRecord.createdAt,
+    auditLogId: auditRecord.id,
+  };
+}
+
+
 
 

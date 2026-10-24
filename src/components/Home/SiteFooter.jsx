@@ -196,7 +196,7 @@ export default function SiteFooter({
               className="footer-legal-btn"
               onClick={() => onOpenPolicy && onOpenPolicy("returns")}
             >
-              Refund Policy
+              Replacement Policy
             </button>
           </div>
         </div>

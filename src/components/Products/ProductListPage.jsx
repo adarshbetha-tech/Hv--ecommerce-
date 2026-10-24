@@ -16,6 +16,13 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import ProductCard from "./ProductCard";
 import QuoteModal from "./QuoteModal";
+import FastenerCategoryTiles from "./FastenerCategoryTiles";
+import ScrewHeadCategorySelector from "./ScrewHeadCategorySelector";
+import {
+  SCREW_HEAD_GROUPS,
+  extractScrewFilterOptions,
+} from "../../utils/screwCategoriesData";
+
 
 
 /**
@@ -45,12 +52,12 @@ function isFastenerProduct(product) {
  * Compact, professional text-based product row for Categories 3, 4, 5, 6
  * Contains NO thumbnails, NO image placeholders, and NO empty image containers.
  */
-function TextProductRow({ product, onAddToCart, onViewDetails }) {
+function TextProductRow({ product, onAddToCart, onViewDetails, onRequestQuote }) {
   const [addFeedback, setAddFeedback] = useState(false);
   const feedbackTimerRef = useRef(null);
   const primaryVariant = product.variants?.[0];
   const sku = primaryVariant?.sku || product.sku || `VTX-${(product.slug || "").toUpperCase()}`;
-  const hasPrice = product.price !== null && product.price !== undefined;
+  const hasPrice = product.price !== null && product.price !== undefined && Number(product.price) > 0;
   const inStock = product.inStock !== false;
 
   useEffect(() => () => {
@@ -117,16 +124,35 @@ function TextProductRow({ product, onAddToCart, onViewDetails }) {
           </span>
         </div>
 
-        <button
-          type="button"
-          className="btn btn-primary vtx-btn-text-cart"
-          onClick={handleAddToCart}
-          disabled={!inStock || addFeedback}
-          data-testid={`add-to-cart-${product.id || product.slug}`}
-          aria-label={addFeedback ? `${product.name} added to cart` : `Add ${product.name} to cart`}
-        >
-          {addFeedback ? "✓ Added" : "🛒 Add to Cart"}
-        </button>
+        {hasPrice ? (
+          <button
+            type="button"
+            className="btn btn-primary vtx-btn-text-cart"
+            onClick={handleAddToCart}
+            disabled={!inStock || addFeedback}
+            data-testid={`add-to-cart-${product.id || product.slug}`}
+            aria-label={addFeedback ? `${product.name} added to cart` : `Add ${product.name} to cart`}
+          >
+            {addFeedback ? "✓ Added" : "🛒 Add to Cart"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-outline vtx-btn-text-quote"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onRequestQuote) {
+                onRequestQuote(product);
+              } else if (onViewDetails) {
+                onViewDetails(product);
+              }
+            }}
+            data-testid={`request-quote-${product.id || product.slug}`}
+            aria-label={`Request price quote for ${product.name}`}
+          >
+            📋 Request Quote
+          </button>
+        )}
       </div>
     </div>
   );
@@ -151,6 +177,9 @@ export default function ProductListPage({
   const [selectedBrand, setSelectedBrand] = useState("all");
   const [selectedDrive, setSelectedDrive] = useState("all");
   const [selectedHead, setSelectedHead] = useState("all");
+  const [selectedDiameter, setSelectedDiameter] = useState("all");
+  const [selectedLength, setSelectedLength] = useState("all");
+  const [selectedMaterial, setSelectedMaterial] = useState("all");
   const [selectedSpec, setSelectedSpec] = useState("all");
   const [inStockOnly, setInStockOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState(initialSearch || "");
@@ -162,13 +191,24 @@ export default function ProductListPage({
   // Quote modal state
   const [quoteProduct, setQuoteProduct] = useState(null);
 
+  // Dynamic filter options extracted from actual products
+  const screwFilterOptions = useMemo(() => {
+    return extractScrewFilterOptions(products);
+  }, [products]);
+
   // Sync with prop changes (e.g. from nav clicks)
   useEffect(() => {
     if (initialCategory) setSelectedCategory(initialCategory);
   }, [initialCategory]);
 
   useEffect(() => {
-    if (initialSubcat) setSelectedSubcat(initialSubcat);
+    if (initialSubcat) {
+      setSelectedSubcat(initialSubcat);
+      setSelectedHead("all");
+      setSelectedDiameter("all");
+      setSelectedLength("all");
+      setSelectedMaterial("all");
+    }
   }, [initialSubcat]);
 
   useEffect(() => {
@@ -187,6 +227,9 @@ export default function ProductListPage({
     if (selectedBrand && selectedBrand !== "all") params.set("brand", selectedBrand);
     if (selectedDrive && selectedDrive !== "all") params.set("drive", selectedDrive);
     if (selectedHead && selectedHead !== "all") params.set("head", selectedHead);
+    if (selectedDiameter && selectedDiameter !== "all") params.set("diameter", selectedDiameter);
+    if (selectedLength && selectedLength !== "all") params.set("length", selectedLength);
+    if (selectedMaterial && selectedMaterial !== "all") params.set("material", selectedMaterial);
     if (activeSearch) params.set("q", activeSearch);
     if (sortBy && sortBy !== "featured") params.set("sort", sortBy);
     if (inStockOnly) params.set("inStock", "true");
@@ -198,7 +241,19 @@ export default function ProductListPage({
     if (window.location.search !== newSearch) {
       window.history.replaceState(null, "", targetUrl);
     }
-  }, [selectedCategory, selectedSubcat, selectedBrand, selectedDrive, selectedHead, activeSearch, sortBy, inStockOnly]);
+  }, [
+    selectedCategory,
+    selectedSubcat,
+    selectedBrand,
+    selectedDrive,
+    selectedHead,
+    selectedDiameter,
+    selectedLength,
+    selectedMaterial,
+    activeSearch,
+    sortBy,
+    inStockOnly,
+  ]);
 
   // Derive available subcategories based on current parent category
   const activeParentCategory = useMemo(() => {
@@ -329,12 +384,45 @@ export default function ProductListPage({
       });
     }
 
-    // 5. Head Type Filter (OnlyScrews pattern)
-    if (selectedHead && selectedHead !== "all") {
-      const headTerm = selectedHead.toLowerCase();
+    // 5. Head Type Filter (Page 2 & Page 3 screw browsing)
+    if (selectedHead && selectedHead !== "all" && selectedHead !== "browse-all") {
+      const cleanHead = selectedHead.toLowerCase().replace(/screws?|fasteners?/gi, "").trim();
       list = list.filter((p) => {
         const head = (p.specs?.["Head Type"] || "").toLowerCase();
-        return head.includes(headTerm);
+        const name = (p.name || "").toLowerCase();
+        return head.includes(cleanHead) || name.includes(cleanHead);
+      });
+    }
+
+    // 5b. Screw Diameter Filter (Page 3 Faceted Filter)
+    if (selectedDiameter && selectedDiameter !== "all") {
+      const diamTerm = selectedDiameter.toLowerCase();
+      list = list.filter((p) => {
+        const thread = (p.specs?.["Thread Size"] || p.specs?.["Diameter"] || "").toLowerCase();
+        const dimMatch = p.variants?.some((v) => (v.dimensions || "").toLowerCase().includes(diamTerm));
+        const nameMatch = (p.name || "").toLowerCase().includes(diamTerm);
+        return thread.includes(diamTerm) || dimMatch || nameMatch;
+      });
+    }
+
+    // 5c. Screw Length Filter (Page 3 Faceted Filter)
+    if (selectedLength && selectedLength !== "all") {
+      const lenTerm = selectedLength.toLowerCase();
+      list = list.filter((p) => {
+        const len = (p.specs?.["Length"] || "").toLowerCase();
+        const dimMatch = p.variants?.some((v) => (v.dimensions || "").toLowerCase().includes(lenTerm));
+        const nameMatch = (p.name || "").toLowerCase().includes(lenTerm);
+        return len.includes(lenTerm) || dimMatch || nameMatch;
+      });
+    }
+
+    // 5d. Screw Material Filter (Page 3 Faceted Filter)
+    if (selectedMaterial && selectedMaterial !== "all") {
+      const matTerm = selectedMaterial.toLowerCase();
+      list = list.filter((p) => {
+        const mat = (p.specs?.["Material Grade"] || p.specs?.["Material"] || "").toLowerCase();
+        const nameMatch = (p.name || "").toLowerCase().includes(matTerm);
+        return mat.includes(matTerm) || nameMatch;
       });
     }
 
@@ -409,6 +497,9 @@ export default function ProductListPage({
     selectedSubcat,
     selectedDrive,
     selectedHead,
+    selectedDiameter,
+    selectedLength,
+    selectedMaterial,
     selectedBrand,
     inStockOnly,
     selectedSpec,
@@ -432,6 +523,9 @@ export default function ProductListPage({
     setSelectedBrand("all");
     setSelectedDrive("all");
     setSelectedHead("all");
+    setSelectedDiameter("all");
+    setSelectedLength("all");
+    setSelectedMaterial("all");
     setSelectedSpec("all");
     setInStockOnly(false);
     setSearchQuery("");
@@ -444,6 +538,9 @@ export default function ProductListPage({
     setSelectedSubcat("all"); // Reset subcategory when switching parent
     setSelectedDrive("all");
     setSelectedHead("all");
+    setSelectedDiameter("all");
+    setSelectedLength("all");
+    setSelectedMaterial("all");
   };
 
   const hasActiveFilters =
@@ -452,6 +549,9 @@ export default function ProductListPage({
     (selectedBrand && selectedBrand !== "all") ||
     (selectedDrive && selectedDrive !== "all") ||
     (selectedHead && selectedHead !== "all") ||
+    (selectedDiameter && selectedDiameter !== "all") ||
+    (selectedLength && selectedLength !== "all") ||
+    (selectedMaterial && selectedMaterial !== "all") ||
     (selectedSpec && selectedSpec !== "all") ||
     inStockOnly ||
     activeSearch;
@@ -485,7 +585,10 @@ export default function ProductListPage({
               <button
                 type="button"
                 className={`vtx-breadcrumb-link ${selectedSubcat === "all" ? "active" : ""}`}
-                onClick={() => setSelectedSubcat("all")}
+                onClick={() => {
+                  setSelectedSubcat("all");
+                  setSelectedHead("all");
+                }}
               >
                 {activeParentCategory.name}
               </button>
@@ -494,9 +597,25 @@ export default function ProductListPage({
           {selectedSubcat !== "all" && (
             <>
               <span className="vtx-breadcrumb-separator" aria-hidden="true">/</span>
-              <span className="vtx-breadcrumb-current">
-                {activeSubcatObj?.name || selectedSubcat}
-              </span>
+              {selectedHead !== "all" && selectedHead !== "browse-all" ? (
+                <>
+                  <button
+                    type="button"
+                    className="vtx-breadcrumb-link"
+                    onClick={() => setSelectedHead("all")}
+                  >
+                    {activeSubcatObj?.name || selectedSubcat}
+                  </button>
+                  <span className="vtx-breadcrumb-separator" aria-hidden="true">/</span>
+                  <span className="vtx-breadcrumb-current" aria-current="page">
+                    {selectedHead}
+                  </span>
+                </>
+              ) : (
+                <span className="vtx-breadcrumb-current">
+                  {activeSubcatObj?.name || selectedSubcat}
+                </span>
+              )}
             </>
           )}
         </div>
@@ -512,14 +631,18 @@ export default function ProductListPage({
                 : "Verified Engineering Supplies"}
             </span>
             <h1 className="vtx-catalog-heading">
-              {selectedSubcat !== "all"
+              {selectedHead && selectedHead !== "all" && selectedHead !== "browse-all"
+                ? selectedHead
+                : selectedSubcat !== "all"
                 ? activeSubcatObj?.name || selectedSubcat
                 : activeParentCategory
                   ? activeParentCategory.name
                   : "Industrial Hardware & Electronics Catalogue"}
             </h1>
             <p className="vtx-catalog-sub">
-              {isViewingFastenersOrScrews
+              {selectedHead && selectedHead !== "all" && selectedHead !== "browse-all"
+                ? `Browse certified precision ${selectedHead.toLowerCase()} sizes, thread pitches, and material grades compliant with DIN, ISO, and IS standards.`
+                : isViewingFastenersOrScrews
                 ? "Browse certified precision machine screws, slotted, Phillips cross recess, and hex socket fasteners compliant with DIN, ISO, and IS standards."
                 : activeParentCategory?.description ||
                 "Browse factory-certified lithium-ion cells, precision machine screws, metric nuts, development microcontrollers, and high-power motor drivers."}
@@ -608,7 +731,44 @@ export default function ProductListPage({
         </section>
       )}
 
-      {/* Main Content Area: Sidebar Filters + Product Grid */}
+      {/* 1. Page 1: Fastener Category Tiles Section */}
+      {isViewingFastenersOrScrews && selectedSubcat === "all" && !activeSearch && (
+        <FastenerCategoryTiles
+          products={products}
+          onSelectCategory={(catSlug) => {
+            setSelectedSubcat(catSlug);
+            setSelectedHead("all");
+          }}
+        />
+      )}
+
+      {/* 2. Page 2: Screw Head Category Selection (e.g. Cross Phillips) */}
+      {SCREW_HEAD_GROUPS[selectedSubcat] && selectedHead === "all" && !activeSearch ? (
+        <div className="vtx-head-selector-view-container">
+          <ScrewHeadCategorySelector
+            groupData={SCREW_HEAD_GROUPS[selectedSubcat]}
+            onSelectHeadCategory={(head) => {
+              setSelectedHead(head.name);
+            }}
+            onNavigateHome={onNavigateHome}
+            onNavigateFasteners={() => {
+              setSelectedCategory("fasteners");
+              setSelectedSubcat("all");
+              setSelectedHead("all");
+            }}
+          />
+          <div className="vtx-head-bypass-strip">
+            <button
+              type="button"
+              className="btn btn-outline vtx-btn-bypass-heads"
+              onClick={() => setSelectedHead("browse-all")}
+            >
+              Browse All {activeSubcatObj?.name || "Category"} Products ({filteredProducts.length}) →
+            </button>
+          </div>
+        </div>
+      ) : (
+      /* Main Content Area: Sidebar Filters + Product Grid */
       <div className="vtx-catalog-layout">
         {/* Mobile Filter Toggle Button */}
         <div className="vtx-mobile-filter-bar">
@@ -770,6 +930,66 @@ export default function ProductListPage({
             </div>
           )}
 
+          {/* Screw Diameter / Thread Size Filter (OnlyScrews pattern) */}
+          {isViewingFastenersOrScrews && screwFilterOptions.diameters.length > 0 && (
+            <div className="vtx-filter-group">
+              <label className="vtx-filter-title" htmlFor="diameter-filter-select">
+                Screw Thread Diameter
+              </label>
+              <select
+                id="diameter-filter-select"
+                className="vtx-select-input"
+                value={selectedDiameter}
+                onChange={(e) => setSelectedDiameter(e.target.value)}
+              >
+                <option value="all">All Diameters</option>
+                {screwFilterOptions.diameters.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Screw Length Filter (OnlyScrews pattern) */}
+          {isViewingFastenersOrScrews && screwFilterOptions.lengths.length > 0 && (
+            <div className="vtx-filter-group">
+              <label className="vtx-filter-title" htmlFor="length-filter-select">
+                Screw Length
+              </label>
+              <select
+                id="length-filter-select"
+                className="vtx-select-input"
+                value={selectedLength}
+                onChange={(e) => setSelectedLength(e.target.value)}
+              >
+                <option value="all">All Lengths</option>
+                {screwFilterOptions.lengths.map((l) => (
+                  <option key={l} value={l}>{l}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Screw Material Grade Filter (OnlyScrews pattern) */}
+          {isViewingFastenersOrScrews && screwFilterOptions.materials.length > 0 && (
+            <div className="vtx-filter-group">
+              <label className="vtx-filter-title" htmlFor="material-filter-select">
+                Screw Material Grade
+              </label>
+              <select
+                id="material-filter-select"
+                className="vtx-select-input"
+                value={selectedMaterial}
+                onChange={(e) => setSelectedMaterial(e.target.value)}
+              >
+                <option value="all">All Materials</option>
+                {screwFilterOptions.materials.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Brand / Manufacturer Filter */}
           {availableBrands.length > 0 && (
             <div className="vtx-filter-group">
@@ -851,6 +1071,82 @@ export default function ProductListPage({
 
         {/* Catalog Main Panel */}
         <main className="vtx-catalog-main">
+          {/* Page 3 Top Back & Facets Bar */}
+          {selectedHead && selectedHead !== "all" && selectedHead !== "browse-all" && (
+            <div className="vtx-page3-head-bar" aria-label="Head category controls">
+              <button
+                type="button"
+                className="btn btn-outline vtx-back-head-btn"
+                onClick={() => setSelectedHead("all")}
+                title="Return to head category selection"
+              >
+                ← Back to {activeSubcatObj?.name || "Head Categories"}
+              </button>
+              <div className="vtx-page3-inline-facets">
+                {screwFilterOptions.diameters.length > 0 && (
+                  <div className="vtx-facet-inline-group">
+                    <label htmlFor="p3-diameter-select">Diameter:</label>
+                    <select
+                      id="p3-diameter-select"
+                      className="vtx-facet-select"
+                      value={selectedDiameter}
+                      onChange={(e) => setSelectedDiameter(e.target.value)}
+                    >
+                      <option value="all">All Diameters</option>
+                      {screwFilterOptions.diameters.map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {screwFilterOptions.lengths.length > 0 && (
+                  <div className="vtx-facet-inline-group">
+                    <label htmlFor="p3-length-select">Length:</label>
+                    <select
+                      id="p3-length-select"
+                      className="vtx-facet-select"
+                      value={selectedLength}
+                      onChange={(e) => setSelectedLength(e.target.value)}
+                    >
+                      <option value="all">All Lengths</option>
+                      {screwFilterOptions.lengths.map((l) => (
+                        <option key={l} value={l}>{l}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {screwFilterOptions.materials.length > 0 && (
+                  <div className="vtx-facet-inline-group">
+                    <label htmlFor="p3-material-select">Material:</label>
+                    <select
+                      id="p3-material-select"
+                      className="vtx-facet-select"
+                      value={selectedMaterial}
+                      onChange={(e) => setSelectedMaterial(e.target.value)}
+                    >
+                      <option value="all">All Materials</option>
+                      {screwFilterOptions.materials.map((m) => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {selectedHead === "browse-all" && (
+            <div className="vtx-page3-head-bar" aria-label="Return to head categories">
+              <button
+                type="button"
+                className="btn btn-outline vtx-back-head-btn"
+                onClick={() => setSelectedHead("all")}
+              >
+                ← Choose by Head Category
+              </button>
+            </div>
+          )}
+
           {/* Controls Bar: Active Filter Chips, Sort Dropdown, Grid/List view */}
           <div className="vtx-catalog-controls-bar">
             {/* Active filter chips */}
@@ -882,10 +1178,28 @@ export default function ProductListPage({
                       <button type="button" onClick={() => setSelectedDrive("all")} aria-label="Remove drive filter">✕</button>
                     </span>
                   )}
-                  {selectedHead !== "all" && (
+                  {selectedHead !== "all" && selectedHead !== "browse-all" && (
                     <span className="vtx-filter-chip">
-                      Head: {selectedHead.toUpperCase()}
+                      Head: {selectedHead}
                       <button type="button" onClick={() => setSelectedHead("all")} aria-label="Remove head filter">✕</button>
+                    </span>
+                  )}
+                  {selectedDiameter !== "all" && (
+                    <span className="vtx-filter-chip">
+                      Diameter: {selectedDiameter}
+                      <button type="button" onClick={() => setSelectedDiameter("all")} aria-label="Remove diameter filter">✕</button>
+                    </span>
+                  )}
+                  {selectedLength !== "all" && (
+                    <span className="vtx-filter-chip">
+                      Length: {selectedLength}
+                      <button type="button" onClick={() => setSelectedLength("all")} aria-label="Remove length filter">✕</button>
+                    </span>
+                  )}
+                  {selectedMaterial !== "all" && (
+                    <span className="vtx-filter-chip">
+                      Material: {selectedMaterial}
+                      <button type="button" onClick={() => setSelectedMaterial("all")} aria-label="Remove material filter">✕</button>
                     </span>
                   )}
                   {selectedBrand !== "all" && (
@@ -1039,6 +1353,7 @@ export default function ProductListPage({
                       product={p}
                       onAddToCart={onAddToCart}
                       onViewDetails={onViewDetails}
+                      onRequestQuote={(prod) => setQuoteProduct(prod)}
                     />
                   ) : (
                     <ProductCard
@@ -1120,6 +1435,7 @@ export default function ProductListPage({
                                     product={p}
                                     onAddToCart={onAddToCart}
                                     onViewDetails={onViewDetails}
+                                    onRequestQuote={(prod) => setQuoteProduct(prod)}
                                   />
                                 ))}
                             </div>
@@ -1145,6 +1461,7 @@ export default function ProductListPage({
                                     product={p}
                                     onAddToCart={onAddToCart}
                                     onViewDetails={onViewDetails}
+                                    onRequestQuote={(prod) => setQuoteProduct(prod)}
                                   />
                                 ))}
                             </div>
@@ -1170,6 +1487,7 @@ export default function ProductListPage({
                                     product={p}
                                     onAddToCart={onAddToCart}
                                     onViewDetails={onViewDetails}
+                                    onRequestQuote={(prod) => setQuoteProduct(prod)}
                                   />
                                 ))}
                             </div>
@@ -1195,6 +1513,7 @@ export default function ProductListPage({
                                     product={p}
                                     onAddToCart={onAddToCart}
                                     onViewDetails={onViewDetails}
+                                    onRequestQuote={(prod) => setQuoteProduct(prod)}
                                   />
                                 ))}
                             </div>
@@ -1232,6 +1551,7 @@ export default function ProductListPage({
                                     product={p}
                                     onAddToCart={onAddToCart}
                                     onViewDetails={onViewDetails}
+                                    onRequestQuote={(prod) => setQuoteProduct(prod)}
                                   />
                                 ))}
                             </div>
@@ -1350,6 +1670,7 @@ export default function ProductListPage({
           )}
         </main>
       </div>
+      )}
 
       {/* Commercial Request a Quote Modal */}
       <QuoteModal

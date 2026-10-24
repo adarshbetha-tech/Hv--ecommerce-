@@ -1,0 +1,14 @@
+{
+  "merchantUpiId": "vertex.billing@icici",
+  "merchantName": "VERTEX Industrial Solutions Ltd",
+  "upiEnabled": true,
+  "qrMode": "DYNAMIC",
+  "instructions": "Pay via UPI and enter the 12-digit UTR reference below.",
+  "hasStaticQr": false,
+  "staticQrFileName": null,
+  "staticQrFileType": null,
+  "staticQrFileSize": null,
+  "staticQrImageUrl": null,
+  "updatedAt": "2026-10-24T04:47:41.787Z",
+  "updatedBy": "admin.upi.1792817237995@vertex.local"
+}

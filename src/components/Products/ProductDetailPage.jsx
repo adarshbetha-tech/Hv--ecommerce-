@@ -19,6 +19,48 @@ import { ComponentIllustration } from "../../assets/hardware/componentVisuals";
 import { isItemInWishlist, toggleWishlistItem } from "../../utils/wishlist";
 import QuoteModal from "./QuoteModal";
 
+import panHeadImg from "../../assets/hardware/screws/pan-head.svg";
+import countersunkCskImg from "../../assets/hardware/screws/countersunk-csk.svg";
+import selfTappingPanImg from "../../assets/hardware/screws/self-tapping-pan.svg";
+import selfTappingCskImg from "../../assets/hardware/screws/self-tapping-csk.svg";
+import laptopMobileImg from "../../assets/hardware/screws/laptop-mobile-screws.svg";
+import drywallGypsumImg from "../../assets/hardware/screws/drywall-gypsum.svg";
+import selfDrillingPanImg from "../../assets/hardware/screws/self-drilling-pan.svg";
+import socketHeadImg from "../../assets/hardware/screws/socket-head.svg";
+import buttonHeadImg from "../../assets/hardware/screws/button-head.svg";
+import allenCountersunkCskImg from "../../assets/hardware/screws/allen-countersunk-csk.svg";
+import slottedChhdImg from "../../assets/hardware/screws/slotted-chhd.svg";
+import hexNutImg from "../../assets/hardware/fasteners/hex-nut.svg";
+import nylocNutImg from "../../assets/hardware/fasteners/nyloc-nut.svg";
+import plainWasherImg from "../../assets/hardware/fasteners/plain-washer.svg";
+import brassSlantKnurledInsertImg from "../../assets/hardware/fasteners/brass-slant-knurled-insert.svg";
+
+function getScrewArtwork(product) {
+  if (!product) return null;
+  const name = (product.name || "").toLowerCase();
+  const head = (product.specs?.["Head Type"] || "").toLowerCase();
+  const sub = (product.subcategory?.name || product.subcategory?.slug || "").toLowerCase();
+
+  if (name.includes("slotted") || head.includes("chhd") || name.includes("chhd")) return slottedChhdImg;
+  if (name.includes("laptop") || name.includes("mobile")) return laptopMobileImg;
+  if (name.includes("drywall") || name.includes("gypsum") || head.includes("bugle")) return drywallGypsumImg;
+  if (name.includes("self-drilling") || name.includes("self drilling")) return selfDrillingPanImg;
+  if (name.includes("self-tapping") || name.includes("self tapping")) {
+    if (name.includes("csk") || name.includes("countersunk") || head.includes("countersunk")) return selfTappingCskImg;
+    return selfTappingPanImg;
+  }
+  if (name.includes("button head") || head.includes("button")) return buttonHeadImg;
+  if ((name.includes("allen") || sub.includes("hex")) && (name.includes("countersunk") || name.includes("csk"))) return allenCountersunkCskImg;
+  if (name.includes("socket head") || head.includes("socket")) return socketHeadImg;
+  if (name.includes("countersunk") || name.includes("csk") || head.includes("countersunk")) return countersunkCskImg;
+  if (name.includes("pan head") || head.includes("pan") || sub.includes("cross")) return panHeadImg;
+  if (name.includes("nyloc")) return nylocNutImg;
+  if (name.includes("hex nut") || sub.includes("nuts") || name.includes("nut")) return hexNutImg;
+  if (name.includes("washer") || sub.includes("washers")) return plainWasherImg;
+  if (name.includes("insert") || sub.includes("brass-inserts")) return brassSlantKnurledInsertImg;
+  return null;
+}
+
 export default function ProductDetailPage({
   product,
   relatedProducts = [],
@@ -224,8 +266,14 @@ export default function ProductDetailPage({
               <img
                 src={product.imageUrl}
                 alt={product.name}
-                className="vtx-detail-img screw-detail-img"
+                className="vtx-detail-img screw-detail-img contain-img"
                 onError={() => setImgError(true)}
+              />
+            ) : getScrewArtwork(product) ? (
+              <img
+                src={getScrewArtwork(product)}
+                alt={product.name}
+                className="vtx-detail-img screw-detail-img contain-img"
               />
             ) : (
               <ComponentIllustration
@@ -304,6 +352,20 @@ export default function ProductDetailPage({
               {product.category?.name} &gt; {product.subcategory?.name || "General"}
             </span>
             <h1 className="vtx-detail-title">{product.name}</h1>
+
+            {/* Real Star Rating & Review count */}
+            {product.rating && (
+              <div className="vtx-detail-rating-row" aria-label={`Rating: ${product.rating} out of 5 stars`}>
+                <span className="vtx-detail-stars" aria-hidden="true">
+                  {"★".repeat(Math.min(5, Math.max(1, Math.round(product.rating))))}
+                </span>
+                <span className="vtx-detail-rating-num">{product.rating}</span>
+                {product.reviews !== undefined && (
+                  <span className="vtx-detail-rating-count">({product.reviews} customer reviews)</span>
+                )}
+              </div>
+            )}
+
             {isFastener && currentDimensions && (
               <div className="vtx-detail-screw-highlights">
                 <span className="screw-pill pill-highlight">Verified Size: <strong>{currentDimensions}</strong></span>
@@ -353,6 +415,31 @@ export default function ProductDetailPage({
                     : "Currently Out of Stock / Backorder"
                   : "Available on Sourcing Order"}
               </span>
+            </div>
+          </div>
+
+          {/* Shipping & Delivery Guarantee Card */}
+          <div className="vtx-detail-shipping-card">
+            <div className="vtx-shipping-item">
+              <span className="vtx-shipping-icon" aria-hidden="true">🚚</span>
+              <div className="vtx-shipping-info">
+                <strong>Express Pan-India Dispatch</strong>
+                <span>Orders dispatched in 24–48 hours via premium courier networks. Delivery in 2–4 business days.</span>
+              </div>
+            </div>
+            <div className="vtx-shipping-item">
+              <span className="vtx-shipping-icon" aria-hidden="true">📦</span>
+              <div className="vtx-shipping-info">
+                <strong>Free Courier Shipping</strong>
+                <span>Free shipping on all prepaid orders over ₹1,000 across India.</span>
+              </div>
+            </div>
+            <div className="vtx-shipping-item">
+              <span className="vtx-shipping-icon" aria-hidden="true">🔄</span>
+              <div className="vtx-shipping-info">
+                <strong>7-Day Replacement Policy</strong>
+                <span>Guaranteed replacement for factory defects or transit damage. No returns or cancellations.</span>
+              </div>
             </div>
           </div>
 
@@ -487,6 +574,7 @@ export default function ProductDetailPage({
               <span className="vtx-perk">✓ 100% Genuine Technical Sourcing</span>
               <span className="vtx-perk">✓ Pan-India Courier Dispatch</span>
               <span className="vtx-perk">✓ GST Commercial Tax Invoices</span>
+              <span className="vtx-perk">✓ 7-Day Transit Damage &amp; Defect Replacement</span>
             </div>
           </div>
 

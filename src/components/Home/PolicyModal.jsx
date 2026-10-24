@@ -47,21 +47,21 @@ export const POLICIES = {
   },
   returns: {
     id: "returns",
-    title: "Returns, Replacements & Warranty",
+    title: "7-Day Component Replacement Policy",
     icon: "🛡️",
     lastUpdated: "January 2026",
     sections: [
       {
         heading: "7-Day Transit Damage & Defect Replacement",
-        body: "If any component arrives physically damaged, missing specified quantities, or exhibiting factory dead-on-arrival (DOA) defects, notify us within 7 days of delivery with an unboxing photo or video for an immediate free replacement.",
+        body: "If any component arrives physically damaged, missing specified quantities, or exhibiting factory dead-on-arrival (DOA) defects, submit a replacement request within 7 days of the actual delivery date with an unboxing photo or video for an immediate free replacement.",
       },
       {
         heading: "Component Integrity & Technical Standards",
-        body: "Because fasteners and electronic ICs require rigorous dimensional and electrical verification, items returned must be in unused condition with original pack labelling intact.",
+        body: "Because fasteners and electronic ICs require rigorous dimensional and electrical verification, items requested for replacement must be in unused condition with original pack labelling intact.",
       },
       {
-        heading: "Refund Processing",
-        body: "Approved refunds for out-of-stock replacement requests are processed back to the original payment source within 3 to 5 business days.",
+        heading: "Strict Replacement-Only Policy",
+        body: "VERTEX operates a strict replacement-only policy for all component orders. Financial refunds are not offered. All eligible claims are resolved exclusively through expedited component replacements.",
       },
     ],
   },

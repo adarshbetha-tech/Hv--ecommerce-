@@ -1,8 +1,63 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { getOrders, cancelOrder } from "../../services/orderApi";
+import { getOrders, cancelOrder, requestOrderReplacement } from "../../services/orderApi";
 import "./OrdersPage.css";
 
 const CANCELLABLE_STATUSES = ["PENDING", "CONFIRMED"];
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+function getDeliveryInfo(order) {
+  const isDelivered = (order.orderStatus || order.status || "").toUpperCase() === "DELIVERED";
+  if (!isDelivered) return { isDelivered: false };
+
+  let deliveryDate = null;
+  if (order.deliveredAt) {
+    const d = new Date(order.deliveredAt);
+    if (!isNaN(d.getTime())) deliveryDate = d;
+  }
+  if (!deliveryDate && order.notes) {
+    const match = order.notes.match(/\[DeliveredAt:\s*([^\]]+)\]/i);
+    if (match && match[1]) {
+      const d = new Date(match[1].trim());
+      if (!isNaN(d.getTime())) deliveryDate = d;
+    }
+  }
+  if (!deliveryDate && order.updatedAt) {
+    const d = new Date(order.updatedAt);
+    if (!isNaN(d.getTime())) deliveryDate = d;
+  }
+
+  if (!deliveryDate) {
+    return {
+      isDelivered: true,
+      hasDeliveryDate: false,
+    };
+  }
+
+  const now = new Date();
+  const elapsedMs = now.getTime() - deliveryDate.getTime();
+  const isWithin7Days = elapsedMs >= 0 && elapsedMs <= SEVEN_DAYS_MS;
+  const remainingMs = Math.max(0, SEVEN_DAYS_MS - elapsedMs);
+  const remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+
+  const hasActiveReplacement =
+    Boolean(order.notes && order.notes.includes("[Replacement Requested:")) ||
+    Boolean(order.notes && order.notes.includes("[Replacement APPROVED")) ||
+    Boolean(order.notes && order.notes.includes("[Replacement IN_REVIEW"));
+
+  return {
+    isDelivered: true,
+    hasDeliveryDate: true,
+    deliveryDate,
+    deliveryDateStr: deliveryDate.toLocaleDateString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }),
+    isWithin7Days,
+    remainingDays,
+    hasActiveReplacement,
+  };
+}
 
 function formatDate(dateStr) {
   if (!dateStr) return "N/A";
@@ -93,6 +148,15 @@ export default function OrdersPage({
   const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
   const [cancelModalError, setCancelModalError] = useState(null);
 
+  // Replacement Modal State (7-Day Policy)
+  const [selectedOrderForReplacement, setSelectedOrderForReplacement] = useState(null);
+  const [replacementReason, setReplacementReason] = useState("Transit Damage / Broken in Transit");
+  const [replacementDetails, setReplacementDetails] = useState("");
+  const [selectedItemSkus, setSelectedItemSkus] = useState({});
+  const [unboxingProofConfirmed, setUnboxingProofConfirmed] = useState(true);
+  const [isSubmittingReplacement, setIsSubmittingReplacement] = useState(false);
+  const [replacementModalError, setReplacementModalError] = useState(null);
+
   const fetchOrders = useCallback(async () => {
     if (!currentUser) {
       setLoading(false);
@@ -118,18 +182,24 @@ export default function OrdersPage({
     fetchOrders();
   }, [fetchOrders]);
 
-  // Handle Escape key to close cancellation modal
+  // Handle Escape key to close modals
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === "Escape" && selectedOrderToCancel && !isSubmittingCancel) {
-        setSelectedOrderToCancel(null);
-        setCancellationReason("");
-        setCancelModalError(null);
+      if (e.key === "Escape") {
+        if (selectedOrderToCancel && !isSubmittingCancel) {
+          setSelectedOrderToCancel(null);
+          setCancellationReason("");
+          setCancelModalError(null);
+        }
+        if (selectedOrderForReplacement && !isSubmittingReplacement) {
+          setSelectedOrderForReplacement(null);
+          setReplacementModalError(null);
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedOrderToCancel, isSubmittingCancel]);
+  }, [selectedOrderToCancel, isSubmittingCancel, selectedOrderForReplacement, isSubmittingReplacement]);
 
   const handleOpenCancelModal = (order) => {
     setSelectedOrderToCancel(order);
@@ -142,6 +212,82 @@ export default function OrdersPage({
     setSelectedOrderToCancel(null);
     setCancellationReason("");
     setCancelModalError(null);
+  };
+
+  const handleOpenReplacementModal = (order) => {
+    setSelectedOrderForReplacement(order);
+    setReplacementReason("Transit Damage / Broken in Transit");
+    setReplacementDetails("");
+    setReplacementModalError(null);
+    setUnboxingProofConfirmed(true);
+    const initialItems = {};
+    (order.items || []).forEach((it) => {
+      const sku = it.sku || it.variant?.sku || it.id;
+      initialItems[sku] = {
+        selected: true,
+        quantity: it.quantity || 1,
+        maxQuantity: it.quantity || 1,
+        productName: it.productName || it.name,
+      };
+    });
+    setSelectedItemSkus(initialItems);
+  };
+
+  const handleCloseReplacementModal = () => {
+    if (isSubmittingReplacement) return;
+    setSelectedOrderForReplacement(null);
+    setReplacementModalError(null);
+  };
+
+  const handleConfirmReplacement = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!selectedOrderForReplacement || isSubmittingReplacement) return;
+
+    if (!replacementDetails.trim() || replacementDetails.trim().length < 5) {
+      setReplacementModalError("Please provide at least 5 characters describing the component defect or transit damage.");
+      return;
+    }
+
+    const itemsToReplace = Object.entries(selectedItemSkus)
+      .filter(([_, data]) => data.selected)
+      .map(([sku, data]) => ({
+        sku,
+        quantity: data.quantity,
+      }));
+
+    if (itemsToReplace.length === 0) {
+      setReplacementModalError("Please select at least one component item for replacement.");
+      return;
+    }
+
+    setIsSubmittingReplacement(true);
+    setReplacementModalError(null);
+
+    const orderId = selectedOrderForReplacement.id || selectedOrderForReplacement.orderNumber;
+    const orderNumber = selectedOrderForReplacement.orderNumber;
+
+    try {
+      const res = await requestOrderReplacement(orderId, {
+        reason: replacementReason,
+        details: replacementDetails.trim(),
+        items: itemsToReplace,
+        unboxingProofConfirmed,
+      });
+
+      if (res.success) {
+        setSuccessMessage(
+          `Replacement request for Order #${orderNumber} submitted successfully. Our engineering desk will review your submission and dispatch verified replacements.`
+        );
+        setSelectedOrderForReplacement(null);
+        await fetchOrders();
+      } else {
+        setReplacementModalError(res.message || "Failed to submit replacement request.");
+      }
+    } catch (err) {
+      setReplacementModalError(err.message || "An error occurred while submitting your replacement request.");
+    } finally {
+      setIsSubmittingReplacement(false);
+    }
   };
 
   const handleConfirmCancel = async (e) => {
@@ -578,6 +724,59 @@ export default function OrdersPage({
                             <span aria-hidden="true">✕</span> Cancel Order
                           </button>
                         )}
+
+                        {(() => {
+                          const deliveryInfo = getDeliveryInfo(order);
+                          if (!deliveryInfo.isDelivered) return null;
+
+                          if (deliveryInfo.hasActiveReplacement) {
+                            return (
+                              <span
+                                className="vtx-replacement-pill-active"
+                                data-testid={`replacement-status-active-${order.orderNumber}`}
+                              >
+                                <span aria-hidden="true">📦</span> Replacement Active
+                              </span>
+                            );
+                          }
+
+                          if (deliveryInfo.hasDeliveryDate && deliveryInfo.isWithin7Days) {
+                            return (
+                              <button
+                                type="button"
+                                className="btn-request-replacement"
+                                onClick={() => handleOpenReplacementModal(order)}
+                                data-testid={`request-replacement-btn-${order.orderNumber}`}
+                                aria-label={`Request Replacement for Order ${order.orderNumber}`}
+                                title={`Delivered on ${deliveryInfo.deliveryDateStr} (${deliveryInfo.remainingDays} days remaining in replacement window)`}
+                              >
+                                <span aria-hidden="true">🔄</span> Request Replacement
+                              </button>
+                            );
+                          }
+
+                          if (deliveryInfo.hasDeliveryDate && !deliveryInfo.isWithin7Days) {
+                            return (
+                              <span
+                                className="vtx-replacement-pill-expired"
+                                data-testid={`replacement-status-expired-${order.orderNumber}`}
+                                title={`Delivered on ${deliveryInfo.deliveryDateStr}. The 7-day replacement window has concluded.`}
+                              >
+                                ⏱ 7-Day Window Ended
+                              </span>
+                            );
+                          }
+
+                          return (
+                            <span
+                              className="vtx-replacement-pill-expired"
+                              data-testid={`replacement-status-unverified-${order.orderNumber}`}
+                              title="Delivery timestamp pending carrier verification."
+                            >
+                              ℹ️ Delivery Verifying
+                            </span>
+                          );
+                        })()}
                       </div>
                     </header>
 
@@ -812,6 +1011,211 @@ export default function OrdersPage({
                     </>
                   ) : (
                     "Confirm Cancellation"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 7-Day Replacement Request Modal */}
+      {selectedOrderForReplacement && (
+        <div
+          className="vtx-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="replacement-modal-title"
+          data-testid="replacement-request-modal"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleCloseReplacementModal();
+          }}
+        >
+          <div className="vtx-cancel-modal vtx-replacement-modal">
+            <div className="vtx-cancel-modal-header">
+              <div
+                className="vtx-cancel-modal-icon-wrap"
+                style={{ background: "#e0f2fe", color: "#0369a1" }}
+                aria-hidden="true"
+              >
+                <span className="vtx-cancel-modal-icon">🔄</span>
+              </div>
+              <div>
+                <h3 id="replacement-modal-title">
+                  Request Replacement: Order #{selectedOrderForReplacement.orderNumber}
+                </h3>
+                <span className="vtx-cancel-modal-sub">VERTEX 7-Day Component Replacement Policy</span>
+              </div>
+            </div>
+
+            <p className="vtx-cancel-modal-intro">
+              Submit an engineering ticket for component transit damage, defect, or Dead-on-Arrival (DOA) replacement within your 7-day delivery window.
+            </p>
+
+            <div
+              className="vtx-cancel-modal-notice"
+              role="note"
+              style={{ background: "#f0fdf4", borderColor: "#bbf7d0", color: "#166534" }}
+            >
+              <span aria-hidden="true">🛡️</span>
+              <span>
+                <strong>Strict Replacement-Only Policy:</strong> Approved claims receive authentic replacement components dispatched immediately. Under VERTEX policy, direct monetary refunds are not offered.
+              </span>
+            </div>
+
+            {replacementModalError && (
+              <div
+                className="vtx-orders-alert alert-error"
+                role="alert"
+                aria-live="assertive"
+                data-testid="replacement-modal-error"
+                style={{ marginBottom: "16px" }}
+              >
+                <div className="vtx-orders-alert-content">
+                  <p>{replacementModalError}</p>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleConfirmReplacement}>
+              {/* Item Selection */}
+              <div className="vtx-cancel-field">
+                <label>Select Items for Replacement</label>
+                <div className="vtx-replacement-items-list" data-testid="replacement-items-selection">
+                  {(selectedOrderForReplacement.items || []).map((item, idx) => {
+                    const sku = item.sku || item.variant?.sku || item.id;
+                    const itemState = selectedItemSkus[sku] || {
+                      selected: true,
+                      quantity: item.quantity || 1,
+                      maxQuantity: item.quantity || 1,
+                    };
+                    return (
+                      <div key={sku || idx} className="vtx-replacement-item-row">
+                        <label className="vtx-replacement-checkbox-label">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(itemState.selected)}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setSelectedItemSkus((prev) => ({
+                                ...prev,
+                                [sku]: { ...prev[sku], selected: checked },
+                              }));
+                            }}
+                            disabled={isSubmittingReplacement}
+                            data-testid={`replacement-item-checkbox-${sku}`}
+                          />
+                          <span className="vtx-replacement-item-title">
+                            {item.productName || item.name} <code>({sku})</code>
+                          </span>
+                        </label>
+                        {itemState.selected && (
+                          <div className="vtx-replacement-qty-wrap">
+                            <label htmlFor={`repl-qty-${sku}`}>Units:</label>
+                            <input
+                              id={`repl-qty-${sku}`}
+                              type="number"
+                              min="1"
+                              max={itemState.maxQuantity}
+                              value={itemState.quantity}
+                              onChange={(e) => {
+                                const val = Math.max(
+                                  1,
+                                  Math.min(itemState.maxQuantity, parseInt(e.target.value, 10) || 1)
+                                );
+                                setSelectedItemSkus((prev) => ({
+                                  ...prev,
+                                  [sku]: { ...prev[sku], quantity: val },
+                                }));
+                              }}
+                              disabled={isSubmittingReplacement}
+                              className="vtx-replacement-qty-input"
+                              data-testid={`replacement-item-qty-${sku}`}
+                            />
+                            <span className="vtx-replacement-qty-max">/ {itemState.maxQuantity}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Reason */}
+              <div className="vtx-cancel-field">
+                <label htmlFor="replacement-reason-select">Replacement Reason</label>
+                <select
+                  id="replacement-reason-select"
+                  value={replacementReason}
+                  onChange={(e) => setReplacementReason(e.target.value)}
+                  disabled={isSubmittingReplacement}
+                  data-testid="replacement-reason-select"
+                >
+                  <option value="Transit Damage / Broken in Transit">Transit Damage / Broken in Transit</option>
+                  <option value="Dead on Arrival (DOA) / Component Defect">Dead on Arrival (DOA) / Component Defect</option>
+                  <option value="Incorrect Component Dispatched">Incorrect Component Dispatched</option>
+                  <option value="Physical Dimension / Threading Mismatch">Physical Dimension / Threading Mismatch</option>
+                  <option value="Missing Hardware / Fastener Count Discrepancy">
+                    Missing Hardware / Fastener Count Discrepancy
+                  </option>
+                </select>
+              </div>
+
+              {/* Technical Details */}
+              <div className="vtx-cancel-field">
+                <label htmlFor="replacement-details-input">Technical Description &amp; Damage Details</label>
+                <textarea
+                  id="replacement-details-input"
+                  rows={3}
+                  value={replacementDetails}
+                  onChange={(e) => setReplacementDetails(e.target.value)}
+                  placeholder="Describe observed physical defects, pin misalignment, transit damage, or test benchmark failure..."
+                  disabled={isSubmittingReplacement}
+                  data-testid="replacement-details-input"
+                  required
+                />
+              </div>
+
+              {/* Proof acknowledgment checkbox */}
+              <div className="vtx-cancel-field" style={{ marginBottom: "16px" }}>
+                <label className="vtx-replacement-checkbox-label" style={{ fontSize: "0.85rem", color: "#475569" }}>
+                  <input
+                    type="checkbox"
+                    checked={unboxingProofConfirmed}
+                    onChange={(e) => setUnboxingProofConfirmed(e.target.checked)}
+                    disabled={isSubmittingReplacement}
+                    data-testid="replacement-proof-checkbox"
+                  />
+                  <span>
+                    I confirm the components have not been modified or soldered, and retain original serial / batch markings.
+                  </span>
+                </label>
+              </div>
+
+              <div className="vtx-cancel-modal-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary vtx-modal-cancel-btn"
+                  onClick={handleCloseReplacementModal}
+                  disabled={isSubmittingReplacement}
+                  data-testid="replacement-dismiss-btn"
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary vtx-modal-confirm-btn"
+                  disabled={isSubmittingReplacement}
+                  data-testid="confirm-replacement-btn"
+                  style={{ background: "#0284c7", borderColor: "#0284c7" }}
+                >
+                  {isSubmittingReplacement ? (
+                    <>
+                      <span className="vtx-btn-spinner" aria-hidden="true" />
+                      <span>Submitting...</span>
+                    </>
+                  ) : (
+                    "Submit Replacement Request"
                   )}
                 </button>
               </div>

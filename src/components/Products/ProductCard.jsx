@@ -66,6 +66,7 @@ export default function ProductCard({
   const [addFeedback, setAddFeedback] = useState(false);
   const addFeedbackTimerRef = useRef(null);
   const [isWishlisted, setIsWishlisted] = useState(() => isItemInWishlist(product?.id || product?.slug));
+  const [cardQty, setCardQty] = useState(1);
   const prefersReducedMotion = useSafeReducedMotion();
 
   // Normalized motion values for cursor position relative to card center (-0.5 to 0.5)
@@ -107,7 +108,11 @@ export default function ProductCard({
 
   const handleAddToCartClick = () => {
     if (!onAddToCart || isAdding || addFeedback) return;
-    onAddToCart(product, product.variants?.[0]);
+    if (cardQty > 1) {
+      onAddToCart(product, product.variants?.[0], cardQty);
+    } else {
+      onAddToCart(product, product.variants?.[0]);
+    }
     setAddFeedback(true);
     addFeedbackTimerRef.current = window.setTimeout(() => {
       setAddFeedback(false);
@@ -352,6 +357,24 @@ export default function ProductCard({
           </div>
         )}
 
+        {/* Real Rating and Review count when available */}
+        {product.rating && (
+          <div
+            className="product-card-rating"
+            aria-label={`Rating: ${product.rating} out of 5 stars`}
+            style={{
+              transform: isHovered && !prefersReducedMotion ? "translateZ(11px)" : "translateZ(0px)",
+              transition: "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+            }}
+          >
+            <span className="rating-star" aria-hidden="true">★</span>
+            <span className="rating-score">{product.rating}</span>
+            {product.reviews !== undefined && (
+              <span className="rating-count">({product.reviews})</span>
+            )}
+          </div>
+        )}
+
         {/* Category & Subcategory breadcrumb tag */}
         <div className="product-cat-label">
           {product.subcategory?.name || product.category?.name || "Industrial Component"}
@@ -419,7 +442,7 @@ export default function ProductCard({
             : "Available on Inquiry"}
         </p>
 
-        {/* Action Buttons: Primary Add to Cart Button replacing Specs & Request Quote */}
+        {/* Action Buttons: Primary Add to Cart with Quantity Controls or Request Quote */}
         <div
           className="product-actions-row"
           style={{
@@ -427,18 +450,75 @@ export default function ProductCard({
             transition: "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         >
-          <motion.button
-            type="button"
-            className="btn btn-primary btn-cart vtx-card-add-to-cart"
-            onClick={handleAddToCartClick}
-            disabled={!inStock || isAdding || addFeedback}
-            data-testid={`add-to-cart-${product.id || product.slug}`}
-            aria-label={addFeedback ? `${product.name} added to cart` : `Add ${product.name} to cart`}
-            whileHover={prefersReducedMotion || !inStock ? undefined : { scale: 1.02 }}
-            whileTap={prefersReducedMotion || !inStock ? undefined : { scale: 0.98 }}
-          >
-            {addFeedback ? "✓ Added" : isAdding ? "Adding..." : "🛒 Add to Cart"}
-          </motion.button>
+          {hasPrice ? (
+            <div className="vtx-card-purchase-row">
+              <div
+                className="vtx-card-qty-control"
+                onClick={(e) => e.stopPropagation()}
+                role="group"
+                aria-label="Item quantity"
+              >
+                <button
+                  type="button"
+                  className="vtx-card-qty-btn"
+                  onClick={() => setCardQty((q) => Math.max(1, q - 1))}
+                  disabled={cardQty <= 1 || !inStock}
+                  aria-label="Decrease quantity"
+                >
+                  −
+                </button>
+                <input
+                  type="text"
+                  readOnly
+                  className="vtx-card-qty-val"
+                  value={cardQty}
+                  aria-label={`Selected quantity ${cardQty}`}
+                  tabIndex={-1}
+                />
+                <button
+                  type="button"
+                  className="vtx-card-qty-btn"
+                  onClick={() => setCardQty((q) => q + 1)}
+                  disabled={!inStock}
+                  aria-label="Increase quantity"
+                >
+                  +
+                </button>
+              </div>
+
+              <motion.button
+                type="button"
+                className="btn btn-primary btn-cart vtx-card-add-to-cart"
+                onClick={handleAddToCartClick}
+                disabled={!inStock || isAdding || addFeedback}
+                data-testid={`add-to-cart-${product.id || product.slug}`}
+                aria-label={addFeedback ? `${product.name} added to cart` : `Add ${product.name} to cart`}
+                whileHover={prefersReducedMotion || !inStock ? undefined : { scale: 1.02 }}
+                whileTap={prefersReducedMotion || !inStock ? undefined : { scale: 0.98 }}
+              >
+                {addFeedback ? "✓ Added" : isAdding ? "Adding..." : "🛒 Add to Cart"}
+              </motion.button>
+            </div>
+          ) : (
+            <motion.button
+              type="button"
+              className="btn btn-outline btn-quote vtx-card-request-quote"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onRequestQuote) {
+                  onRequestQuote(product);
+                } else if (onViewDetails) {
+                  onViewDetails(product);
+                }
+              }}
+              data-testid={`request-quote-${product.id || product.slug}`}
+              aria-label={`Request price quote for ${product.name}`}
+              whileHover={prefersReducedMotion ? undefined : { scale: 1.02 }}
+              whileTap={prefersReducedMotion ? undefined : { scale: 0.98 }}
+            >
+              📋 Request Quote
+            </motion.button>
+          )}
         </div>
       </div>
     </motion.div>

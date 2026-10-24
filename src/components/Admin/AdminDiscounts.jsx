@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getAdminProducts } from "../../services/adminApi";
+import { getAdminProducts, getAdminCoupons, createAdminCoupon } from "../../services/adminApi";
 
 // Currency Formatter
 const formatINR = (val) => {
@@ -74,6 +74,7 @@ const INITIAL_COUPONS = [
     freeProductName: "Arduino Uno R3 Microcontroller Board",
     freeProductSku: "ELEC-ARD-UNO-R3",
     freeProductValue: 1299.0,
+    maxFreeUnits: 1,
     minOrder: 1500.0,
     maxDiscount: 1299.0,
     validityDuration: "semester",
@@ -105,6 +106,7 @@ const INITIAL_COUPONS = [
     freeProductName: "Stainless Steel Hex Bolt (Pack of 10)",
     freeProductSku: "FAST-HEX-M8-30-P10",
     freeProductValue: 120.0,
+    maxFreeUnits: 2,
     minOrder: 2500.0,
     maxDiscount: 1500.0,
     validityDuration: "custom",
@@ -112,8 +114,8 @@ const INITIAL_COUPONS = [
     expiresAt: "2027-05-31T23:59:59",
     status: "active",
     eligibilityCriteria: "Verified student ID or @smail.iitm.ac.in institutional domain",
-    usagePolicy: "Reusable for official project teams (up to 5 orders per group)",
-    perCustomerLimit: "5 per team",
+    usagePolicy: "Reusable for official project teams (up to 2 packs per team)",
+    perCustomerLimit: "Up to 2 packs",
     redemptionStatus: "Available",
     usageCount: 12,
     description: "20% discount plus complimentary high-tensile stainless fastener test pack.",
@@ -167,6 +169,8 @@ export default function AdminDiscounts() {
   const [colCampaignName, setColCampaignName] = useState("");
   const [colBenefitType, setColBenefitType] = useState("free_gift"); // "free_gift" | "percentage"
   const [colSelectedGiftSku, setColSelectedGiftSku] = useState(FALLBACK_GIFTS[0].sku);
+  const [colMaxFreeUnits, setColMaxFreeUnits] = useState("1");
+  const [giftSearchTerm, setGiftSearchTerm] = useState("");
   const [colDiscountVal, setColDiscountVal] = useState("15");
   const [colMinOrder, setColMinOrder] = useState("1000");
   const [colPeriod, setColPeriod] = useState("Academic Year 2026");
@@ -176,24 +180,40 @@ export default function AdminDiscounts() {
 
   const [formError, setFormError] = useState("");
 
-  // Load real catalog products for free gift selection
+  // Load real catalog products & all eligible variant SKUs for free gift selection
   useEffect(() => {
     let isMounted = true;
     async function fetchCatalog() {
       try {
-        const res = await getAdminProducts({ limit: 50 });
+        const res = await getAdminProducts({ limit: 100, officialOnly: true });
         if (isMounted && res?.products && res.products.length > 0) {
-          const mapped = res.products.map((p) => {
-            const firstVariant = p.variants?.[0] || {};
-            return {
-              sku: firstVariant.sku || p.slug,
-              name: p.name,
-              price: firstVariant.price || p.price || 999,
-            };
-          });
-          setCatalogProducts(mapped);
-          if (mapped.length > 0) {
-            setColSelectedGiftSku(mapped[0].sku);
+          const allGifts = [];
+          for (const p of res.products) {
+            if (p.isActive === false) continue;
+            const variants = p.variants && p.variants.length > 0 ? p.variants : [null];
+            for (const v of variants) {
+              if (v && v.isActive === false) continue;
+              const rawPrice = v?.price ?? p.price;
+              // Exclude unpriced / RFQ products from free gift selection
+              if (rawPrice === null || rawPrice === undefined || Number(rawPrice) <= 0) continue;
+              const sku = v?.sku || p.slug || p.id;
+              const variantLabel = v?.name || v?.packSize || v?.dimensions || "";
+              const price = Number(rawPrice);
+              allGifts.push({
+                sku,
+                productId: p.id,
+                productName: p.name,
+                name: p.name,
+                variantName: variantLabel,
+                price,
+                stockQuantity: v?.stockQuantity ?? 100,
+                displayName: `${p.name}${variantLabel ? ` — ${variantLabel}` : ""} (SKU: ${sku} — ${formatINR(price)})`,
+              });
+            }
+          }
+          if (allGifts.length > 0) {
+            setCatalogProducts(allGifts);
+            setColSelectedGiftSku(allGifts[0].sku);
           }
         }
       } catch (err) {
@@ -201,12 +221,29 @@ export default function AdminDiscounts() {
       }
     }
     fetchCatalog();
+
+    async function fetchCoupons() {
+      try {
+        const res = await getAdminCoupons();
+        if (isMounted && res?.coupons && res.coupons.length > 0) {
+          setCoupons((prev) => {
+            const existingCodes = new Set(prev.map((c) => c.code));
+            const newBackend = res.coupons.filter((c) => !existingCodes.has(c.code));
+            return [...prev, ...newBackend];
+          });
+        }
+      } catch (err) {
+        console.warn("Coupons fetch notice (using session registry):", err);
+      }
+    }
+    fetchCoupons();
+
     return () => {
       isMounted = false;
     };
   }, []);
 
-  // Prevent background page from scrolling while modal is open
+  // Prevent background page from scrolling while drawer or modal is open
   useEffect(() => {
     if (showCreateModal || inspectingCoupon) {
       document.body.style.overflow = "hidden";
@@ -217,6 +254,43 @@ export default function AdminDiscounts() {
       document.body.style.overflow = "";
     };
   }, [showCreateModal, inspectingCoupon]);
+
+  // Support closing drawer and modal via Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (showCreateModal) {
+          setShowCreateModal(false);
+        } else if (inspectingCoupon) {
+          setInspectingCoupon(null);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showCreateModal, inspectingCoupon]);
+
+  // Safe backdrop click: close cleanly or confirm if unsaved user input is present
+  const handleBackdropClick = () => {
+    const hasUnsavedUserInput =
+      (createCategory === "college" && (colCollegeName.trim().length > 0 || colCampaignName.trim().length > 0)) ||
+      (createCategory === "regular" && regCampaignName.trim().length > 0);
+    if (hasUnsavedUserInput) {
+      if (typeof window !== "undefined" && typeof window.confirm === "function") {
+        try {
+          if (window.confirm("You have unsaved coupon changes. Do you want to close and discard them?")) {
+            setShowCreateModal(false);
+          }
+        } catch {
+          setShowCreateModal(false);
+        }
+      } else {
+        setShowCreateModal(false);
+      }
+    } else {
+      setShowCreateModal(false);
+    }
+  };
 
   // Filter coupons
   const filteredCoupons = coupons.filter((c) => {
@@ -262,6 +336,15 @@ export default function AdminDiscounts() {
     typeFilter !== "all" ||
     activeCategoryTab !== "all"
   );
+
+  const filteredGifts = catalogProducts.filter((prod) => {
+    if (!giftSearchTerm.trim()) return true;
+    const term = giftSearchTerm.toLowerCase().trim();
+    const nameMatch = (prod.name || prod.productName || "").toLowerCase().includes(term);
+    const skuMatch = (prod.sku || "").toLowerCase().includes(term);
+    const varMatch = (prod.variantName || "").toLowerCase().includes(term);
+    return nameMatch || skuMatch || varMatch;
+  });
 
   const handleClearFilters = () => {
     setSearchQuery("");
@@ -372,6 +455,10 @@ export default function AdminDiscounts() {
         type: "success",
         text: `Regular coupon "${newCoupon.code}" created and registered in admin session.`,
       });
+
+      Promise.resolve(createAdminCoupon?.(newCoupon)).catch((err) => {
+        console.warn("Coupon API creation sync notice:", err);
+      });
     } else {
       // College Coupon
       if (!colCollegeName.trim()) {
@@ -385,6 +472,21 @@ export default function AdminDiscounts() {
       if (!colCampaignName.trim()) {
         setFormError("Please enter an educational campaign name.");
         return;
+      }
+
+      let maxUnitsNum = 1;
+      if (colBenefitType === "free_gift") {
+        maxUnitsNum = Number(colMaxFreeUnits);
+        if (
+          !colMaxFreeUnits ||
+          isNaN(maxUnitsNum) ||
+          !Number.isInteger(maxUnitsNum) ||
+          maxUnitsNum < 1 ||
+          maxUnitsNum > 10
+        ) {
+          setFormError("Maximum Free Units per Redemption must be an integer between 1 and 10.");
+          return;
+        }
       }
 
       const selectedGift = catalogProducts.find((p) => p.sku === colSelectedGiftSku);
@@ -406,24 +508,31 @@ export default function AdminDiscounts() {
         discountValue: colBenefitType === "percentage" ? Number(colDiscountVal) || 0 : 0,
         freeProductName:
           colBenefitType === "free_gift"
-            ? selectedGift?.name || "Educational Hardware Kit"
+            ? selectedGift?.productName || selectedGift?.name || "Educational Hardware Kit"
             : null,
         freeProductSku:
           colBenefitType === "free_gift" ? selectedGift?.sku || colSelectedGiftSku : null,
         freeProductValue:
           colBenefitType === "free_gift" ? selectedGift?.price || 1200 : null,
+        maxFreeUnits: colBenefitType === "free_gift" ? maxUnitsNum : null,
         minOrder: Number(colMinOrder) || 0,
         maxDiscount:
           colBenefitType === "percentage"
             ? Number(colDiscountVal) * 50
-            : selectedGift?.price || 1299,
+            : (selectedGift?.price || 1299) * maxUnitsNum,
         validityDuration: "semester",
         validPeriod: colPeriod || "Academic Semester",
         status: colStatus,
         eligibilityCriteria:
           colEligibility.trim() || "Verified enrolled students with valid institutional email/ID",
-        usagePolicy: "1 redemption per verified student ID with qualifying lab order",
-        perCustomerLimit: "1 per student",
+        usagePolicy:
+          colBenefitType === "free_gift"
+            ? `${maxUnitsNum} free unit${maxUnitsNum > 1 ? "s" : ""} per verified student ID with qualifying lab order`
+            : "1 redemption per verified student ID with qualifying lab order",
+        perCustomerLimit:
+          colBenefitType === "free_gift"
+            ? `Up to ${maxUnitsNum} unit${maxUnitsNum > 1 ? "s" : ""} per student`
+            : "1 per student",
         redemptionStatus: "Available",
         usageCount: 0,
         description:
@@ -436,6 +545,10 @@ export default function AdminDiscounts() {
       setFeedbackMessage({
         type: "success",
         text: `College coupon "${newCoupon.code}" for ${newCoupon.collegeName} successfully registered in admin session.`,
+      });
+
+      Promise.resolve(createAdminCoupon?.(newCoupon)).catch((err) => {
+        console.warn("Coupon API creation sync notice:", err);
       });
     }
   };
@@ -752,11 +865,9 @@ export default function AdminDiscounts() {
                                   ({coupon.studentDomain})
                                 </span>
                               )}
-                              {(coupon.collegeAddress || coupon.recipientAddress) && (
-                                <div style={{ fontSize: "0.73rem", color: "var(--adm-text-muted)", marginTop: 2 }} title={coupon.collegeAddress || coupon.recipientAddress}>
-                                  📍 {coupon.collegeAddress || coupon.recipientAddress}
-                                </div>
-                              )}
+                              <div style={{ fontSize: "0.73rem", color: "var(--adm-text-muted)", marginTop: 2 }} title={coupon.collegeAddress || coupon.recipientAddress || "Address not provided"}>
+                                📍 {coupon.collegeAddress || coupon.recipientAddress || "Address not provided"}
+                              </div>
                             </div>
                           ) : (
                             <div style={{ fontSize: "0.76rem", color: "var(--adm-text-secondary)", marginTop: 2 }}>
@@ -788,6 +899,9 @@ export default function AdminDiscounts() {
                               </div>
                               <div style={{ fontSize: "0.72rem", color: "var(--adm-text-secondary)" }}>
                                 SKU: {coupon.freeProductSku}
+                              </div>
+                              <div style={{ fontSize: "0.72rem", color: "var(--adm-primary)", fontWeight: 600, marginTop: 1 }}>
+                                Max Free Units: {coupon.maxFreeUnits || 1}
                               </div>
                             </div>
                           ) : coupon.discountType === "percentage" ? (
@@ -908,19 +1022,27 @@ export default function AdminDiscounts() {
                     </div>
 
                     {isCollege && (
-                      <div className="adm-coupon-card-item">
-                        <span className="adm-coupon-card-label">College / University</span>
-                        <span className="adm-coupon-card-value">
-                          {coupon.collegeName} ({coupon.studentDomain || "No domain"})
-                        </span>
-                      </div>
+                      <>
+                        <div className="adm-coupon-card-item">
+                          <span className="adm-coupon-card-label">College / University</span>
+                          <span className="adm-coupon-card-value">
+                            {coupon.collegeName} ({coupon.studentDomain || "No domain"})
+                          </span>
+                        </div>
+                        <div className="adm-coupon-card-item">
+                          <span className="adm-coupon-card-label">Campus Address</span>
+                          <span className="adm-coupon-card-value">
+                            📍 {coupon.collegeAddress || coupon.recipientAddress || "Address not provided"}
+                          </span>
+                        </div>
+                      </>
                     )}
 
                     <div className="adm-coupon-card-item">
                       <span className="adm-coupon-card-label">Benefit / Discount</span>
                       <span className="adm-coupon-card-value">
                         {coupon.discountType === "free_gift"
-                          ? `🎁 Free Gift: ${coupon.freeProductName}`
+                          ? `🎁 Free Gift: ${coupon.freeProductName} (Max: ${coupon.maxFreeUnits || 1} unit${(coupon.maxFreeUnits || 1) > 1 ? "s" : ""})`
                           : coupon.discountType === "percentage"
                           ? `${coupon.discountValue}% Off (Cap: ${formatINR(coupon.maxDiscount)})`
                           : `${formatINR(coupon.discountValue)} Off`}
@@ -1033,14 +1155,14 @@ export default function AdminDiscounts() {
                   alignItems: "center",
                   justifyContent: "space-between",
                   padding: 16,
-                  background: "#f8fafc",
+                  background: "var(--adm-surface-alt)",
                   border: "1px solid var(--adm-border)",
                   borderRadius: "var(--adm-radius)",
                   marginBottom: 18,
                 }}
               >
                 <div>
-                  <div style={{ fontSize: "1.2rem", fontWeight: 700, fontFamily: "monospace" }}>
+                  <div style={{ fontSize: "1.2rem", fontWeight: 700, fontFamily: "monospace", color: "var(--adm-text-primary)" }}>
                     {inspectingCoupon.code}
                   </div>
                   <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--adm-text-primary)", marginTop: 2 }}>
@@ -1060,13 +1182,19 @@ export default function AdminDiscounts() {
               {/* College Information (if College coupon) */}
               {inspectingCoupon.category === "college" && (
                 <div style={{ marginBottom: 18 }}>
-                  <h4 style={{ fontSize: "0.9rem", color: "#1e3a8a", margin: "0 0 10px" }}>
+                  <h4 style={{ fontSize: "0.9rem", color: "var(--adm-primary)", margin: "0 0 10px" }}>
                     🏫 College &amp; Institutional Verification
                   </h4>
                   <div className="adm-detail-grid">
                     <div className="adm-detail-item">
                       <span className="adm-detail-label">College / Institute Name</span>
                       <span className="adm-detail-value">{inspectingCoupon.collegeName}</span>
+                    </div>
+                    <div className="adm-detail-item">
+                      <span className="adm-detail-label">Campus / Department Address</span>
+                      <span className="adm-detail-value">
+                        {inspectingCoupon.collegeAddress || inspectingCoupon.recipientAddress || "Address not provided"}
+                      </span>
                     </div>
                     <div className="adm-detail-item">
                       <span className="adm-detail-label">College Identifier</span>
@@ -1103,21 +1231,19 @@ export default function AdminDiscounts() {
                         <span className="adm-detail-value">{inspectingCoupon.recipientName}</span>
                       </div>
                     )}
-                    {(inspectingCoupon.recipientAddress || inspectingCoupon.collegeAddress) && (
-                      <div className="adm-detail-item">
-                        <span className="adm-detail-label">Designated Address</span>
-                        <span className="adm-detail-value">
-                          {inspectingCoupon.recipientAddress || inspectingCoupon.collegeAddress}
-                        </span>
-                      </div>
-                    )}
+                    <div className="adm-detail-item">
+                      <span className="adm-detail-label">Designated Address</span>
+                      <span className="adm-detail-value">
+                        {inspectingCoupon.collegeAddress || inspectingCoupon.recipientAddress || "Address not provided"}
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
 
               {/* Benefit & Commercial Terms */}
               <div style={{ marginBottom: 18 }}>
-                <h4 style={{ fontSize: "0.9rem", color: "#1e3a8a", margin: "0 0 10px" }}>
+                <h4 style={{ fontSize: "0.9rem", color: "var(--adm-primary)", margin: "0 0 10px" }}>
                   💰 Benefit &amp; Commercial Terms
                 </h4>
                 <div className="adm-detail-grid">
@@ -1145,6 +1271,12 @@ export default function AdminDiscounts() {
                         <span className="adm-detail-label">Gift Commercial Value</span>
                         <span className="adm-detail-value">
                           {formatINR(inspectingCoupon.freeProductValue)}
+                        </span>
+                      </div>
+                      <div className="adm-detail-item">
+                        <span className="adm-detail-label">Maximum Free Units</span>
+                        <span className="adm-detail-value" style={{ fontWeight: 600, color: "var(--adm-primary)" }}>
+                          {inspectingCoupon.maxFreeUnits ? `${inspectingCoupon.maxFreeUnits} unit${inspectingCoupon.maxFreeUnits > 1 ? "s" : ""} per redemption` : "1 unit per redemption"}
                         </span>
                       </div>
                     </>
@@ -1177,7 +1309,7 @@ export default function AdminDiscounts() {
 
               {/* Validity & Usage Policies */}
               <div style={{ marginBottom: 18 }}>
-                <h4 style={{ fontSize: "0.9rem", color: "#1e3a8a", margin: "0 0 10px" }}>
+                <h4 style={{ fontSize: "0.9rem", color: "var(--adm-primary)", margin: "0 0 10px" }}>
                   ⏳ Validity &amp; Usage Policy
                 </h4>
                 <div className="adm-detail-grid">
@@ -1202,7 +1334,7 @@ export default function AdminDiscounts() {
 
               {/* Description */}
               <div style={{ marginBottom: 18 }}>
-                <h4 style={{ fontSize: "0.9rem", color: "#1e3a8a", margin: "0 0 6px" }}>
+                <h4 style={{ fontSize: "0.9rem", color: "var(--adm-primary)", margin: "0 0 6px" }}>
                   📝 Campaign Description
                 </h4>
                 <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--adm-text-secondary)", lineHeight: 1.5 }}>
@@ -1232,21 +1364,20 @@ export default function AdminDiscounts() {
         </div>
       )}
 
-      {/* Create Coupon Modal (Supports Regular & College Coupons) */}
+      {/* Create Coupon Drawer (Right-side slide-in drawer for Regular & College Promotions) */}
       {showCreateModal && (
         <div
-          className="adm-modal-backdrop"
+          className="adm-modal-backdrop adm-coupon-drawer-backdrop"
           role="dialog"
           aria-modal="true"
           aria-labelledby="promo-modal-title"
-          onClick={() => setShowCreateModal(false)}
+          onClick={handleBackdropClick}
         >
           <div
-            className="adm-modal-content"
-            style={{ maxWidth: 720 }}
+            className="adm-coupon-drawer"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="adm-modal-header">
+            <div className="adm-coupon-drawer-header adm-modal-header">
               <div>
                 <h3 id="promo-modal-title" style={{ margin: 0 }}>
                   Create New Promotion Campaign
@@ -1258,25 +1389,18 @@ export default function AdminDiscounts() {
               <button
                 type="button"
                 className="adm-modal-close"
-                onClick={() => setShowCreateModal(false)}
+                onClick={handleBackdropClick}
                 aria-label="Close"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreateCouponSubmit} className="adm-modal-form">
-              <div className="adm-modal-body">
+            <form onSubmit={handleCreateCouponSubmit} className="adm-coupon-drawer-form adm-modal-form">
+              <div className="adm-coupon-drawer-body adm-modal-body">
                 {/* Category Switcher Tabs */}
                 <div
-                  style={{
-                    display: "flex",
-                    gap: 10,
-                    marginBottom: 20,
-                    padding: 4,
-                    background: "#f1f5f9",
-                    borderRadius: 8,
-                  }}
+                  className="adm-drawer-tabs"
                   role="tablist"
                   aria-label="New coupon category selection"
                 >
@@ -1284,18 +1408,7 @@ export default function AdminDiscounts() {
                     type="button"
                     role="tab"
                     aria-selected={createCategory === "regular"}
-                    style={{
-                      flex: 1,
-                      padding: "8px 16px",
-                      borderRadius: 6,
-                      border: "none",
-                      background: createCategory === "regular" ? "#ffffff" : "transparent",
-                      color: createCategory === "regular" ? "var(--adm-primary)" : "var(--adm-text-secondary)",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      boxShadow: createCategory === "regular" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
-                      transition: "all 0.15s ease",
-                    }}
+                    className={`adm-drawer-tab-btn ${createCategory === "regular" ? "active" : ""}`}
                     onClick={() => {
                       setCreateCategory("regular");
                       setFormError("");
@@ -1307,18 +1420,7 @@ export default function AdminDiscounts() {
                     type="button"
                     role="tab"
                     aria-selected={createCategory === "college"}
-                    style={{
-                      flex: 1,
-                      padding: "8px 16px",
-                      borderRadius: 6,
-                      border: "none",
-                      background: createCategory === "college" ? "#ffffff" : "transparent",
-                      color: createCategory === "college" ? "#1e3a8a" : "var(--adm-text-secondary)",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      boxShadow: createCategory === "college" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
-                      transition: "all 0.15s ease",
-                    }}
+                    className={`adm-drawer-tab-btn ${createCategory === "college" ? "active" : ""}`}
                     onClick={() => {
                       setCreateCategory("college");
                       setFormError("");
@@ -1340,21 +1442,12 @@ export default function AdminDiscounts() {
                 {createCategory === "regular" && (
                   <>
                     <div style={{ marginBottom: 16 }}>
-                      <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#334155", display: "block", marginBottom: 6 }}>
+                      <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--adm-text-primary)", display: "block", marginBottom: 6 }}>
                         Coupon Subtype
                       </label>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                         <label
-                          style={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: 10,
-                            padding: 12,
-                            border: `2px solid ${regSubType === "reusable" ? "var(--adm-primary)" : "var(--adm-border)"}`,
-                            borderRadius: 8,
-                            background: regSubType === "reusable" ? "#eff6ff" : "var(--adm-surface)",
-                            cursor: "pointer",
-                          }}
+                          className={`adm-drawer-radio-card ${regSubType === "reusable" ? "active" : ""}`}
                         >
                           <input
                             type="radio"
@@ -1365,26 +1458,17 @@ export default function AdminDiscounts() {
                             style={{ marginTop: 3 }}
                           />
                           <div>
-                            <strong style={{ display: "block", fontSize: "0.85rem" }}>
+                            <strong className="adm-drawer-radio-title">
                               Time-Limited Reusable
                             </strong>
-                            <span style={{ fontSize: "0.75rem", color: "var(--adm-text-secondary)" }}>
+                            <span className="adm-drawer-radio-desc">
                               Reusable by customers within the active validity window.
                             </span>
                           </div>
                         </label>
 
                         <label
-                          style={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: 10,
-                            padding: 12,
-                            border: `2px solid ${regSubType === "single_use" ? "var(--adm-primary)" : "var(--adm-border)"}`,
-                            borderRadius: 8,
-                            background: regSubType === "single_use" ? "#eff6ff" : "var(--adm-surface)",
-                            cursor: "pointer",
-                          }}
+                          className={`adm-drawer-radio-card ${regSubType === "single_use" ? "active" : ""}`}
                         >
                           <input
                             type="radio"
@@ -1395,10 +1479,10 @@ export default function AdminDiscounts() {
                             style={{ marginTop: 3 }}
                           />
                           <div>
-                            <strong style={{ display: "block", fontSize: "0.85rem" }}>
+                            <strong className="adm-drawer-radio-title">
                               Single-Use Voucher
                             </strong>
-                            <span style={{ fontSize: "0.75rem", color: "var(--adm-text-secondary)" }}>
+                            <span className="adm-drawer-radio-desc">
                               Each issued token can be redeemed exactly once.
                             </span>
                           </div>
@@ -1500,7 +1584,7 @@ export default function AdminDiscounts() {
 
                     {/* Validity Duration Configuration */}
                     <div style={{ marginBottom: 16 }}>
-                      <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#334155", display: "block", marginBottom: 6 }}>
+                      <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--adm-text-primary)", display: "block", marginBottom: 6 }}>
                         Validity Duration &amp; Expiry
                       </label>
                       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
@@ -1747,26 +1831,63 @@ export default function AdminDiscounts() {
 
                     {/* Free Product or Gift Selection from Catalog */}
                     {colBenefitType === "free_gift" ? (
-                      <div className="adm-form-field" style={{ marginBottom: 16 }}>
-                        <label htmlFor="colSelectedGiftSku">
-                          Select Free Gift from Live Catalog Data *
-                        </label>
-                        <select
-                          id="colSelectedGiftSku"
-                          className="adm-select"
-                          value={colSelectedGiftSku}
-                          onChange={(e) => setColSelectedGiftSku(e.target.value)}
-                        >
-                          {catalogProducts.map((prod) => (
-                            <option key={prod.sku} value={prod.sku}>
-                              {prod.name} (SKU: {prod.sku} — {formatINR(prod.price)})
-                            </option>
-                          ))}
-                        </select>
-                        <span style={{ fontSize: "0.74rem", color: "var(--adm-text-secondary)", marginTop: 4 }}>
-                          Populated directly from the active catalog database to guarantee real SKU matching.
-                        </span>
-                      </div>
+                      <>
+                        <div className="adm-form-field" style={{ marginBottom: 16 }}>
+                          <label htmlFor="colSelectedGiftSku">
+                            Select Free Gift from Live Catalog Data *
+                          </label>
+                          <div style={{ marginBottom: 8 }}>
+                            <input
+                              type="text"
+                              className="adm-input"
+                              placeholder="Filter gifts by SKU, product name, or variant..."
+                              value={giftSearchTerm}
+                              onChange={(e) => setGiftSearchTerm(e.target.value)}
+                              aria-label="Filter free gifts by name or SKU"
+                            />
+                          </div>
+                          <select
+                            id="colSelectedGiftSku"
+                            className="adm-select"
+                            value={colSelectedGiftSku}
+                            onChange={(e) => setColSelectedGiftSku(e.target.value)}
+                          >
+                            {filteredGifts.length === 0 ? (
+                              <option value="" disabled>No products or variants matching filter</option>
+                            ) : (
+                              filteredGifts.map((prod) => (
+                                <option key={prod.sku} value={prod.sku}>
+                                  {prod.displayName || `${prod.name} (SKU: ${prod.sku} — ${formatINR(prod.price)})`}
+                                </option>
+                              ))
+                            )}
+                          </select>
+                          <span style={{ fontSize: "0.74rem", color: "var(--adm-text-secondary)", marginTop: 4 }}>
+                            Showing {filteredGifts.length} of {catalogProducts.length} verified catalog variants.
+                          </span>
+                        </div>
+
+                        <div className="adm-form-field" style={{ marginBottom: 16 }}>
+                          <label htmlFor="colMaxFreeUnits">
+                            Maximum Free Units per Redemption * (1 – 10)
+                          </label>
+                          <input
+                            id="colMaxFreeUnits"
+                            type="number"
+                            min="1"
+                            max="10"
+                            step="1"
+                            required
+                            className="adm-input"
+                            value={colMaxFreeUnits}
+                            onChange={(e) => setColMaxFreeUnits(e.target.value)}
+                            placeholder="1"
+                          />
+                          <span style={{ fontSize: "0.74rem", color: "var(--adm-text-secondary)", marginTop: 4 }}>
+                            Server-enforced limit on complimentary units per qualifying transaction (1 to 10).
+                          </span>
+                        </div>
+                      </>
                     ) : (
                       <div className="adm-form-grid">
                         <div className="adm-form-field">
@@ -1858,7 +1979,7 @@ export default function AdminDiscounts() {
                 </div>
               </div>
 
-              <div className="adm-modal-footer">
+              <div className="adm-coupon-drawer-footer adm-modal-footer">
                 <button
                   type="button"
                   className="adm-btn adm-btn-secondary"

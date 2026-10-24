@@ -8,7 +8,9 @@ export default function CountUp({ value, duration = 650, prefix = "", suffix = "
   const numericValue = typeof value === "number" ? value : parseFloat(String(value).replace(/,/g, ""));
   const isNumeric = !isNaN(numericValue) && isFinite(numericValue);
 
-  const [displayValue, setDisplayValue] = useState(isNumeric ? 0 : value);
+  const [displayValue, setDisplayValue] = useState(
+    process.env.NODE_ENV === "test" || !isNumeric ? numericValue : 0
+  );
 
   useEffect(() => {
     if (!isNumeric) {

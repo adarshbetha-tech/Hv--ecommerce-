@@ -61,3 +61,40 @@ export async function getProductVariants(req, res, next) {
     next(error);
   }
 }
+
+/**
+ * Controller to retrieve and stream a stored specification document for a product.
+ */
+export async function getProductSpecification(req, res, next) {
+  try {
+    const identifier = req.params.slug || req.params.id;
+    const product = await productService.getProductBySlugOrId(identifier);
+
+    if (!product) {
+      return res.status(404).json({
+        error: {
+          code: "NOT_FOUND",
+          message: "Product not found.",
+        },
+      });
+    }
+
+    const { getProductSpecification: getSpec } = await import("../services/admin.service.js");
+    const spec = await getSpec(product.id);
+
+    if (!spec || !spec.filePath) {
+      return res.status(404).json({
+        error: {
+          code: "SPECIFICATION_NOT_FOUND",
+          message: "No specification document is attached to this product.",
+        },
+      });
+    }
+
+    res.setHeader("Content-Type", spec.meta.fileType || "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${spec.meta.fileName}"`);
+    return res.sendFile(spec.filePath);
+  } catch (error) {
+    next(error);
+  }
+}

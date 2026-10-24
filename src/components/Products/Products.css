@@ -751,34 +751,49 @@
 
 .vtx-detail-showcase {
   display: grid;
-  grid-template-columns: 480px 1fr;
+  grid-template-columns: 460px 1fr;
   gap: var(--space-8);
   align-items: start;
 }
 
-/* Detail Visual Column */
+@media (max-width: 960px) {
+  .vtx-detail-showcase {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+}
+
+/* Detail Visual Column - Neutral Contain Presentation */
 .vtx-detail-visual-box {
-  background: #09182d;
+  background: #f8fafc;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1px solid #e2e8f0;
   position: relative;
-  min-height: 380px;
+  min-height: 400px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+  padding: 24px;
 }
 
 .vtx-detail-img {
   width: 100%;
-  height: 380px;
-  object-fit: cover;
+  max-height: 360px;
+  object-fit: contain;
+}
+
+.vtx-detail-img.contain-img {
+  max-width: 280px;
+  max-height: 280px;
+  width: auto;
+  height: auto;
 }
 
 .vtx-detail-svg {
   width: 100%;
-  height: 380px;
+  max-height: 360px;
 }
 
 .vtx-visual-badge {
@@ -2343,3 +2358,256 @@
     align-items: flex-start;
   }
 }
+
+/* ==========================================================================
+   Redesigned Screws Shopping Experience (Pages 1 to 4)
+   ========================================================================== */
+
+/* Product Card Rating */
+.product-card-rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 0 6px 0;
+  font-size: 0.82rem;
+}
+
+.product-card-rating .rating-star {
+  color: #f59e0b;
+  font-size: 0.92rem;
+}
+
+.product-card-rating .rating-score {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.product-card-rating .rating-count {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+/* Product Card Quantity Stepper & Add to Cart Row */
+.vtx-card-purchase-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.vtx-card-qty-control {
+  display: flex;
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  height: 36px;
+  padding: 0 2px;
+}
+
+.vtx-card-qty-btn {
+  background: transparent;
+  border: none;
+  color: #0f172a;
+  font-size: 1.1rem;
+  font-weight: 700;
+  width: 26px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.vtx-card-qty-btn:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: #0284c7;
+}
+
+.vtx-card-qty-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.vtx-card-qty-val {
+  width: 28px;
+  text-align: center;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #0f172a;
+  border: none;
+  background: transparent;
+  padding: 0;
+  pointer-events: none;
+}
+
+.vtx-card-purchase-row .btn-add-cart {
+  flex: 1;
+}
+
+/* Page 2: Head Selector View Container & Bypass Strip */
+.vtx-head-selector-view-container {
+  width: 100%;
+  margin: 12px 0 32px 0;
+}
+
+.vtx-head-bypass-strip {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.vtx-btn-bypass-heads {
+  font-weight: 600;
+  padding: 10px 24px;
+  border-radius: 8px;
+  color: #0284c7;
+  border-color: #cbd5e1;
+  background: #ffffff;
+}
+
+.vtx-btn-bypass-heads:hover {
+  background: #f0f9ff;
+  border-color: #0284c7;
+}
+
+/* Page 3: Head Facets Bar & Back Button */
+.vtx-page3-head-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.vtx-back-head-btn {
+  font-size: 0.86rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border-color: #cbd5e1;
+  color: #0f172a;
+  background: #f8fafc;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.vtx-back-head-btn:hover {
+  background: #f1f5f9;
+  border-color: #0284c7;
+  color: #0284c7;
+}
+
+.vtx-page3-inline-facets {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.vtx-facet-inline-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.84rem;
+  color: #475569;
+}
+
+.vtx-facet-inline-group label {
+  font-weight: 600;
+  color: #334155;
+}
+
+.vtx-facet-select {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #0f172a;
+  cursor: pointer;
+  outline: none;
+}
+
+.vtx-facet-select:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+}
+
+/* Page 4: Product Detail Ratings & Shipping Information Card */
+.vtx-detail-rating-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -6px 0 16px 0;
+  font-size: 0.95rem;
+}
+
+.vtx-detail-stars {
+  color: #f59e0b;
+  font-size: 1.15rem;
+  letter-spacing: 1px;
+}
+
+.vtx-detail-rating-num {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vtx-detail-rating-count {
+  color: #64748b;
+  font-size: 0.86rem;
+}
+
+.vtx-detail-shipping-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+}
+
+.vtx-shipping-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.vtx-shipping-icon {
+  font-size: 1.3rem;
+  line-height: 1.2;
+}
+
+.vtx-shipping-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vtx-shipping-info strong {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vtx-shipping-info span {
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+

@@ -83,4 +83,19 @@ describe("PolicyModal Component", () => {
 
     expect(container.firstChild).toBeNull();
   });
+
+  test("renders 7-Day Component Replacement Policy with replacement-only clauses", () => {
+    render(
+      <PolicyModal
+        policyId="returns"
+        isOpen={true}
+        onClose={jest.fn()}
+      />
+    );
+
+    expect(screen.getByRole("heading", { name: "7-Day Component Replacement Policy" })).toBeInTheDocument();
+    expect(screen.getByText("7-Day Transit Damage & Defect Replacement")).toBeInTheDocument();
+    expect(screen.getByText("Strict Replacement-Only Policy")).toBeInTheDocument();
+    expect(screen.getByText(/VERTEX operates a strict replacement-only policy/i)).toBeInTheDocument();
+  });
 });

@@ -36,6 +36,13 @@ productRouter.get(
   productController.getProduct
 );
 
+// Stream product specification PDF/document
+productRouter.get(
+  "/:slug/specification",
+  validateParams(productParamSchema),
+  productController.getProductSpecification
+);
+
 // Optional variant retrieval endpoint
 productRouter.get(
   "/:slug/variants",

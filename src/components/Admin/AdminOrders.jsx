@@ -10,21 +10,29 @@ const ALLOWED_STATUS_TRANSITIONS = {
   CANCELLED: [],
 };
 
-export default function AdminOrders({ initialFilter = "all" }) {
+export default function AdminOrders({ initialFilter = "all", initialDateFilter = "all" }) {
+  const isTodayRequested = String(initialFilter).toLowerCase() === "today" || String(initialDateFilter).toLowerCase() === "today";
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [ordersResponse, setOrdersResponse] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState(initialFilter);
+  const [statusFilter, setStatusFilter] = useState(isTodayRequested ? "all" : initialFilter);
   const [paymentFilter, setPaymentFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState(isTodayRequested ? "today" : initialDateFilter);
   const [inspectingOrder, setInspectingOrder] = useState(null);
 
-  // Fulfillment status update state
+  // Tax invoice viewing state
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceOrder, setInvoiceOrder] = useState(null);
+
+  // Fulfillment status and payment/refund update state
   const [targetStatus, setTargetStatus] = useState("");
   const [carrierInput, setCarrierInput] = useState("");
   const [trackingNumberInput, setTrackingNumberInput] = useState("");
   const [notesInput, setNotesInput] = useState("");
+  const [paymentStatusInput, setPaymentStatusInput] = useState("PENDING");
+  const [refundAmountInput, setRefundAmountInput] = useState("");
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [statusFeedback, setStatusFeedback] = useState(null);
 
@@ -76,6 +84,8 @@ export default function AdminOrders({ initialFilter = "all" }) {
     setCarrierInput(order.carrier || "");
     setTrackingNumberInput(order.trackingNumber || "");
     setNotesInput(order.notes || "");
+    setPaymentStatusInput(order.paymentStatus || "PENDING");
+    setRefundAmountInput(order.refundAmount ? String(order.refundAmount) : String(order.totalAmount || ""));
 
     const orderIdentifier = order.id || order.orderNumber;
     if (orderIdentifier) {
@@ -113,12 +123,21 @@ export default function AdminOrders({ initialFilter = "all" }) {
       setStatusFeedback(null);
 
       const orderIdentifier = inspectingOrder.id || inspectingOrder.orderNumber;
-      const res = await updateAdminOrderStatus(orderIdentifier, {
+      const updatePayload = {
         orderStatus: targetStatus,
         carrier: carrierInput.trim() || null,
         trackingNumber: trackingNumberInput.trim() || null,
         notes: notesInput.trim() || null,
-      });
+      };
+
+      if (paymentStatusInput && paymentStatusInput !== (inspectingOrder.paymentStatus || "PENDING")) {
+        updatePayload.paymentStatus = paymentStatusInput;
+        if (paymentStatusInput === "REFUNDED" && refundAmountInput) {
+          updatePayload.refundAmount = Number(refundAmountInput) || 0;
+        }
+      }
+
+      const res = await updateAdminOrderStatus(orderIdentifier, updatePayload);
 
       const updated = res.order;
       // Update currently inspected order in modal
@@ -250,15 +269,37 @@ export default function AdminOrders({ initialFilter = "all" }) {
     const matchesStatus = statusFilter === "all" || currentStatus === statusFilter;
     const matchesPayment = paymentFilter === "all" || currentPayment === paymentFilter;
 
-    return matchesSearch && matchesStatus && matchesPayment;
+    const matchesDate = (() => {
+      if (dateFilter === "all") return true;
+      if (!o.createdAt) return false;
+      const orderDate = new Date(o.createdAt);
+      if (isNaN(orderDate.getTime())) return true;
+      const now = new Date();
+      if (dateFilter === "today") {
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        return orderDate >= todayStart;
+      }
+      if (dateFilter === "week") {
+        const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return orderDate >= weekStart;
+      }
+      if (dateFilter === "month") {
+        const monthStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        return orderDate >= monthStart;
+      }
+      return true;
+    })();
+
+    return matchesSearch && matchesStatus && matchesPayment && matchesDate;
   });
 
-  const hasActiveFilters = Boolean(searchQuery.trim()) || statusFilter !== "all" || paymentFilter !== "all";
+  const hasActiveFilters = Boolean(searchQuery.trim()) || statusFilter !== "all" || paymentFilter !== "all" || dateFilter !== "all";
 
   const handleClearFilters = () => {
     setSearchQuery("");
     setStatusFilter("all");
     setPaymentFilter("all");
+    setDateFilter("all");
   };
 
   // Summary KPI Calculations
@@ -411,6 +452,19 @@ export default function AdminOrders({ initialFilter = "all" }) {
             <option value="REFUNDED">Refunded</option>
           </select>
 
+          <select
+            className="adm-select"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            aria-label="Filter by order date"
+            data-testid="filter-order-date"
+          >
+            <option value="all">All Dates</option>
+            <option value="today">Today</option>
+            <option value="week">Last 7 Days</option>
+            <option value="month">Last 30 Days</option>
+          </select>
+
           {hasActiveFilters && (
             <button
               type="button"
@@ -519,14 +573,29 @@ export default function AdminOrders({ initialFilter = "all" }) {
                           </span>
                         </td>
                         <td>
-                          <button
-                            type="button"
-                            className="adm-btn adm-btn-secondary adm-btn-sm"
-                            onClick={() => handleOpenOrder(order)}
-                            data-testid={`inspect-order-${order.orderNumber}`}
-                          >
-                            Details
-                          </button>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button
+                              type="button"
+                              className="adm-btn adm-btn-secondary adm-btn-sm"
+                              onClick={() => handleOpenOrder(order)}
+                              data-testid={`inspect-order-${order.orderNumber}`}
+                            >
+                              Details
+                            </button>
+                            <button
+                              type="button"
+                              className="adm-btn adm-btn-secondary adm-btn-sm"
+                              onClick={() => {
+                                setInvoiceOrder(order);
+                                setShowInvoiceModal(true);
+                              }}
+                              title="View Tax Invoice"
+                              style={{ padding: "4px 8px" }}
+                              data-testid={`invoice-order-${order.orderNumber}`}
+                            >
+                              🧾
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -655,14 +724,28 @@ export default function AdminOrders({ initialFilter = "all" }) {
                   {getOrderStatus(inspectingOrder)}
                 </span>
               </div>
-              <button
-                type="button"
-                className="adm-modal-close"
-                onClick={handleCloseOrder}
-                aria-label="Close modal"
-              >
-                ✕
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  type="button"
+                  className="adm-btn adm-btn-secondary adm-btn-sm"
+                  data-testid="view-tax-invoice-btn"
+                  onClick={() => {
+                    setInvoiceOrder(inspectingOrder);
+                    setShowInvoiceModal(true);
+                  }}
+                  title="View GST Tax Invoice"
+                >
+                  🧾 View Tax Invoice
+                </button>
+                <button
+                  type="button"
+                  className="adm-modal-close"
+                  onClick={handleCloseOrder}
+                  aria-label="Close modal"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             <div className="adm-modal-body" style={{ maxHeight: "75vh", overflowY: "auto" }}>
@@ -686,6 +769,9 @@ export default function AdminOrders({ initialFilter = "all" }) {
                         {getPaymentStatus(inspectingOrder)}
                       </span>
                     </p>
+                    <div style={{ fontSize: "0.76rem", color: "var(--adm-text-secondary)", marginTop: 2 }}>
+                      Transaction Ref: <code>{inspectingOrder.paymentId || "COD / Direct Settlement"}</code>
+                    </div>
                   </div>
                   <div>
                     <span className="adm-label">Carrier &amp; Tracking</span>
@@ -917,6 +1003,41 @@ export default function AdminOrders({ initialFilter = "all" }) {
                             disabled={statusUpdating}
                           />
                         </div>
+
+                        <div className="adm-form-field">
+                          <label htmlFor="order-payment-status">Payment &amp; Refund Settlement</label>
+                          <select
+                            id="order-payment-status"
+                            className="adm-select"
+                            data-testid="order-payment-status-select"
+                            value={paymentStatusInput}
+                            onChange={(e) => setPaymentStatusInput(e.target.value)}
+                            disabled={statusUpdating}
+                          >
+                            <option value="PENDING">PENDING (Awaiting Settlement)</option>
+                            <option value="PAID">PAID (Settled via COD/Gateway)</option>
+                            <option value="REFUNDED">REFUNDED (Record Credit Refund)</option>
+                            <option value="FAILED">FAILED (Transaction Aborted)</option>
+                          </select>
+                        </div>
+
+                        {paymentStatusInput === "REFUNDED" && (
+                          <div className="adm-form-field">
+                            <label htmlFor="order-refund-amount">Refund Amount (₹) *</label>
+                            <input
+                              id="order-refund-amount"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              className="adm-input"
+                              data-testid="refund-amount-input"
+                              value={refundAmountInput}
+                              onChange={(e) => setRefundAmountInput(e.target.value)}
+                              disabled={statusUpdating}
+                              required
+                            />
+                          </div>
+                        )}
                       </div>
 
                       <div style={{ marginTop: 14, display: "flex", justifyContent: "flex-end", gap: 10, alignItems: "center" }}>
@@ -976,6 +1097,246 @@ export default function AdminOrders({ initialFilter = "all" }) {
           </div>
         </div>
       )}
+
+      {/* Tax Invoice Modal */}
+      {showInvoiceModal && invoiceOrder && (
+        <TaxInvoiceModal
+          order={invoiceOrder}
+          onClose={() => {
+            setShowInvoiceModal(false);
+            setInvoiceOrder(null);
+          }}
+        />
+      )}
     </div>
   );
 }
+
+/**
+ * Tax Invoice Modal Component
+ * Renders full legal GST Tax Invoice for VERTEX Industrial Supplies & Hardware
+ */
+function TaxInvoiceModal({ order, onClose }) {
+  if (!order) return null;
+
+  const isKarnataka = (order.shippingState || "").toLowerCase().includes("karnataka");
+  const halfTax = (Number(order.taxAmount || 0) / 2).toFixed(2);
+  const fullTax = Number(order.taxAmount || 0).toFixed(2);
+
+  return (
+    <div
+      className="adm-modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="invoice-modal-title"
+      onClick={onClose}
+    >
+      <div
+        className="adm-modal adm-invoice-modal-content"
+        style={{ maxWidth: 880 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="adm-modal-header adm-no-print">
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: "1.3rem" }}>🧾</span>
+            <h2 id="invoice-modal-title" className="adm-modal-title" style={{ margin: 0 }}>
+              Official Tax Invoice: INV-{order.orderNumber}
+            </h2>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              className="adm-btn adm-btn-primary adm-btn-sm"
+              onClick={() => window.print()}
+              data-testid="print-invoice-btn"
+            >
+              🖨️ Print / Download PDF
+            </button>
+            <button
+              type="button"
+              className="adm-modal-close"
+              onClick={onClose}
+              aria-label="Close modal"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <div className="adm-modal-body" style={{ maxHeight: "80vh", overflowY: "auto", padding: 20 }}>
+          <div className="adm-invoice-sheet">
+            {/* Header */}
+            <div className="adm-invoice-header-row">
+              <div className="adm-invoice-brand">
+                <h2>VERTEX E-COMMERCE</h2>
+                <div className="adm-invoice-tagline">Industrial Fasteners &amp; Electronic Components</div>
+                <div style={{ fontSize: "0.8rem", color: "var(--adm-text-secondary)", marginTop: 4, lineHeight: 1.4 }}>
+                  Plot 42, Electronic City Phase 1, Hosur Road<br />
+                  Bengaluru, Karnataka - 560100, India<br />
+                  <strong>GSTIN:</strong> 29AABCV1234F1Z8 &nbsp;|&nbsp; <strong>CIN:</strong> U31909KA2024PTC189012<br />
+                  <strong>PAN:</strong> AABCV1234F &nbsp;|&nbsp; <strong>Support:</strong> billing@vertex.local
+                </div>
+              </div>
+
+              <div className="adm-invoice-meta-top">
+                <span className="adm-invoice-title-badge">TAX INVOICE</span>
+                <div style={{ fontSize: "0.85rem", marginTop: 4 }}>
+                  <strong>Invoice No:</strong> <code>INV-{order.orderNumber}</code>
+                </div>
+                <div style={{ fontSize: "0.82rem", color: "var(--adm-text-secondary)", marginTop: 2 }}>
+                  <strong>Invoice Date:</strong> {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                </div>
+                <div style={{ fontSize: "0.82rem", color: "var(--adm-text-secondary)", marginTop: 2 }}>
+                  <strong>Order ID:</strong> {order.orderNumber}
+                </div>
+                <div style={{ fontSize: "0.82rem", color: "var(--adm-text-secondary)", marginTop: 2 }}>
+                  <strong>Place of Supply:</strong> {order.shippingState || "Karnataka"} (State Code: {isKarnataka ? "29" : "Inter-State"})
+                </div>
+              </div>
+            </div>
+
+            {/* Bill To & Ship To Grid */}
+            <div className="adm-invoice-entity-grid">
+              <div className="adm-invoice-entity-block">
+                <h4>Bill To / Buyer</h4>
+                <strong style={{ fontSize: "0.95rem" }}>{order.customer?.fullName || order.shippingRecipient || "Valued Customer"}</strong>
+                {order.customer?.companyName && (
+                  <div style={{ fontSize: "0.82rem", color: "var(--adm-text-secondary)" }}>
+                    🏢 {order.customer.companyName}
+                  </div>
+                )}
+                <div style={{ fontSize: "0.82rem", marginTop: 4 }}>
+                  <strong>GSTIN / UIN:</strong> {order.customer?.gstin || "Unregistered Consumer (B2C)"}
+                </div>
+                <div style={{ fontSize: "0.82rem", marginTop: 2 }}>
+                  <strong>Email:</strong> {order.customer?.email || order.user?.email || "—"}
+                </div>
+                <div style={{ fontSize: "0.82rem", marginTop: 2 }}>
+                  <strong>Contact:</strong> {order.shippingPhone || "—"}
+                </div>
+              </div>
+
+              <div className="adm-invoice-entity-block">
+                <h4>Ship To / Delivery Destination</h4>
+                <strong style={{ fontSize: "0.95rem" }}>{order.shippingRecipient || "Valued Customer"}</strong>
+                <div style={{ fontSize: "0.82rem", color: "var(--adm-text-secondary)", marginTop: 4, lineHeight: 1.4 }}>
+                  {order.shippingLine1}
+                  {order.shippingLine2 && `, ${order.shippingLine2}`}<br />
+                  {order.shippingCity}, {order.shippingState} - {order.shippingPostalCode}<br />
+                  {order.shippingCountry || "India"}
+                </div>
+                <div style={{ fontSize: "0.82rem", marginTop: 4 }}>
+                  <strong>Carrier:</strong> {order.carrier || "Standard Dispatch"}{" "}
+                  {order.trackingNumber && `(${order.trackingNumber})`}
+                </div>
+              </div>
+            </div>
+
+            {/* Items Table */}
+            <div className="adm-invoice-table-wrap">
+              <table className="adm-invoice-table" aria-label="Tax invoice items">
+                <thead>
+                  <tr>
+                    <th style={{ width: 40 }}>#</th>
+                    <th>Description of Goods</th>
+                    <th>HSN/SAC</th>
+                    <th style={{ textAlign: "center" }}>Qty</th>
+                    <th style={{ textAlign: "right" }}>Unit Price</th>
+                    <th style={{ textAlign: "right" }}>Taxable Value</th>
+                    <th style={{ textAlign: "center" }}>GST %</th>
+                    <th style={{ textAlign: "right" }}>Tax Amount</th>
+                    <th style={{ textAlign: "right" }}>Total (₹)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(order.items || []).map((item, idx) => (
+                    <tr key={item.id || idx}>
+                      <td>{idx + 1}</td>
+                      <td>
+                        <strong>{item.productName || "Component"}</strong>
+                        <div style={{ fontSize: "0.75rem", color: "var(--adm-text-muted)" }}>
+                          SKU: <code>{item.sku || "SKU-GEN"}</code> {item.packSize && `• ${item.packSize}`}
+                        </div>
+                      </td>
+                      <td><code>{item.hsnCode || "8482"}</code></td>
+                      <td style={{ textAlign: "center" }}>{item.quantity}</td>
+                      <td style={{ textAlign: "right" }}>₹{Number(item.unitPrice).toFixed(2)}</td>
+                      <td style={{ textAlign: "right" }}>₹{(Number(item.quantity) * Number(item.unitPrice)).toFixed(2)}</td>
+                      <td style={{ textAlign: "center" }}>{item.gstRate !== undefined && item.gstRate !== null ? `${Number(item.gstRate)}%` : "18%"}</td>
+                      <td style={{ textAlign: "right" }}>₹{Number(item.taxAmount || 0).toFixed(2)}</td>
+                      <td style={{ textAlign: "right" }}><strong>₹{Number(item.lineTotal || 0).toFixed(2)}</strong></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Financial Summary */}
+            <div className="adm-invoice-summary-grid">
+              <div className="adm-invoice-summary-box">
+                <div className="adm-invoice-summary-row">
+                  <span>Taxable Subtotal:</span>
+                  <strong>₹{Number(order.subtotal || 0).toFixed(2)}</strong>
+                </div>
+
+                {isKarnataka ? (
+                  <>
+                    <div className="adm-invoice-summary-row" style={{ fontSize: "0.82rem", color: "var(--adm-text-secondary)" }}>
+                      <span>CGST (Central Tax 9%):</span>
+                      <span>₹{halfTax}</span>
+                    </div>
+                    <div className="adm-invoice-summary-row" style={{ fontSize: "0.82rem", color: "var(--adm-text-secondary)" }}>
+                      <span>SGST (State Tax 9%):</span>
+                      <span>₹{halfTax}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="adm-invoice-summary-row" style={{ fontSize: "0.82rem", color: "var(--adm-text-secondary)" }}>
+                    <span>IGST (Integrated Tax 18%):</span>
+                    <span>₹{fullTax}</span>
+                  </div>
+                )}
+
+                <div className="adm-invoice-summary-row">
+                  <span>Shipping &amp; Logistics:</span>
+                  <span>{Number(order.shippingFee || 0) === 0 ? "FREE" : `₹${Number(order.shippingFee).toFixed(2)}`}</span>
+                </div>
+
+                {Number(order.refundAmount || 0) > 0 && (
+                  <div className="adm-invoice-summary-row" style={{ color: "var(--adm-orange)" }}>
+                    <span>Refunded Amount:</span>
+                    <span>-₹{Number(order.refundAmount).toFixed(2)}</span>
+                  </div>
+                )}
+
+                <div className="adm-invoice-summary-row adm-invoice-summary-total">
+                  <span>Total Invoice Value:</span>
+                  <span>₹{Number(order.totalAmount || 0).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer / Declarations */}
+            <div className="adm-invoice-footer-notes">
+              <strong>Declaration &amp; Terms:</strong><br />
+              1. We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.<br />
+              2. Goods once sold are subject to VERTEX return policies for defective hardware within 14 days of receipt.<br />
+              3. This is a computer-generated tax invoice issued in accordance with GST Rule 46. No physical signature required.
+            </div>
+          </div>
+        </div>
+
+        <div className="adm-modal-footer adm-no-print">
+          <button
+            type="button"
+            className="adm-btn adm-btn-secondary"
+            onClick={onClose}
+          >
+            Close Invoice
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+

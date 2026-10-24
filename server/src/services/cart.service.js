@@ -65,6 +65,14 @@ export async function addItemToCart(userId, { variantId, quantity }) {
     throw error;
   }
 
+  const unitPrice = variant.price !== null && variant.price !== undefined ? Number(variant.price) : 0;
+  if (isNaN(unitPrice) || unitPrice <= 0) {
+    const error = new Error(`Product "${variant.product?.name || "Product"}" (${variant.sku}) is available for Quote on Request only and cannot be added to a retail cart.`);
+    error.code = "RFQ_ONLY_PRODUCT";
+    error.status = 400;
+    throw error;
+  }
+
   if (variant.stockQuantity <= 0) {
     const error = new Error("This item is currently out of stock.");
     error.code = "OUT_OF_STOCK";
@@ -158,6 +166,14 @@ export async function updateCartItemQuantity(userId, { itemId, quantity }) {
   if (!item.variant.isActive || !item.variant.product.isActive) {
     const error = new Error("This product is no longer active and cannot be updated.");
     error.code = "INACTIVE_PRODUCT_OR_VARIANT";
+    error.status = 400;
+    throw error;
+  }
+
+  const itemUnitPrice = item.variant.price !== null && item.variant.price !== undefined ? Number(item.variant.price) : 0;
+  if (isNaN(itemUnitPrice) || itemUnitPrice <= 0) {
+    const error = new Error(`Product "${item.variant.product?.name || "Product"}" (${item.variant.sku}) is available for Quote on Request only and cannot be purchased through retail checkout.`);
+    error.code = "RFQ_ONLY_PRODUCT";
     error.status = 400;
     throw error;
   }
@@ -289,6 +305,8 @@ export async function mergeGuestCart(userId, guestItems = []) {
     for (const guestItem of guestItems) {
       const variant = variantMap.get(guestItem.variantId);
       if (!variant || variant.stockQuantity <= 0) continue;
+      const vPrice = variant.price !== null && variant.price !== undefined ? Number(variant.price) : 0;
+      if (isNaN(vPrice) || vPrice <= 0) continue;
 
       const requestedQty = Math.max(1, parseInt(guestItem.quantity, 10) || 1);
 

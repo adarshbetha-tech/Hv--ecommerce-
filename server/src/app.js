@@ -14,6 +14,8 @@ import { orderRouter } from "./routes/order.routes.js";
 import { adminRouter } from "./routes/admin.routes.js";
 import { quoteRouter } from "./routes/quote.routes.js";
 import { newsletterRouter } from "./routes/newsletter.routes.js";
+import { paymentRouter } from "./routes/payment.routes.js";
+import { couponRouter } from "./routes/coupon.routes.js";
 
 import { getTrustedOrigins, getCanonicalOrigin } from "./middleware/auth.middleware.js";
 
@@ -47,9 +49,9 @@ app.use(
   })
 );
 
-// Body parsing middleware
-app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+// Body parsing middleware (allows up to 15MB for specification attachments)
+app.use(express.json({ limit: "15mb" }));
+app.use(express.urlencoded({ extended: true, limit: "15mb" }));
 app.use(cookieParser());
 
 // Health check endpoint
@@ -81,10 +83,14 @@ app.use("/api/cart", cartRouter);
 // Customer addresses & checkout order routes
 app.use("/api/addresses", addressRouter);
 app.use("/api/orders", orderRouter);
+app.use("/api/payments", paymentRouter);
 
 // Commercial quote requests (RFQ) and newsletter
 app.use("/api/quotes", quoteRouter);
 app.use("/api/newsletter", newsletterRouter);
+
+// Coupons and educational promotions
+app.use("/api/coupons", couponRouter);
 
 // Administrative routes
 app.use("/api/admin", adminRouter);

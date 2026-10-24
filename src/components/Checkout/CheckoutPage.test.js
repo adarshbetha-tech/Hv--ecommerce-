@@ -142,6 +142,11 @@ describe("CheckoutPage Component Suite", () => {
       expect(screen.getByText("Arduino Uno R3 Microcontroller Board")).toBeInTheDocument();
       expect(screen.getByText("Stainless Steel Hex Bolt (M8 x 30mm)")).toBeInTheDocument();
       expect(screen.getByTestId("summary-subtotal")).toHaveTextContent("₹1,799.00");
+      // Verify Estimated GST row is removed from UI
+      expect(screen.queryByText(/Estimated GST/i)).not.toBeInTheDocument();
+      expect(screen.queryByTestId("summary-tax")).not.toBeInTheDocument();
+      // Verify Total Amount equals Subtotal + Shipping only
+      expect(screen.getByTestId("summary-grand-total")).toHaveTextContent("₹1,799.00");
     });
   });
 
@@ -282,4 +287,303 @@ describe("CheckoutPage Component Suite", () => {
       expect(screen.queryByTestId("checkout-error-banner")).not.toBeInTheDocument();
     });
   });
+
+  test("7. Selecting UPI payment method displays QR code, merchant VPA, and UTR input", async () => {
+    orderApi.getPaymentConfig.mockResolvedValue({
+      success: true,
+      config: {
+        merchantUpiId: "vertex.industrial@hdfcbank",
+        merchantName: "VERTEX Industrial Components",
+        upiEnabled: true,
+        qrMode: "DYNAMIC",
+        instructions: "Scan QR code and enter 12-digit UTR reference.",
+        hasStaticQr: false,
+      },
+    });
+
+    render(
+      <CheckoutPage
+        currentUser={mockUser}
+        cart={mockCart}
+        onNavigateHome={() => {}}
+        onNavigateLogin={() => {}}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("payment-upi-option")).toBeInTheDocument();
+    });
+
+    // Select UPI option
+    const upiRadio = screen.getByRole("radio", { name: /UPI \/ QR Code Payment/i });
+    fireEvent.click(upiRadio);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("upi-payment-panel")).toBeInTheDocument();
+      expect(screen.getByTestId("merchant-vpa-display")).toHaveTextContent("vertex.industrial@hdfcbank");
+      expect(screen.getByTestId("copy-upi-btn")).toBeInTheDocument();
+      expect(screen.getByTestId("upi-qr-card")).toBeInTheDocument();
+      expect(screen.getByTestId("upi-qr-image")).toBeInTheDocument();
+      expect(screen.getByTestId("input-upi-reference")).toBeInTheDocument();
+      expect(screen.getByTestId("upi-security-notice")).toBeInTheDocument();
+    });
+
+    // Click copy button
+    fireEvent.click(screen.getByTestId("copy-upi-btn"));
+    expect(screen.getByText(/✔ Copied!/i)).toBeInTheDocument();
+  });
+
+  test("8. Submits order with UPI and customer-entered UTR reference, showing verification notice", async () => {
+    orderApi.getPaymentConfig.mockResolvedValue({
+      success: true,
+      config: {
+        merchantUpiId: "billing.vertex@icici",
+        merchantName: "VERTEX Industrial E-Commerce",
+        upiEnabled: true,
+      },
+    });
+
+    const mockUpiOrder = {
+      id: "ord-upi-789",
+      orderNumber: "VTX-UPI-20261023-01",
+      userId: "user-123",
+      orderStatus: "PENDING",
+      paymentStatus: "PENDING",
+      paymentMethod: "UPI",
+      paymentId: "UTR-998877665544",
+      subtotal: 1799.0,
+      taxAmount: 269.82,
+      shippingFee: 0.0,
+      totalAmount: 2068.82,
+      shippingAddress: mockAddresses[0],
+      items: [],
+    };
+
+    orderApi.placeOrder.mockResolvedValue({
+      success: true,
+      order: mockUpiOrder,
+    });
+
+    render(
+      <CheckoutPage
+        currentUser={mockUser}
+        cart={mockCart}
+        onNavigateHome={() => {}}
+        onNavigateLogin={() => {}}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("payment-upi-option")).toBeInTheDocument();
+    });
+
+    // Switch to UPI
+    fireEvent.click(screen.getByRole("radio", { name: /UPI \/ QR Code Payment/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("input-upi-reference")).toBeInTheDocument();
+    });
+
+    // Enter customer transaction UTR reference
+    fireEvent.change(screen.getByTestId("input-upi-reference"), {
+      target: { value: "UTR-998877665544" },
+    });
+
+    // Submit order
+    fireEvent.click(screen.getByTestId("place-order-btn"));
+
+    await waitFor(() => {
+      expect(orderApi.placeOrder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          addressId: "addr-1",
+          paymentMethod: "UPI",
+          paymentId: "UTR-998877665544",
+        })
+      );
+      expect(screen.getByTestId("order-confirmation-view")).toBeInTheDocument();
+      expect(screen.getByTestId("confirmed-order-number")).toHaveTextContent("VTX-UPI-20261023-01");
+      expect(screen.getByTestId("confirmed-payment-status")).toHaveTextContent(/PENDING \(UPI\)/i);
+      expect(screen.getByTestId("confirmed-upi-reference")).toHaveTextContent("UTR-998877665544");
+      expect(screen.getByTestId("confirmed-upi-notice")).toBeInTheDocument();
+      expect(screen.getByText(/billing team will verify your transaction reference/i)).toBeInTheDocument();
+    });
+  });
+
+  test("9. Submits UTR reference on confirmation view if not entered during checkout", async () => {
+    const mockOrderWithoutUtr = {
+      id: "ord-upi-pending-utr",
+      orderNumber: "VTX-UPI-NO-UTR",
+      userId: "user-123",
+      orderStatus: "PENDING",
+      paymentStatus: "PENDING",
+      paymentMethod: "UPI",
+      paymentId: null, // No UTR provided yet
+      subtotal: 1799.0,
+      taxAmount: 269.82,
+      shippingFee: 0.0,
+      totalAmount: 2068.82,
+      shippingAddress: mockAddresses[0],
+      items: [],
+    };
+
+    orderApi.placeOrder.mockResolvedValue({
+      success: true,
+      order: mockOrderWithoutUtr,
+    });
+
+    const updatedOrderWithUtr = {
+      ...mockOrderWithoutUtr,
+      paymentId: "UTR-LATE-123456",
+    };
+
+    orderApi.submitPaymentReference.mockResolvedValue({
+      success: true,
+      order: updatedOrderWithUtr,
+    });
+
+    render(
+      <CheckoutPage
+        currentUser={mockUser}
+        cart={mockCart}
+        onNavigateHome={() => {}}
+        onNavigateLogin={() => {}}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("payment-upi-option")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("radio", { name: /UPI \/ QR Code Payment/i }));
+    fireEvent.click(screen.getByTestId("place-order-btn"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("input-confirm-utr")).toBeInTheDocument();
+      expect(screen.getByTestId("submit-ref-btn")).toBeInTheDocument();
+    });
+
+    // Enter UTR reference and submit
+    fireEvent.change(screen.getByTestId("input-confirm-utr"), {
+      target: { value: "UTR-LATE-123456" },
+    });
+    fireEvent.click(screen.getByTestId("submit-ref-btn"));
+
+    await waitFor(() => {
+      expect(orderApi.submitPaymentReference).toHaveBeenCalledWith(
+        "ord-upi-pending-utr",
+        "UTR-LATE-123456"
+      );
+      expect(screen.getByText(/UTR reference submitted successfully/i)).toBeInTheDocument();
+      expect(screen.getByTestId("confirmed-upi-reference")).toHaveTextContent("UTR-LATE-123456");
+    });
+  });
+
+  test("10. Saved merchant UPI ID updates the checkout merchant VPA display and generates matching transaction QR", async () => {
+    orderApi.getPaymentConfig.mockResolvedValue({
+      success: true,
+      config: {
+        merchantUpiId: "custom.accounts@icici",
+        merchantName: "VERTEX Industrial India Pvt Ltd",
+        upiEnabled: true,
+        qrMode: "DYNAMIC",
+      },
+    });
+
+    orderApi.generateUpiQr.mockResolvedValue({
+      success: true,
+      qrDataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAA==",
+      upiUri: "upi://pay?pa=custom.accounts@icici&pn=VERTEX+Industrial+India+Pvt+Ltd&am=2122.82&cu=INR&tn=Order+Payment",
+      merchantUpiId: "custom.accounts@icici",
+      merchantName: "VERTEX Industrial India Pvt Ltd",
+      amount: 2122.82,
+      mode: "DYNAMIC",
+      isDynamic: true,
+    });
+
+    render(
+      <CheckoutPage
+        currentUser={mockUser}
+        cart={mockCart}
+        onNavigateHome={() => {}}
+        onNavigateLogin={() => {}}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("payment-upi-option")).toBeInTheDocument();
+    });
+
+    // Select UPI option
+    fireEvent.click(screen.getByRole("radio", { name: /UPI \/ QR Code Payment/i }));
+
+    // Verify merchant VPA display reflects the newly saved merchant UPI ID
+    await waitFor(() => {
+      expect(screen.getByTestId("merchant-vpa-display")).toHaveTextContent("custom.accounts@icici");
+      expect(screen.getByText(/VERTEX Industrial India Pvt Ltd/i)).toBeInTheDocument();
+      expect(screen.getByTestId("upi-qr-image")).toHaveAttribute(
+        "src",
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAA=="
+      );
+      expect(screen.getByTestId("upi-intent-link")).toHaveAttribute(
+        "href",
+        expect.stringContaining("custom.accounts@icici")
+      );
+    });
+  });
+
+  test("11. Temporarily excludes GST from Order Summary and calculates Total Amount as Subtotal + Shipping only", async () => {
+    // 1. With free shipping: Total Amount equals Subtotal only
+    const { unmount } = render(
+      <CheckoutPage
+        currentUser={mockUser}
+        cart={mockCart}
+        onNavigateHome={() => {}}
+        onNavigateLogin={() => {}}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("checkout-summary-card")).toBeInTheDocument();
+    });
+
+    // Ensure GST row is not rendered
+    expect(screen.queryByText(/Estimated GST/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("summary-tax")).not.toBeInTheDocument();
+
+    // Verify subtotal, shipping, and grand total
+    expect(screen.getByTestId("summary-subtotal")).toHaveTextContent("₹1,799.00");
+    expect(screen.getByText("FREE")).toBeInTheDocument();
+    expect(screen.getByTestId("summary-grand-total")).toHaveTextContent("₹1,799.00");
+    unmount();
+
+    // 2. With non-zero shipping: Total Amount equals Subtotal + Shipping (no GST added)
+    const cartWithShipping = {
+      ...mockCart,
+      shippingFee: 120.00,
+    };
+
+    render(
+      <CheckoutPage
+        currentUser={mockUser}
+        cart={cartWithShipping}
+        onNavigateHome={() => {}}
+        onNavigateLogin={() => {}}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("checkout-summary-card")).toBeInTheDocument();
+    });
+
+    // Ensure GST row is not rendered
+    expect(screen.queryByText(/Estimated GST/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("summary-tax")).not.toBeInTheDocument();
+
+    // Verify subtotal, non-zero shipping, and grand total = 1799 + 120 = 1919.00
+    expect(screen.getByTestId("summary-subtotal")).toHaveTextContent("₹1,799.00");
+    expect(screen.getByText("₹120.00")).toBeInTheDocument();
+    expect(screen.getByTestId("summary-grand-total")).toHaveTextContent("₹1,919.00");
+  });
 });
+
+

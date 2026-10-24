@@ -350,6 +350,8 @@ export const updateOrderStatusSchema = z.object({
     ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"],
     { required_error: "Order status is required" }
   ),
+  paymentStatus: z.enum(["PENDING", "PAID", "FAILED", "REFUNDED"]).optional(),
+  refundAmount: z.coerce.number().min(0).optional(),
   carrier: z.string().trim().max(100).optional().nullable(),
   trackingNumber: z.string().trim().max(100).optional().nullable(),
   notes: z.string().trim().max(1000).optional().nullable(),
@@ -417,6 +419,79 @@ export const updateProductPriceSchema = z.object({
     .trim()
     .uuid("Variant ID must be a valid UUID")
     .optional(),
+});
+
+/**
+ * Validator for updating user role and account status via Admin API.
+ */
+export const updateUserRoleSchema = z.object({
+  role: z.enum(["CUSTOMER", "B2B", "ADMIN"], {
+    required_error: "System role is required",
+  }),
+  isActive: z.boolean().optional(),
+});
+
+/**
+ * Validator for uploading specification documents via Admin API.
+ */
+export const uploadSpecificationSchema = z.object({
+  fileName: z
+    .string({ required_error: "File name is required" })
+    .trim()
+    .min(1, "File name cannot be empty")
+    .regex(/\.(pdf|xlsx|xls|csv)$/i, "Allowed formats: .pdf, .xlsx, .xls, .csv"),
+  fileData: z
+    .string({ required_error: "File data (base64) is required" })
+    .min(1, "File data cannot be empty"),
+  fileType: z.string().optional().default("application/pdf"),
+  fileSize: z.coerce.number().max(10485760, "File size cannot exceed 10 MB").optional(),
+});
+
+/**
+ * Validator for admin payments query parameters.
+ */
+export const adminPaymentsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(10),
+  paymentStatus: z
+    .enum(["PENDING", "PAID", "FAILED", "REFUNDED", "all"])
+    .optional()
+    .or(z.literal("")),
+  paymentMethod: z.string().trim().max(50).optional().or(z.literal("")),
+  search: z.string().trim().max(100).optional().or(z.literal("")),
+  q: z.string().trim().max(100).optional().or(z.literal("")),
+  dateRange: z.enum(["all", "today", "week", "month"]).optional().default("all"),
+  sort: z.enum(["newest", "oldest", "amount_desc", "amount_asc"]).default("newest"),
+});
+
+/**
+ * Validator for payment / order route parameter.
+ */
+export const reconcilePaymentParamSchema = z.object({
+  id: z
+    .string({ required_error: "Payment identifier is required" })
+    .trim()
+    .min(1, "Payment identifier is required"),
+});
+
+/**
+ * Validator for safe payment issue resolution and reconciliation.
+ */
+export const reconcilePaymentSchema = z.object({
+  action: z.enum(
+    ["VERIFY_OFFLINE_SETTLEMENT", "RETRY_RECONCILIATION", "FLAG_UNRESOLVED", "RECORD_REFUND"],
+    { required_error: "Reconciliation action is required" }
+  ),
+  notes: z
+    .string({ required_error: "Resolution notes are required" })
+    .trim()
+    .min(3, "Notes must be at least 3 characters")
+    .max(1000, "Notes cannot exceed 1000 characters"),
+  settlementReference: z.string().trim().max(100).optional().nullable(),
+  refundAmount: z.coerce.number().min(0).optional(),
+  confirmed: z.literal(true, {
+    errorMap: () => ({ message: "You must explicitly confirm this financial resolution action" }),
+  }),
 });
 
 

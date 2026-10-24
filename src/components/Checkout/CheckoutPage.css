@@ -701,3 +701,211 @@
   flex-direction: column;
   gap: 10px;
 }
+
+/* ==========================================================================
+   UPI & QR Code Checkout Panel
+   ========================================================================== */
+.vtx-upi-checkout-panel {
+  margin-top: 16px;
+  background: #ffffff;
+  border: 1.5px solid var(--orange);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: 0 4px 16px rgba(255, 121, 0, 0.08);
+  animation: vtxFadeIn 0.2s ease-in-out;
+}
+
+@keyframes vtxFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.vtx-upi-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.vtx-upi-header-icon {
+  font-size: 1.8rem;
+  background: var(--orange-tint);
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.vtx-upi-title {
+  margin: 0 0 2px 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.vtx-upi-subtitle {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-mid);
+}
+
+.vtx-upi-body-grid {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+@media (max-width: 680px) {
+  .vtx-upi-body-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+/* QR Code Card */
+.vtx-upi-qr-card {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.vtx-upi-badge-row {
+  width: 100%;
+}
+
+.vtx-upi-badge-mode {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #0b1f3a;
+  background: #e2e8f0;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+}
+
+.vtx-upi-qr-frame {
+  background: #ffffff;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  width: 100%;
+  max-width: 220px;
+}
+
+.vtx-upi-qr-img {
+  width: 100%;
+  max-width: 200px;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  display: block;
+  image-rendering: pixelated;
+}
+
+.vtx-upi-qr-loading {
+  font-size: 0.82rem;
+  color: var(--text-mid);
+  padding: 20px 10px;
+}
+
+.vtx-upi-intent-link {
+  width: 100%;
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 6px 10px;
+}
+
+/* Info Column */
+.vtx-upi-info-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.vtx-upi-vpa-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vtx-upi-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.vtx-upi-vpa-copy-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.vtx-upi-vpa {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--navy);
+  word-break: break-all;
+  flex: 1;
+}
+
+.vtx-copy-upi-btn {
+  white-space: nowrap;
+  font-size: 0.78rem;
+  padding: 4px 8px;
+}
+
+.vtx-upi-instructions {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 0.82rem;
+  color: var(--text-dark);
+  line-height: 1.5;
+}
+
+.vtx-upi-utr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vtx-field-hint {
+  font-size: 0.76rem;
+  color: var(--text-light);
+}
+
+.vtx-confirmation-upi-notice {
+  background: #f0fdf4 !important;
+  border: 1px solid #86efac !important;
+  color: #14532d !important;
+}
+
+.vtx-confirmation-upi-notice span[aria-hidden="true"] {
+  font-size: 1.4rem;
+}
+

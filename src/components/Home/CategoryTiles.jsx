@@ -3,14 +3,25 @@ import fastenersImg from "../../assets/hardware/fasteners.jpg";
 import arduinoImg from "../../assets/hardware/arduino.jpg";
 import automationImg from "../../assets/hardware/automation.jpg";
 import pcbImg from "../../assets/hardware/pcb.jpg";
+import slottedChhdImg from "../../assets/hardware/screws/slotted-chhd.svg";
+import panHeadImg from "../../assets/hardware/screws/pan-head.svg";
+import socketHeadImg from "../../assets/hardware/screws/socket-head.svg";
+import hexNutImg from "../../assets/hardware/fasteners/hex-nut.svg";
+import plainWasherImg from "../../assets/hardware/fasteners/plain-washer.svg";
+import brassSlantKnurledInsertImg from "../../assets/hardware/fasteners/brass-slant-knurled-insert.svg";
 import ScrollReveal from "../Common/ScrollReveal";
 
 export const CATEGORY_ARTWORK = {
   fasteners: fastenersImg,
   electronics: arduinoImg,
-  nuts: fastenersImg,
+  nuts: hexNutImg,
   automation: automationImg,
   tools: pcbImg,
+  "screws-flat-slotted": slottedChhdImg,
+  "screws-cross-phillips": panHeadImg,
+  "screws-hex-allen": socketHeadImg,
+  "washers": plainWasherImg,
+  "brass-inserts": brassSlantKnurledInsertImg,
 };
 
 export default function CategoryTiles({

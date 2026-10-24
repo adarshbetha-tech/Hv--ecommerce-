@@ -5,10 +5,15 @@
  * and specification PDFs/spreadsheets using browser storage with fallback.
  */
 
+import {
+  uploadAdminProductSpecification,
+  deleteAdminProductSpecification,
+} from "../services/adminApi";
+
 const STORAGE_PREFIX = "vertex_prod_spec_";
 
 /**
- * Saves a specification file to persistent storage as Data URL.
+ * Saves a specification file to persistent storage as Data URL and syncs to backend.
  * @param {string} productKey - Product ID, slug, or temporary key
  * @param {File} file - Browser File object
  * @returns {Promise<{ fileName: string, fileSize: number, fileType: string, uploadedAt: string, dataUrl: string }>}
@@ -36,6 +41,25 @@ export async function saveSpecificationFile(productKey, file) {
           }
         } catch (storageErr) {
           console.warn("Storage quota exceeded; keeping spec file in session memory:", storageErr);
+        }
+
+        // Asynchronously sync to backend persistent storage
+        if (productKey && !productKey.startsWith("temp-") && typeof uploadAdminProductSpecification === "function") {
+          try {
+            const syncPromise = uploadAdminProductSpecification(productKey, {
+              fileName: file.name,
+              fileData: String(dataUrl),
+              fileType: file.type || "application/pdf",
+              fileSize: file.size,
+            });
+            if (syncPromise && typeof syncPromise.catch === "function") {
+              syncPromise.catch((syncErr) => {
+                console.warn("Specification server sync notice:", syncErr?.message || syncErr);
+              });
+            }
+          } catch {
+            // Ignore
+          }
         }
 
         resolve(meta);
@@ -80,7 +104,7 @@ export function getSpecificationFile(productKey) {
 }
 
 /**
- * Deletes a stored specification file.
+ * Deletes a stored specification file and notifies backend storage.
  * @param {string} productKey
  */
 export function deleteSpecificationFile(productKey) {
@@ -99,10 +123,24 @@ export function deleteSpecificationFile(productKey) {
         }
       }
     }
+
+    if (productKey && !productKey.startsWith("temp-") && typeof deleteAdminProductSpecification === "function") {
+      try {
+        const delPromise = deleteAdminProductSpecification(productKey);
+        if (delPromise && typeof delPromise.catch === "function") {
+          delPromise.catch((delErr) => {
+            console.warn("Specification server delete notice:", delErr?.message || delErr);
+          });
+        }
+      } catch {
+        // Ignore
+      }
+    }
   } catch {
     // Ignore
   }
 }
+
 
 /**
  * Opens or downloads a specification file in the browser.

@@ -1,6 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { getAddresses, placeOrder } from "../../services/orderApi";
+import {
+  getAddresses,
+  placeOrder,
+  getPaymentConfig,
+  generateUpiQr,
+  submitPaymentReference,
+} from "../../services/orderApi";
 import "./CheckoutPage.css";
+
+// GST Configuration Toggle (Temporary suspension of GST charges)
+// Set to true when GST charges are re-enabled
+export const GST_ENABLED = false;
+export const GST_RATE = 0.18;
 
 export default function CheckoutPage({
   currentUser,
@@ -35,8 +46,120 @@ export default function CheckoutPage({
   const [placingOrder, setPlacingOrder] = useState(false);
   const [checkoutError, setCheckoutError] = useState(null);
 
+  // Payment configuration & UPI QR state
+  const [paymentConfig, setPaymentConfig] = useState(null);
+  const [upiReference, setUpiReference] = useState("");
+  const [upiQrData, setUpiQrData] = useState(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [copiedUpi, setCopiedUpi] = useState(false);
+  const [submittingRef, setSubmittingRef] = useState(false);
+  const [submittedRefSuccess, setSubmittedRefSuccess] = useState(false);
+  const [refInputOnConfirmation, setRefInputOnConfirmation] = useState("");
+  const [refFeedback, setRefFeedback] = useState(null);
+
   // Post-order confirmation state
   const [confirmedOrder, setConfirmedOrder] = useState(null);
+
+  // Fetch payment configuration on mount
+  useEffect(() => {
+    let isMounted = true;
+
+    try {
+      const p = typeof getPaymentConfig === "function" ? getPaymentConfig() : null;
+      if (p && typeof p.then === "function") {
+        p.then((res) => {
+          if (!isMounted) return;
+          if (res && res.config) {
+            setPaymentConfig(res.config);
+          }
+        })
+          .catch((err) => {
+            console.warn("Could not load payment configuration from server:", err);
+          });
+      }
+    } catch {
+      // Ignore
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const cartSubtotal = Number(cart?.subtotal || 0);
+  const shippingFee = Number(cart?.shippingFee || 0);
+  const estimatedGst = GST_ENABLED ? Number((cartSubtotal * GST_RATE).toFixed(2)) : 0;
+  const estimatedTotal = Number((cartSubtotal + estimatedGst + shippingFee).toFixed(2));
+
+  // Generate dynamic QR code when UPI payment method is selected
+  useEffect(() => {
+    if (paymentMethod !== "UPI") return;
+
+    if (paymentConfig?.hasStaticQr && paymentConfig?.qrMode === "STATIC") {
+      setUpiQrData({
+        mode: "STATIC",
+        qrDataUrl: paymentConfig.staticQrImageUrl || "/api/payments/qr-image",
+        upiUri: `upi://pay?pa=${paymentConfig.merchantUpiId}&pn=${encodeURIComponent(paymentConfig.merchantName)}&cu=INR`,
+        merchantUpiId: paymentConfig.merchantUpiId,
+        merchantName: paymentConfig.merchantName,
+        amount: estimatedTotal,
+      });
+      return;
+    }
+
+    let isMounted = true;
+    setQrLoading(true);
+
+    try {
+      const p = typeof generateUpiQr === "function" ? generateUpiQr({ amount: estimatedTotal }) : null;
+      if (p && typeof p.then === "function") {
+        p.then((res) => {
+          if (!isMounted) return;
+          if (res && res.qrDataUrl) {
+            setUpiQrData(res);
+          }
+        })
+          .catch((err) => {
+            if (!isMounted) return;
+            const upiId = paymentConfig?.merchantUpiId || "billing.vertex@icici";
+            const mName = paymentConfig?.merchantName || "VERTEX Industrial E-Commerce";
+            const upiUri = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(mName)}&am=${estimatedTotal.toFixed(2)}&cu=INR`;
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220"><rect width="220" height="220" fill="#ffffff"/><rect x="20" y="20" width="50" height="50" fill="#0b1f3a"/><rect x="28" y="28" width="34" height="34" fill="#ffffff"/><rect x="36" y="36" width="18" height="18" fill="#0b1f3a"/><rect x="150" y="20" width="50" height="50" fill="#0b1f3a"/><rect x="158" y="28" width="34" height="34" fill="#ffffff"/><rect x="166" y="36" width="18" height="18" fill="#0b1f3a"/><rect x="20" y="150" width="50" height="50" fill="#0b1f3a"/><rect x="28" y="158" width="34" height="34" fill="#ffffff"/><rect x="36" y="166" width="18" height="18" fill="#0b1f3a"/><rect x="85" y="85" width="50" height="50" fill="#ff7900"/><text x="110" y="210" font-size="11" text-anchor="middle" fill="#0b1f3a" font-weight="bold">₹${estimatedTotal.toFixed(2)}</text></svg>`;
+            setUpiQrData({
+              mode: "DYNAMIC",
+              qrDataUrl: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`,
+              upiUri,
+              merchantUpiId: upiId,
+              merchantName: mName,
+              amount: estimatedTotal,
+            });
+          })
+          .finally(() => {
+            if (isMounted) setQrLoading(false);
+          });
+      } else {
+        const upiId = paymentConfig?.merchantUpiId || "billing.vertex@icici";
+        const mName = paymentConfig?.merchantName || "VERTEX Industrial E-Commerce";
+        const upiUri = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(mName)}&am=${estimatedTotal.toFixed(2)}&cu=INR`;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220"><rect width="220" height="220" fill="#ffffff"/><rect x="20" y="20" width="50" height="50" fill="#0b1f3a"/><rect x="28" y="28" width="34" height="34" fill="#ffffff"/><rect x="36" y="36" width="18" height="18" fill="#0b1f3a"/><rect x="150" y="20" width="50" height="50" fill="#0b1f3a"/><rect x="158" y="28" width="34" height="34" fill="#ffffff"/><rect x="166" y="36" width="18" height="18" fill="#0b1f3a"/><rect x="20" y="150" width="50" height="50" fill="#0b1f3a"/><rect x="28" y="158" width="34" height="34" fill="#ffffff"/><rect x="36" y="166" width="18" height="18" fill="#0b1f3a"/><rect x="85" y="85" width="50" height="50" fill="#ff7900"/><text x="110" y="210" font-size="11" text-anchor="middle" fill="#0b1f3a" font-weight="bold">₹${estimatedTotal.toFixed(2)}</text></svg>`;
+        setUpiQrData({
+          mode: "DYNAMIC",
+          qrDataUrl: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`,
+          upiUri,
+          merchantUpiId: upiId,
+          merchantName: mName,
+          amount: estimatedTotal,
+        });
+        setQrLoading(false);
+      }
+    } catch {
+      setQrLoading(false);
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [paymentMethod, paymentConfig, estimatedTotal]);
 
   // Fetch saved addresses on mount if user is authenticated
   useEffect(() => {
@@ -116,6 +239,7 @@ export default function CheckoutPage({
 
     let payload = {
       paymentMethod,
+      paymentId: paymentMethod === "UPI" ? (upiReference.trim() || null) : null,
       notes: notes.trim() || null,
       idempotencyKey: `vtx-checkout-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
     };
@@ -222,15 +346,88 @@ export default function CheckoutPage({
                 {confirmedOrder.paymentStatus} ({confirmedOrder.paymentMethod})
               </span>
             </div>
+            {confirmedOrder.paymentId && (
+              <div className="vtx-meta-item" data-testid="confirmed-upi-reference">
+                <span className="vtx-meta-label">Transaction Reference (UTR):</span>
+                <strong className="vtx-meta-val" style={{ fontFamily: "monospace", color: "var(--navy)" }}>
+                  {confirmedOrder.paymentId}
+                </strong>
+              </div>
+            )}
           </div>
 
-          <div className="vtx-confirmation-notice">
-            <span aria-hidden="true">ℹ️</span>
-            <span>
-              <strong>Payment Boundary Notice:</strong> Payment gateway integration is slated for Phase 4.
-              This order will remain pending until payment is verified upon delivery.
-            </span>
-          </div>
+          {confirmedOrder.paymentMethod === "UPI" ? (
+            <div className="vtx-confirmation-notice vtx-confirmation-upi-notice" data-testid="confirmed-upi-notice">
+              <span aria-hidden="true">⚡</span>
+              <div>
+                <strong>UPI Payment Verification Notice:</strong>
+                <p>
+                  Your order is currently recorded with <em>PENDING</em> payment status.
+                  Our billing team will verify your transaction reference against banking credit records prior to dispatch.
+                </p>
+                {!confirmedOrder.paymentId && !submittedRefSuccess && (
+                  <div className="vtx-confirm-ref-box" style={{ marginTop: "12px" }}>
+                    <label htmlFor="confirmUtrInput" style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
+                      Already transferred? Enter your 12-digit UTR number:
+                    </label>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <input
+                        id="confirmUtrInput"
+                        type="text"
+                        className="vtx-input"
+                        placeholder="e.g. 428901234567"
+                        value={refInputOnConfirmation}
+                        onChange={(e) => setRefInputOnConfirmation(e.target.value)}
+                        data-testid="input-confirm-utr"
+                        style={{ maxWidth: "260px" }}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={async () => {
+                          if (!refInputOnConfirmation.trim()) return;
+                          setSubmittingRef(true);
+                          try {
+                            const res = await submitPaymentReference(confirmedOrder.id, refInputOnConfirmation.trim());
+                            if (res.success && res.order) {
+                              setConfirmedOrder(res.order);
+                              setSubmittedRefSuccess(true);
+                            }
+                          } catch (err) {
+                            setRefFeedback({ type: "error", message: err.message || "Failed to submit reference" });
+                          } finally {
+                            setSubmittingRef(false);
+                          }
+                        }}
+                        disabled={submittingRef || !refInputOnConfirmation.trim()}
+                        data-testid="submit-ref-btn"
+                      >
+                        {submittingRef ? "Saving..." : "Submit UTR →"}
+                      </button>
+                    </div>
+                    {refFeedback && (
+                      <p style={{ color: "var(--red)", fontSize: "0.82rem", marginTop: "4px" }}>
+                        {refFeedback.message}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {submittedRefSuccess && (
+                  <p style={{ color: "var(--green)", fontWeight: 600, marginTop: "8px" }}>
+                    ✔ UTR reference submitted successfully and linked to your order!
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="vtx-confirmation-notice">
+              <span aria-hidden="true">ℹ️</span>
+              <span>
+                <strong>Payment Boundary Notice:</strong> Payment gateway integration is slated for Phase 4.
+                This order will remain pending until payment is verified upon delivery.
+              </span>
+            </div>
+          )}
 
           <div className="vtx-confirmation-section">
             <h3>Delivery Address</h3>
@@ -272,10 +469,12 @@ export default function CheckoutPage({
                 <span>Items Subtotal:</span>
                 <span>₹{Number(confirmedOrder.subtotal).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
               </div>
-              <div className="vtx-totals-row">
-                <span>GST Tax (Goods &amp; Services):</span>
-                <span>₹{Number(confirmedOrder.taxAmount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-              </div>
+              {GST_ENABLED && Number(confirmedOrder.taxAmount || 0) > 0 && (
+                <div className="vtx-totals-row">
+                  <span>GST Tax (Goods &amp; Services):</span>
+                  <span>₹{Number(confirmedOrder.taxAmount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
               <div className="vtx-totals-row">
                 <span>Shipping Fee:</span>
                 <span>{confirmedOrder.shippingFee === 0 ? "FREE" : `₹${Number(confirmedOrder.shippingFee).toFixed(2)}`}</span>
@@ -312,11 +511,6 @@ export default function CheckoutPage({
       </div>
     );
   }
-
-  // Subtotal & Estimated Tax from cart
-  const cartSubtotal = Number(cart?.subtotal || 0);
-  const estimatedGst = Number((cartSubtotal * 0.18).toFixed(2));
-  const estimatedTotal = Number((cartSubtotal + estimatedGst).toFixed(2));
 
   return (
     <div className="vtx-checkout-container" data-testid="checkout-page">
@@ -516,7 +710,11 @@ export default function CheckoutPage({
           <section className="vtx-checkout-card" data-testid="checkout-payment-section">
             <h2>2. Payment Method</h2>
             <div className="vtx-payment-options">
-              <label className="vtx-payment-option selected" data-testid="payment-cod-option">
+              {/* Cash on Delivery Option */}
+              <label
+                className={`vtx-payment-option ${paymentMethod === "COD" ? "selected" : ""}`}
+                data-testid="payment-cod-option"
+              >
                 <input
                   type="radio"
                   name="paymentMethod"
@@ -526,26 +724,163 @@ export default function CheckoutPage({
                 />
                 <div className="vtx-payment-text">
                   <strong>💵 Cash on Delivery (COD) / Pay on Delivery</strong>
-                  <p>Pay when your components arrive at your doorstep or facility.</p>
+                  <p>Pay upon delivery of your electronic components and fasteners at your facility.</p>
                 </div>
               </label>
 
-              <label className="vtx-payment-option disabled" title="Online payments will be available in Phase 4">
+              {/* UPI & QR Code Option */}
+              {paymentConfig?.upiEnabled !== false && (
+                <label
+                  className={`vtx-payment-option ${paymentMethod === "UPI" ? "selected" : ""}`}
+                  data-testid="payment-upi-option"
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="UPI"
+                    checked={paymentMethod === "UPI"}
+                    onChange={() => setPaymentMethod("UPI")}
+                  />
+                  <div className="vtx-payment-text">
+                    <strong>⚡ UPI / QR Code Payment (GPay, PhonePe, Paytm, BHIM)</strong>
+                    <p>Instant mobile transfer with merchant QR code and banking transaction reference.</p>
+                  </div>
+                </label>
+              )}
+
+              {/* Disabled Gateway Option */}
+              <label className="vtx-payment-option disabled" title="Automated gateway processing is slated for Phase 4">
                 <input type="radio" name="paymentMethod" disabled />
                 <div className="vtx-payment-text">
-                  <strong>💳 Online Cards / UPI / NetBanking (Coming Soon)</strong>
-                  <p>Integrated payment gateway processing is planned for Phase 4.</p>
+                  <strong>💳 Credit / Debit Cards / NetBanking (Automated Gateway)</strong>
+                  <p>Automated payment gateway processing is planned for Phase 4.</p>
                 </div>
               </label>
             </div>
 
-            <div className="vtx-payment-boundary-note">
-              <span aria-hidden="true">🛡️</span>
-              <p>
-                <strong>Security Boundary:</strong> Orders are recorded with <em>PENDING</em> payment status.
-                VERTEX does not simulate payments or trust client assertions of payment completion.
-              </p>
-            </div>
+            {/* UPI Details Panel when UPI is selected */}
+            {paymentMethod === "UPI" && (
+              <div className="vtx-upi-checkout-panel" data-testid="upi-payment-panel">
+                <div className="vtx-upi-panel-header">
+                  <span className="vtx-upi-header-icon" aria-hidden="true">📱</span>
+                  <div>
+                    <h3 className="vtx-upi-title">UPI &amp; QR Code Payment Instructions</h3>
+                    <p className="vtx-upi-subtitle">
+                      Recipient: <strong>{paymentConfig?.merchantName || "VERTEX Industrial E-Commerce"}</strong>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="vtx-upi-body-grid">
+                  {/* Left Column: QR Code Card */}
+                  <div className="vtx-upi-qr-card" data-testid="upi-qr-card">
+                    <div className="vtx-upi-badge-row">
+                      <span className="vtx-upi-badge-mode" data-testid="qr-mode-badge">
+                        {paymentConfig?.hasStaticQr && paymentConfig?.qrMode === "STATIC"
+                          ? "🏷️ Merchant Static QR"
+                          : `🏷️ Dynamic Order QR: ₹${estimatedTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
+                      </span>
+                    </div>
+
+                    <div className="vtx-upi-qr-frame">
+                      {qrLoading ? (
+                        <div className="vtx-upi-qr-loading">Generating secure QR code...</div>
+                      ) : (
+                        <img
+                          src={upiQrData?.qrDataUrl || paymentConfig?.staticQrImageUrl || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><rect width='220' height='220' fill='%23ffffff'/><text x='110' y='110' text-anchor='middle'>QR Code</text></svg>"}
+                          alt="Merchant UPI QR Code"
+                          className="vtx-upi-qr-img"
+                          data-testid="upi-qr-image"
+                        />
+                      )}
+                    </div>
+
+                    {upiQrData?.upiUri && (
+                      <a
+                        href={upiQrData.upiUri}
+                        className="btn btn-outline btn-sm vtx-upi-intent-link"
+                        data-testid="upi-intent-link"
+                        rel="noreferrer"
+                      >
+                        📲 Open in UPI App (Mobile)
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Right Column: VPA, Instructions & UTR input */}
+                  <div className="vtx-upi-info-col">
+                    <div className="vtx-upi-vpa-row">
+                      <span className="vtx-upi-label">Merchant UPI ID (VPA):</span>
+                      <div className="vtx-upi-vpa-copy-wrap">
+                        <code className="vtx-upi-vpa" data-testid="merchant-vpa-display">
+                          {paymentConfig?.merchantUpiId || "billing.vertex@icici"}
+                        </code>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-secondary vtx-copy-upi-btn"
+                          onClick={() => {
+                            const vpa = paymentConfig?.merchantUpiId || "billing.vertex@icici";
+                            if (navigator?.clipboard?.writeText) {
+                              navigator.clipboard.writeText(vpa).catch(() => {});
+                            }
+                            setCopiedUpi(true);
+                            setTimeout(() => setCopiedUpi(false), 2000);
+                          }}
+                          data-testid="copy-upi-btn"
+                        >
+                          {copiedUpi ? "✔ Copied!" : "📋 Copy ID"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="vtx-upi-instructions" data-testid="upi-instructions">
+                      <strong>How to pay:</strong>
+                      <p style={{ whiteSpace: "pre-line", margin: "4px 0 0 0" }}>
+                        {paymentConfig?.instructions ||
+                          "1. Scan the QR code using any UPI app (GPay, PhonePe, Paytm, BHIM).\n2. Verify the recipient name is VERTEX Industrial E-Commerce.\n3. Complete the transfer of the exact order amount.\n4. Enter the 12-digit UPI Reference / UTR Number below."}
+                      </p>
+                    </div>
+
+                    <div className="vtx-upi-utr-field">
+                      <label htmlFor="upiReferenceInput" className="vtx-upi-label">
+                        UPI Transaction Reference / UTR Number:
+                      </label>
+                      <input
+                        id="upiReferenceInput"
+                        type="text"
+                        className="vtx-input"
+                        placeholder="e.g. 428901234567 (12-digit UTR)"
+                        value={upiReference}
+                        onChange={(e) => setUpiReference(e.target.value)}
+                        data-testid="input-upi-reference"
+                        maxLength={50}
+                      />
+                      <span className="vtx-field-hint">
+                        Found in your payment app receipt under &quot;UPI Ref No.&quot; or &quot;UTR&quot;.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="vtx-payment-boundary-note" data-testid="upi-security-notice" style={{ marginTop: "16px" }}>
+                  <span aria-hidden="true">🛡️</span>
+                  <p>
+                    <strong>Security Notice:</strong> Scanning the QR code initiates payment from your bank account.
+                    Your order will be registered in <em>PENDING (Verification Required)</em> status until our finance team verifies the credit against banking records.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {paymentMethod !== "UPI" && (
+              <div className="vtx-payment-boundary-note">
+                <span aria-hidden="true">🛡️</span>
+                <p>
+                  <strong>Security Boundary:</strong> Orders are recorded with <em>PENDING</em> payment status.
+                  VERTEX does not simulate payments or trust client assertions of payment completion.
+                </p>
+              </div>
+            )}
           </section>
 
           {/* Section 3: Delivery Notes */}
@@ -588,13 +923,17 @@ export default function CheckoutPage({
                 <span>Items Subtotal:</span>
                 <span data-testid="summary-subtotal">₹{cartSubtotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
               </div>
-              <div className="vtx-summary-row">
-                <span>Estimated GST (18%):</span>
-                <span data-testid="summary-tax">₹{estimatedGst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-              </div>
+              {GST_ENABLED && (
+                <div className="vtx-summary-row">
+                  <span>Estimated GST (18%):</span>
+                  <span data-testid="summary-tax">₹{estimatedGst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
               <div className="vtx-summary-row">
                 <span>Shipping:</span>
-                <span className="vtx-free-shipping">FREE</span>
+                <span className={shippingFee === 0 ? "vtx-free-shipping" : ""}>
+                  {shippingFee === 0 ? "FREE" : `₹${shippingFee.toFixed(2)}`}
+                </span>
               </div>
               <div className="vtx-summary-row vtx-summary-grand">
                 <span>Total Amount:</span>

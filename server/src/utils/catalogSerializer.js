@@ -5,6 +5,12 @@
 export function formatVariant(variant) {
   if (!variant) return null;
 
+  const numericPrice = variant.price !== null && variant.price !== undefined ? Number(variant.price) : null;
+  const isPositivePrice = numericPrice !== null && !isNaN(numericPrice) && numericPrice > 0;
+
+  const numericMrp = variant.mrp !== null && variant.mrp !== undefined ? Number(variant.mrp) : null;
+  const isPositiveMrp = numericMrp !== null && !isNaN(numericMrp) && numericMrp > 0;
+
   return {
     id: variant.id,
     sku: variant.sku,
@@ -12,8 +18,8 @@ export function formatVariant(variant) {
     name: variant.name || null,
     packSize: variant.packSize || null,
     dimensions: variant.dimensions || null,
-    price: Number(variant.price),
-    mrp: variant.mrp ? Number(variant.mrp) : null,
+    price: isPositivePrice ? numericPrice : null,
+    mrp: isPositiveMrp ? numericMrp : null,
     stockQuantity: variant.stockQuantity,
     inStock: variant.stockQuantity > 0,
     tieredPrices: (variant.tieredPrices || []).map((tp) => ({
@@ -26,6 +32,8 @@ export function formatVariant(variant) {
 
 /**
  * Formats a Product record with its Category and active Variants.
+ * Base price is the minimum positive price across active variants.
+ * If no active variant has a positive price, base price is null (RFQ / Quote on Request).
  */
 export function formatProduct(product) {
   if (!product) return null;
@@ -35,16 +43,18 @@ export function formatProduct(product) {
     .filter((v) => v.isActive)
     .map(formatVariant);
 
-  // Compute lowest base price and corresponding MRP from active variants
+  // Compute lowest base price and corresponding MRP from active variants with positive prices
   let minPrice = null;
   let correspondingMrp = null;
   let totalStock = 0;
 
   for (const v of activeVariants) {
     totalStock += v.stockQuantity;
-    if (minPrice === null || v.price < minPrice) {
-      minPrice = v.price;
-      correspondingMrp = v.mrp;
+    if (v.price !== null && v.price > 0) {
+      if (minPrice === null || v.price < minPrice) {
+        minPrice = v.price;
+        correspondingMrp = v.mrp;
+      }
     }
   }
 

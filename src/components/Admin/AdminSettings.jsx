@@ -30,24 +30,42 @@ export default function AdminSettings({
       id: "default",
       title: "Default Enterprise",
       subtitle: "Dark Slate Charcoal",
+      icon: "🏢",
       description: "Preserve the signature VERTEX dark charcoal interface with vibrant industrial orange accents.",
-      swatches: ["#0b0f14", "#171e28", "#ff7900", "#f4f6f8"],
+      swatches: [
+        { label: "Bg", color: "#0b0f14", name: "Page Background (#0b0f14)" },
+        { label: "Card", color: "#171e28", name: "Card Surface (#171e28)" },
+        { label: "Accent", color: "#ff7900", name: "Industrial Orange (#ff7900)" },
+        { label: "Text", color: "#f4f6f8", name: "Off-White Text (#f4f6f8)" },
+      ],
       badge: "Signature Fallback",
     },
     {
       id: "dark",
       title: "Dark OLED Midnight",
       subtitle: "Pure OLED Pitch Black",
-      description: "Deep obsidian surfaces with pure black background (#000000), crisp zinc borders, and electric cyan accents for low-light environments.",
-      swatches: ["#000000", "#09090b", "#06b6d4", "#ffffff"],
+      icon: "🌙",
+      description: "Deep obsidian surfaces with pure black background (#000000), zinc borders, and electric cyan accents for low-light environments.",
+      swatches: [
+        { label: "Bg", color: "#000000", name: "Pitch Black Background (#000000)" },
+        { label: "Card", color: "#09090b", name: "Obsidian Surface (#09090b)" },
+        { label: "Accent", color: "#06b6d4", name: "Electric Cyan Accent (#06b6d4)" },
+        { label: "Text", color: "#ffffff", name: "Pure White Text (#ffffff)" },
+      ],
       badge: "Pure OLED Black",
     },
     {
       id: "light",
       title: "Light Mode",
       subtitle: "High Contrast Clean",
+      icon: "☀️",
       description: "Clean light surfaces with crisp slate typography (WCAG AA 4.5:1+ compliant) for high-illumination offices.",
-      swatches: ["#f8fafc", "#ffffff", "#ff7900", "#0f172a"],
+      swatches: [
+        { label: "Bg", color: "#f8fafc", name: "Light Background (#f8fafc)" },
+        { label: "Card", color: "#ffffff", name: "Pure White Card (#ffffff)" },
+        { label: "Accent", color: "#ff7900", name: "Primary Orange (#ff7900)" },
+        { label: "Text", color: "#0f172a", name: "Dark Slate Text (#0f172a)" },
+      ],
       badge: "Clean Light",
     },
   ];
@@ -282,13 +300,58 @@ export default function AdminSettings({
           </span>
         </div>
         <div className="adm-settings-section-body">
-          <div className="adm-theme-picker" role="radiogroup" aria-label="Admin Portal Theme Selection">
+          {/* Compact Control Bar: Quick Toggle + Select Dropdown */}
+          <div className="adm-theme-controls-bar" style={{ marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="adm-theme-toggle-btn"
+                onClick={() => {
+                  const targetTheme = adminTheme === "light" ? "dark" : "light";
+                  handleSelectTheme(targetTheme);
+                }}
+                data-testid="quick-light-dark-toggle"
+                title={`Switch directly to ${adminTheme === "light" ? "Dark" : "Light"} mode`}
+              >
+                <span>{adminTheme === "light" ? "🌙" : "☀️"}</span>
+                <span>Switch to {adminTheme === "light" ? "Dark Mode" : "Light Mode"}</span>
+              </button>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <label htmlFor="theme-select-dropdown" className="adm-label" style={{ margin: 0, fontSize: "0.82rem" }}>
+                  Theme Selector:
+                </label>
+                <select
+                  id="theme-select-dropdown"
+                  data-testid="theme-select-dropdown"
+                  className="adm-select"
+                  style={{ width: "auto", minWidth: 200 }}
+                  value={adminTheme}
+                  onChange={(e) => handleSelectTheme(e.target.value)}
+                >
+                  <option value="light">☀️ Light Mode (Clean Slate)</option>
+                  <option value="dark">🌙 Dark Mode (Pure OLED)</option>
+                  <option value="default">🏢 Default Enterprise (Dark Navy)</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ fontSize: "0.82rem", color: "var(--adm-text-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
+              <span>Active Workspace:</span>
+              <span className="adm-badge adm-badge-success" style={{ fontSize: "0.74rem" }}>
+                ✓ {THEMES.find((t) => t.id === adminTheme)?.title || adminTheme}
+              </span>
+            </div>
+          </div>
+
+          {/* Compact Theme Options with Guaranteed-Visible Swatches */}
+          <div className="adm-theme-grid-compact" role="radiogroup" aria-label="Admin Portal Theme Selection">
             {THEMES.map((t) => {
               const isSelected = adminTheme === t.id;
               return (
                 <div
                   key={t.id}
-                  className={`adm-theme-card ${isSelected ? "active" : ""}`}
+                  className={`adm-theme-card-compact ${isSelected ? "active" : ""}`}
                   onClick={() => handleSelectTheme(t.id)}
                   role="radio"
                   aria-checked={isSelected}
@@ -301,9 +364,9 @@ export default function AdminSettings({
                   }}
                   data-testid={`theme-option-${t.id}`}
                 >
-                  <div className="adm-theme-card-header">
-                    <div className="adm-theme-card-title">
-                      <span>{t.id === "light" ? "☀️" : t.id === "dark" ? "🌙" : "🏢"}</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: "0.92rem", color: "var(--adm-text-primary)" }}>
+                      <span>{t.icon || (t.id === "light" ? "☀️" : t.id === "dark" ? "🌙" : "🏢")}</span>
                       <span>{t.title}</span>
                     </div>
                     {isSelected ? (
@@ -317,18 +380,28 @@ export default function AdminSettings({
                     )}
                   </div>
 
-                  <div className="adm-theme-preview-palette" aria-hidden="true">
-                    {t.swatches.map((color, idx) => (
-                      <span
-                        key={idx}
-                        className="adm-theme-swatch"
-                        style={{ backgroundColor: color }}
-                        title={color}
-                      />
-                    ))}
+                  {/* Guaranteed Visible Swatches with Borders, Contrast and Labels */}
+                  <div className="adm-theme-swatches-row" aria-label={`${t.title} color swatches`}>
+                    {t.swatches.map((swatch, idx) => {
+                      const color = typeof swatch === "string" ? swatch : swatch.color;
+                      const label = typeof swatch === "string" ? ["Bg", "Card", "Accent", "Text"][idx] : swatch.label;
+                      const title = typeof swatch === "string" ? color : swatch.name;
+                      return (
+                        <div key={idx} className="adm-theme-swatch-box">
+                          <span
+                            className="adm-theme-swatch"
+                            style={{ backgroundColor: color }}
+                            title={title}
+                          />
+                          <span className="adm-theme-swatch-label">{label}</span>
+                        </div>
+                      );
+                    })}
                   </div>
 
-                  <p className="adm-theme-card-desc">{t.description}</p>
+                  <p className="adm-theme-card-desc">
+                    {t.description}
+                  </p>
                 </div>
               );
             })}

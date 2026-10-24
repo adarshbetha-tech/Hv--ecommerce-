@@ -55,3 +55,29 @@ export async function cancelOrder(req, res, next) {
   }
 }
 
+export async function requestReplacement(req, res, next) {
+  try {
+    const result = await orderService.requestOrderReplacement(
+      req.user.id,
+      req.params.id,
+      req.body,
+      req.user.email
+    );
+    res.status(201).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getOrderReplacements(req, res, next) {
+  try {
+    const result = await orderService.getOrderReplacements(
+      req.user.id,
+      req.params.id
+    );
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+

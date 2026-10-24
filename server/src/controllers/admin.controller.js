@@ -330,5 +330,201 @@ export async function getCustomer(req, res, next) {
   }
 }
 
+/**
+ * Controller to update a user's role and account status via Admin API.
+ */
+export async function updateUserRole(req, res, next) {
+  try {
+    const { id } = req.params;
+    const actorId = req.user?.id || null;
+    const actorEmail = req.user?.email || null;
+
+    const result = await adminService.updateUserRole(
+      id,
+      req.body,
+      actorId,
+      actorEmail
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: `User role updated to ${result.user.role} successfully.`,
+      user: result.user,
+      auditLog: result.auditLog,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Controller to upload a product specification file via Admin API.
+ */
+export async function uploadSpecification(req, res, next) {
+  try {
+    const { id } = req.params;
+    const actorId = req.user?.id || null;
+    const actorEmail = req.user?.email || null;
+
+    const result = await adminService.uploadProductSpecification(
+      id,
+      req.body,
+      actorId,
+      actorEmail
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Specification document uploaded and attached successfully.",
+      specification: result.specification,
+      auditLog: result.auditLog,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Controller to delete a product specification file via Admin API.
+ */
+export async function deleteSpecification(req, res, next) {
+  try {
+    const { id } = req.params;
+    const actorId = req.user?.id || null;
+    const actorEmail = req.user?.email || null;
+
+    const result = await adminService.deleteProductSpecification(
+      id,
+      actorId,
+      actorEmail
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      auditLog: result.auditLog,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Controller to list all payment transactions with summary metrics, filters, and unresolved issues.
+ */
+export async function listPayments(req, res, next) {
+  try {
+    const result = await adminService.getAdminPayments(req.query);
+
+    return res.status(200).json({
+      success: true,
+      summary: result.summary,
+      payments: result.payments,
+      unresolvedIssues: result.unresolvedIssues,
+      gatewayIntegration: result.gatewayIntegration,
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Controller to resolve payment issues, verify offline settlements, or record refunds with audit logging.
+ */
+export async function reconcilePayment(req, res, next) {
+  try {
+    const { id } = req.params;
+    const actorUser = req.user;
+
+    const result = await adminService.reconcileAdminPayment(id, req.body, actorUser);
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      order: result.order,
+      auditLog: result.auditLog,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Controller to fetch administrative payment & UPI configuration.
+ */
+export async function getPaymentConfig(req, res, next) {
+  try {
+    const { getAdminPaymentConfig } = await import("../services/paymentConfig.service.js");
+    const data = await getAdminPaymentConfig();
+    return res.status(200).json({
+      success: true,
+      ...data,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Controller to update merchant UPI and payment configuration with audit logging.
+ */
+export async function updatePaymentConfig(req, res, next) {
+  try {
+    const { updatePaymentConfig: updateConfig } = await import("../services/paymentConfig.service.js");
+    const result = await updateConfig(req.body, req.user);
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Controller to remove uploaded static merchant QR code image.
+ */
+export async function removePaymentQr(req, res, next) {
+  try {
+    const { removeStaticQr } = await import("../services/paymentConfig.service.js");
+    const result = await removeStaticQr(req.user);
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Controller to list customer replacement requests, delivery timestamps, and review status.
+ */
+export async function listReplacements(req, res, next) {
+  try {
+    const result = await adminService.listAdminReplacements();
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Controller to review and update replacement request status.
+ */
+export async function reviewReplacement(req, res, next) {
+  try {
+    const { id } = req.params;
+    const actorId = req.user?.id || null;
+    const actorEmail = req.user?.email || null;
+
+    const result = await adminService.reviewAdminReplacement(
+      id,
+      req.body,
+      actorId,
+      actorEmail
+    );
+
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 
 

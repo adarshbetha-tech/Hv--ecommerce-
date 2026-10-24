@@ -280,17 +280,19 @@ export default function AdminDashboard({ onNavigateSection, onNavigateStorefront
 
           <div className="adm-order-kpi-grid">
             <div
-              className="adm-order-kpi-box"
-              onClick={() => onNavigateSection("orders")}
+              className="adm-order-kpi-box kpi-total-orders"
+              onClick={() => onNavigateSection("orders", { filter: "all", dateFilter: "all" })}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  onNavigateSection("orders");
+                  onNavigateSection("orders", { filter: "all", dateFilter: "all" });
                 }
               }}
               role="button"
               tabIndex={0}
               title="View all orders"
+              data-testid="kpi-total-orders"
+              aria-label={`Total Orders: ${totalOrders}. Click to view all orders.`}
             >
               <span className="adm-order-kpi-count">{totalOrders}</span>
               <span className="adm-order-kpi-title">Total Orders</span>
@@ -298,17 +300,19 @@ export default function AdminDashboard({ onNavigateSection, onNavigateStorefront
             </div>
 
             <div
-              className="adm-order-kpi-box"
-              onClick={() => onNavigateSection("orders")}
+              className="adm-order-kpi-box kpi-orders-today"
+              onClick={() => onNavigateSection("orders", { filter: "all", dateFilter: "today" })}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  onNavigateSection("orders");
+                  onNavigateSection("orders", { filter: "all", dateFilter: "today" });
                 }
               }}
               role="button"
               tabIndex={0}
               title="View orders received today"
+              data-testid="kpi-orders-today"
+              aria-label={`Orders Today: ${isOrdersEndpointAvailable ? ordersToday : 0}. Click to view today's orders.`}
             >
               <span className="adm-order-kpi-count">{isOrdersEndpointAvailable ? ordersToday : 0}</span>
               <span className="adm-order-kpi-title">Orders Today</span>
@@ -317,16 +321,18 @@ export default function AdminDashboard({ onNavigateSection, onNavigateStorefront
 
             <div
               className="adm-order-kpi-box kpi-pending"
-              onClick={() => onNavigateSection("orders")}
+              onClick={() => onNavigateSection("orders", { filter: "PENDING", dateFilter: "all" })}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  onNavigateSection("orders");
+                  onNavigateSection("orders", { filter: "PENDING", dateFilter: "all" });
                 }
               }}
               role="button"
               tabIndex={0}
               title="View pending orders"
+              data-testid="kpi-pending-orders"
+              aria-label={`Pending Review: ${isOrdersEndpointAvailable ? pendingOrders : 0}. Click to view pending orders.`}
             >
               <span className="adm-order-kpi-count">{isOrdersEndpointAvailable ? pendingOrders : 0}</span>
               <span className="adm-order-kpi-title">Pending Review</span>
@@ -335,16 +341,18 @@ export default function AdminDashboard({ onNavigateSection, onNavigateStorefront
 
             <div
               className="adm-order-kpi-box kpi-processing"
-              onClick={() => onNavigateSection("orders")}
+              onClick={() => onNavigateSection("orders", { filter: "PROCESSING", dateFilter: "all" })}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  onNavigateSection("orders");
+                  onNavigateSection("orders", { filter: "PROCESSING", dateFilter: "all" });
                 }
               }}
               role="button"
               tabIndex={0}
               title="View processing orders"
+              data-testid="kpi-processing-orders"
+              aria-label={`Processing: ${isOrdersEndpointAvailable ? processingOrders : 0}. Click to view processing orders.`}
             >
               <span className="adm-order-kpi-count">{isOrdersEndpointAvailable ? processingOrders : 0}</span>
               <span className="adm-order-kpi-title">Processing</span>
@@ -353,16 +361,18 @@ export default function AdminDashboard({ onNavigateSection, onNavigateStorefront
 
             <div
               className="adm-order-kpi-box kpi-shipped"
-              onClick={() => onNavigateSection("orders")}
+              onClick={() => onNavigateSection("orders", { filter: "SHIPPED", dateFilter: "all" })}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  onNavigateSection("orders");
+                  onNavigateSection("orders", { filter: "SHIPPED", dateFilter: "all" });
                 }
               }}
               role="button"
               tabIndex={0}
               title="View shipped orders"
+              data-testid="kpi-shipped-orders"
+              aria-label={`Dispatched: ${isOrdersEndpointAvailable ? shippedOrders : 0}. Click to view shipped orders.`}
             >
               <span className="adm-order-kpi-count">{isOrdersEndpointAvailable ? shippedOrders : 0}</span>
               <span className="adm-order-kpi-title">Dispatched</span>
@@ -371,16 +381,18 @@ export default function AdminDashboard({ onNavigateSection, onNavigateStorefront
 
             <div
               className="adm-order-kpi-box kpi-delivered"
-              onClick={() => onNavigateSection("orders")}
+              onClick={() => onNavigateSection("orders", { filter: "DELIVERED", dateFilter: "all" })}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  onNavigateSection("orders");
+                  onNavigateSection("orders", { filter: "DELIVERED", dateFilter: "all" });
                 }
               }}
               role="button"
               tabIndex={0}
               title="View delivered orders"
+              data-testid="kpi-delivered-orders"
+              aria-label={`Delivered: ${isOrdersEndpointAvailable ? deliveredOrders : 0}. Click to view delivered orders.`}
             >
               <span className="adm-order-kpi-count">{isOrdersEndpointAvailable ? deliveredOrders : 0}</span>
               <span className="adm-order-kpi-title">Delivered</span>
@@ -389,16 +401,18 @@ export default function AdminDashboard({ onNavigateSection, onNavigateStorefront
 
             <div
               className="adm-order-kpi-box kpi-cancelled"
-              onClick={() => onNavigateSection("orders")}
+              onClick={() => onNavigateSection("orders", { filter: "CANCELLED", dateFilter: "all" })}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  onNavigateSection("orders");
+                  onNavigateSection("orders", { filter: "CANCELLED", dateFilter: "all" });
                 }
               }}
               role="button"
               tabIndex={0}
               title="View cancelled orders"
+              data-testid="kpi-cancelled-orders"
+              aria-label={`Cancelled: ${isOrdersEndpointAvailable ? cancelledOrders : 0}. Click to view cancelled orders.`}
             >
               <span className="adm-order-kpi-count">{isOrdersEndpointAvailable ? cancelledOrders : 0}</span>
               <span className="adm-order-kpi-title">Cancelled</span>
@@ -417,6 +431,8 @@ export default function AdminDashboard({ onNavigateSection, onNavigateStorefront
               role="button"
               tabIndex={0}
               title="View refund requests"
+              data-testid="kpi-refund-requests"
+              aria-label="Refund Requests: 0 claims. Click to view refunds."
             >
               <span className="adm-order-kpi-count">0</span>
               <span className="adm-order-kpi-title">Refund Requests</span>

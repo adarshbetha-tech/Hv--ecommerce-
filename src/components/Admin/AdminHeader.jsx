@@ -6,6 +6,7 @@ const sectionLabels = {
   categories: "Categories",
   inventory: "Inventory Management",
   orders: "Orders & Fulfillment",
+  payments: "Payments & Transactions",
   quotes: "Commercial Quotes (RFQ)",
   discounts: "Discounts & Promotions",
   refunds: "Refunds & Returns",

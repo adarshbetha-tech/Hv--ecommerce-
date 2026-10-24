@@ -8,6 +8,7 @@ import AdminProducts from "./AdminProducts";
 import AdminCategories from "./AdminCategories";
 import AdminInventory from "./AdminInventory";
 import AdminOrders from "./AdminOrders";
+import AdminPayments from "./AdminPayments";
 import AdminQuotes from "./AdminQuotes";
 import AdminDiscounts from "./AdminDiscounts";
 import AdminRefunds from "./AdminRefunds";
@@ -114,9 +115,16 @@ export default function AdminLayout({
     checkAuthorization();
   }, [checkAuthorization, currentUser]);
 
+  const [sectionParams, setSectionParams] = useState(null);
+
   // Handle URL sync
-  const handleSelectSection = (sectionId) => {
+  const handleSelectSection = (sectionId, params = null) => {
     setActiveSection(sectionId);
+    if (sectionId === "orders") {
+      setSectionParams(params);
+    } else {
+      setSectionParams(null);
+    }
     const targetUrl = sectionId === "dashboard" ? "/admin" : `/admin/${sectionId}`;
     if (window.location.pathname !== targetUrl) {
       window.history.pushState(null, "", targetUrl);
@@ -213,7 +221,15 @@ export default function AdminLayout({
           {activeSection === "products" && <AdminProducts />}
           {activeSection === "categories" && <AdminCategories />}
           {activeSection === "inventory" && <AdminInventory />}
-          {activeSection === "orders" && <AdminOrders />}
+          {activeSection === "orders" && (
+            <AdminOrders
+              initialFilter={sectionParams?.filter || (typeof sectionParams === "string" ? sectionParams : "all")}
+              initialDateFilter={sectionParams?.dateFilter || (typeof sectionParams === "string" && sectionParams.toLowerCase() === "today" ? "today" : "all")}
+            />
+          )}
+          {activeSection === "payments" && (
+            <AdminPayments onNavigateOrders={(filter) => handleSelectSection("orders", filter)} />
+          )}
           {activeSection === "quotes" && <AdminQuotes />}
           {activeSection === "discounts" && <AdminDiscounts />}
           {activeSection === "refunds" && (

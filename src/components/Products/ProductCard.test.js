@@ -192,7 +192,7 @@ describe("VERTEX ProductCard Component with 3D Tilt Suite", () => {
     expect(onViewDetails).toHaveBeenCalledWith(mockProduct);
   });
 
-  test("7. Unpriced products render 'Quote on Request' and clicking primary Add to Cart adds item as quote-required", () => {
+  test("7. Unpriced products render 'Quote on Request' and show Request Quote action instead of Add to Cart", () => {
     render(
       <ProductCard
         product={mockQuoteProduct}
@@ -205,12 +205,14 @@ describe("VERTEX ProductCard Component with 3D Tilt Suite", () => {
     expect(screen.getByText("Quote on Request")).toBeInTheDocument();
     expect(screen.getByText(/Commercial \/ Volume Sourcing/i)).toBeInTheDocument();
 
-    const addBtn = screen.getByTestId("add-to-cart-prod-2");
-    expect(addBtn).toHaveTextContent(/Add to Cart/i);
+    expect(screen.queryByTestId("add-to-cart-prod-2")).not.toBeInTheDocument();
+    const quoteBtn = screen.getByTestId("request-quote-prod-2");
+    expect(quoteBtn).toHaveTextContent(/Request Quote/i);
 
-    fireEvent.click(addBtn);
-    expect(onAddToCart).toHaveBeenCalledTimes(1);
-    expect(onAddToCart).toHaveBeenCalledWith(mockQuoteProduct, undefined);
+    fireEvent.click(quoteBtn);
+    expect(onRequestQuote).toHaveBeenCalledTimes(1);
+    expect(onRequestQuote).toHaveBeenCalledWith(mockQuoteProduct);
+    expect(onAddToCart).not.toHaveBeenCalled();
   });
 
   test("8. Clicking Wishlist button toggles saved status", () => {

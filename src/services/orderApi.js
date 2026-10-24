@@ -53,6 +53,7 @@ export async function placeOrder({
   addressId,
   shippingAddress,
   paymentMethod = "COD",
+  paymentId,
   notes,
   idempotencyKey,
 }) {
@@ -61,6 +62,7 @@ export async function placeOrder({
       addressId,
       shippingAddress,
       paymentMethod,
+      paymentId,
       notes,
       idempotencyKey,
     });
@@ -79,6 +81,7 @@ export async function placeOrder({
       addressId,
       shippingAddress,
       paymentMethod,
+      paymentId,
       notes,
       idempotencyKey,
     }),
@@ -188,6 +191,110 @@ export async function cancelOrder(orderIdentifier, { reason } = {}) {
     credentials: "include",
     body: JSON.stringify({ reason }),
   });
+
+  return handleResponse(response);
+}
+
+/**
+ * Retrieves public payment methods and UPI configuration for customer checkout.
+ */
+export async function getPaymentConfig() {
+  if (isMockApiEnabled()) {
+    return mockOrderApi.getPaymentConfig();
+  }
+
+  const response = await fetch(`${API_BASE}/api/payments/config`, {
+    method: "GET",
+    headers: defaultHeaders,
+    credentials: "include",
+  });
+
+  return handleResponse(response);
+}
+
+/**
+ * Generates a dynamic transaction-specific UPI QR data URL for the cart total.
+ */
+export async function generateUpiQr({ amount, orderNumber, notes }) {
+  if (isMockApiEnabled()) {
+    return mockOrderApi.generateUpiQr({ amount, orderNumber, notes });
+  }
+
+  const response = await fetch(`${API_BASE}/api/payments/upi-qr`, {
+    method: "POST",
+    headers: defaultHeaders,
+    credentials: "include",
+    body: JSON.stringify({ amount, orderNumber, notes }),
+  });
+
+  return handleResponse(response);
+}
+
+/**
+ * Submits or updates customer payment transaction reference (UTR) for an order.
+ */
+export async function submitPaymentReference(orderIdentifier, paymentReference) {
+  if (isMockApiEnabled()) {
+    return mockOrderApi.submitPaymentReference(orderIdentifier, paymentReference);
+  }
+
+  const response = await fetch(`${API_BASE}/api/payments/orders/${encodeURIComponent(orderIdentifier)}/reference`, {
+    method: "POST",
+    headers: defaultHeaders,
+    credentials: "include",
+    body: JSON.stringify({ paymentReference }),
+  });
+
+  return handleResponse(response);
+}
+
+/**
+ * Submits a 7-day component replacement request for a delivered order.
+ */
+export async function requestOrderReplacement(orderIdentifier, { reason, details, items, unboxingProofConfirmed = true }) {
+  if (isMockApiEnabled()) {
+    return mockOrderApi.requestOrderReplacement(orderIdentifier, {
+      reason,
+      details,
+      items,
+      unboxingProofConfirmed,
+    });
+  }
+
+  const response = await fetch(
+    `${API_BASE}/api/orders/${encodeURIComponent(orderIdentifier)}/replacement`,
+    {
+      method: "POST",
+      headers: defaultHeaders,
+      credentials: "include",
+      body: JSON.stringify({
+        reason,
+        details,
+        items,
+        unboxingProofConfirmed,
+      }),
+    }
+  );
+
+  return handleResponse(response);
+}
+
+/**
+ * Retrieves replacement requests and 7-day eligibility for an order.
+ */
+export async function getOrderReplacements(orderIdentifier) {
+  if (isMockApiEnabled()) {
+    return mockOrderApi.getOrderReplacements(orderIdentifier);
+  }
+
+  const response = await fetch(
+    `${API_BASE}/api/orders/${encodeURIComponent(orderIdentifier)}/replacement`,
+    {
+      method: "GET",
+      headers: defaultHeaders,
+      credentials: "include",
+    }
+  );
 
   return handleResponse(response);
 }

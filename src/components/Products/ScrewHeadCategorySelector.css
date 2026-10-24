@@ -1,0 +1,212 @@
+/**
+ * VERTEX Screw Head Category Selection Styles
+ */
+
+.vtx-head-selection-page {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+  background: #ffffff;
+}
+
+/* Breadcrumbs */
+.vtx-head-breadcrumbs {
+  margin-bottom: 24px;
+}
+
+.vtx-head-breadcrumbs-inner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.88rem;
+}
+
+.vtx-breadcrumb-btn {
+  background: transparent;
+  border: none;
+  color: var(--navy, #0b1f3a);
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.vtx-breadcrumb-btn:hover {
+  color: var(--orange, #ff7900);
+  text-decoration: underline;
+}
+
+.vtx-breadcrumb-sep {
+  color: var(--text-light, #94a3b8);
+  font-size: 0.8rem;
+}
+
+.vtx-breadcrumb-active {
+  color: var(--text-mid, #64748b);
+  font-weight: 600;
+}
+
+/* Header */
+.vtx-head-selection-header {
+  text-align: center;
+  margin-bottom: 40px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.vtx-head-family-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--navy, #0b1f3a);
+  margin: 0 0 8px 0;
+  letter-spacing: -0.02em;
+}
+
+.vtx-head-family-subtitle {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--orange, #ff7900);
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.vtx-head-count-badge {
+  display: inline-block;
+  background: #f1f5f9;
+  color: var(--navy, #0b1f3a);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+}
+
+/* Grid */
+.vtx-head-tiles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 24px;
+}
+
+.vtx-head-tile-reveal {
+  display: flex;
+  height: 100%;
+}
+
+.vtx-head-tile-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.2s ease;
+  outline: none;
+}
+
+.vtx-head-tile-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--orange, #ff7900);
+  box-shadow: 0 12px 28px rgba(11, 31, 58, 0.08);
+}
+
+.vtx-head-tile-card:focus-visible {
+  border-color: var(--orange, #ff7900);
+  box-shadow: 0 0 0 3px rgba(255, 121, 0, 0.25);
+}
+
+/* Media Box */
+.vtx-head-tile-media {
+  background: #f8fafc;
+  padding: 24px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.vtx-head-tile-img {
+  max-width: 100%;
+  max-height: 140px;
+  object-fit: contain;
+  transition: transform 0.25s ease;
+}
+
+.vtx-head-tile-card:hover .vtx-head-tile-img {
+  transform: scale(1.06);
+}
+
+/* Content */
+.vtx-head-tile-content {
+  padding: 18px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.vtx-head-tile-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--navy, #0b1f3a);
+  margin: 0 0 8px 0;
+  line-height: 1.35;
+}
+
+.vtx-head-tile-desc {
+  font-size: 0.85rem;
+  color: var(--text-mid, #64748b);
+  line-height: 1.45;
+  margin: 0 0 16px 0;
+  flex-grow: 1;
+}
+
+.vtx-head-tile-footer {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.vtx-head-tile-action {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--orange, #ff7900);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: gap 0.15s ease;
+}
+
+.vtx-head-tile-card:hover .vtx-head-tile-action {
+  color: var(--navy, #0b1f3a);
+}
+
+.vtx-head-tile-card:hover .action-arrow {
+  transform: translateX(4px);
+}
+
+.action-arrow {
+  transition: transform 0.15s ease;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .vtx-head-family-title {
+    font-size: 1.7rem;
+  }
+  .vtx-head-tiles-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+  }
+  .vtx-head-tile-media {
+    min-height: 150px;
+    padding: 16px;
+  }
+}

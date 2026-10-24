@@ -88,6 +88,8 @@ const sampleOrders = [
     taxAmount: 144.0,
     shippingFee: 0.0,
     totalAmount: 944.0,
+    deliveredAt: "2026-10-15T09:00:00.000Z",
+    notes: "[DeliveredAt: 2026-10-15T09:00:00.000Z]",
     createdAt: "2026-10-15T09:00:00.000Z",
     items: [
       {
@@ -122,6 +124,32 @@ const sampleOrders = [
         quantity: 1,
         unitPrice: 350.0,
         lineTotal: 350.0,
+      },
+    ],
+  },
+  {
+    id: "ord-5",
+    orderNumber: "VTX-20261023-00005",
+    userId: "user-cust-123",
+    orderStatus: "DELIVERED",
+    paymentStatus: "PAID",
+    paymentMethod: "COD",
+    subtotal: 1200.0,
+    taxAmount: 216.0,
+    shippingFee: 0.0,
+    totalAmount: 1416.0,
+    deliveredAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    notes: `[DeliveredAt: ${new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()}]`,
+    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    items: [
+      {
+        id: "item-5",
+        productName: "High Precision Stepper Motor",
+        sku: "ELEC-STEP-NEMA17",
+        packSize: "NEMA 17 Frame",
+        quantity: 2,
+        unitPrice: 600.0,
+        lineTotal: 1200.0,
       },
     ],
   },
@@ -493,5 +521,107 @@ describe("OrdersPage Component", () => {
     expect(screen.queryByTestId("cancel-confirm-modal")).not.toBeInTheDocument();
     expect(orderApi.cancelOrder).not.toHaveBeenCalled();
   });
+
+  test("12. Renders Request Replacement button for order within 7-day delivery window and never offers refund button", async () => {
+    orderApi.getOrders.mockResolvedValueOnce({
+      success: true,
+      orders: sampleOrders,
+    });
+
+    render(
+      <OrdersPage
+        currentUser={mockCustomer}
+        onNavigateHome={jest.fn()}
+        onNavigateLogin={jest.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("request-replacement-btn-VTX-20261023-00005")).toBeInTheDocument();
+    });
+
+    // Ensure strictly no "Request Refund" or "Refund" buttons exist in customer order workflow
+    expect(screen.queryByRole("button", { name: /refund/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/request refund/i)).not.toBeInTheDocument();
+  });
+
+  test("13. Displays 7-Day Window Ended badge for order delivered more than 7 days ago", async () => {
+    orderApi.getOrders.mockResolvedValueOnce({
+      success: true,
+      orders: sampleOrders,
+    });
+
+    render(
+      <OrdersPage
+        currentUser={mockCustomer}
+        onNavigateHome={jest.fn()}
+        onNavigateLogin={jest.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("replacement-status-expired-VTX-20261015-00003")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/7-Day Window Ended/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("request-replacement-btn-VTX-20261015-00003")).not.toBeInTheDocument();
+  });
+
+  test("14. Opens 7-day replacement modal and submits request with items selection", async () => {
+    orderApi.getOrders.mockResolvedValue({
+      success: true,
+      orders: sampleOrders,
+    });
+    orderApi.requestOrderReplacement.mockResolvedValueOnce({
+      success: true,
+      status: "PENDING_REVIEW",
+      orderNumber: "VTX-20261023-00005",
+      message: "Replacement request submitted successfully.",
+    });
+
+    render(
+      <OrdersPage
+        currentUser={mockCustomer}
+        onNavigateHome={jest.fn()}
+        onNavigateLogin={jest.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("request-replacement-btn-VTX-20261023-00005")).toBeInTheDocument();
+    });
+
+    // Click Request Replacement
+    fireEvent.click(screen.getByTestId("request-replacement-btn-VTX-20261023-00005"));
+
+    // Modal opens
+    expect(screen.getByTestId("replacement-request-modal")).toBeInTheDocument();
+    expect(screen.getByText(/Strict Replacement-Only Policy/i)).toBeInTheDocument();
+
+    // Select reason and enter details
+    const reasonSelect = screen.getByTestId("replacement-reason-select");
+    fireEvent.change(reasonSelect, { target: { value: "Transit Damage / Broken in Transit" } });
+
+    const detailsInput = screen.getByTestId("replacement-details-input");
+    fireEvent.change(detailsInput, {
+      target: { value: "Shaft is bent and connector pins sheared off during courier transit." },
+    });
+
+    // Submit replacement request
+    const submitBtn = screen.getByTestId("confirm-replacement-btn");
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(orderApi.requestOrderReplacement).toHaveBeenCalledWith(
+        "ord-5",
+        expect.objectContaining({
+          reason: "Transit Damage / Broken in Transit",
+          details: "Shaft is bent and connector pins sheared off during courier transit.",
+          unboxingProofConfirmed: true,
+        })
+      );
+    });
+  });
 });
+
 

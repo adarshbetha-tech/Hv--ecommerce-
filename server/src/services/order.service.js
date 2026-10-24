@@ -1,6 +1,28 @@
 import { prisma } from "../config/db.js";
 import { formatOrder } from "../utils/orderSerializer.js";
 
+// GST Configuration Toggle (Temporary suspension of GST charges)
+// Set to true when GST charges are re-enabled
+export const GST_ENABLED = false;
+
+/**
+ * Calculates order financial breakdown given subtotal and shipping fee.
+ * When GST_ENABLED is false, taxAmount is 0.0 and totalAmount = subtotal + shippingFee.
+ */
+export function calculateOrderTotals(subtotal, shippingFee = 0.0, gstRate = 18.0) {
+  const cleanSubtotal = Number(Number(subtotal || 0).toFixed(2));
+  const cleanShipping = Number(Number(shippingFee || 0).toFixed(2));
+  const taxAmount = GST_ENABLED ? Number((cleanSubtotal * (gstRate / 100)).toFixed(2)) : 0.0;
+  const totalAmount = Number((cleanSubtotal + taxAmount + cleanShipping).toFixed(2));
+  return {
+    subtotal: cleanSubtotal,
+    taxAmount,
+    shippingFee: cleanShipping,
+    totalAmount,
+    gstEnabled: GST_ENABLED,
+  };
+}
+
 /**
  * Generates a human-friendly unique order number: VTX-YYYYMMDD-XXXXX
  */
@@ -26,6 +48,7 @@ export async function createOrder(userId, {
   addressId,
   shippingAddress,
   paymentMethod = "COD",
+  paymentId,
   notes,
   idempotencyKey,
 }) {
@@ -146,6 +169,17 @@ export async function createOrder(userId, {
           throw error;
         }
 
+        // Revalidate price server-side: reject RFQ products (zero or unpriced)
+        const unitPrice = variant.price !== null && variant.price !== undefined ? Number(variant.price) : 0;
+        if (isNaN(unitPrice) || unitPrice <= 0) {
+          const error = new Error(
+            `Product "${variant.product?.name || "Product"}" (${variant.sku}) is available for Quote on Request only and cannot be purchased directly through retail checkout.`
+          );
+          error.code = "RFQ_ONLY_PRODUCT";
+          error.status = 400;
+          throw error;
+        }
+
         if (variant.stockQuantity < item.quantity) {
           const error = new Error(
             `Insufficient stock for "${variant.product?.name || "Product"}" (${variant.sku}). Available: ${variant.stockQuantity}, Requested: ${item.quantity}.`
@@ -156,10 +190,9 @@ export async function createOrder(userId, {
         }
 
         // Calculate server-authoritative line total and tax
-        const unitPrice = Number(variant.price);
         const lineSubtotal = Number((unitPrice * item.quantity).toFixed(2));
         const gstRate = Number(variant.product.gstRate || 18.0);
-        const itemTax = Number((lineSubtotal * (gstRate / 100)).toFixed(2));
+        const itemTax = GST_ENABLED ? Number((lineSubtotal * (gstRate / 100)).toFixed(2)) : 0.0;
         const lineTotal = Number((lineSubtotal + itemTax).toFixed(2));
 
         subtotal += lineSubtotal;
@@ -172,7 +205,7 @@ export async function createOrder(userId, {
           sku: variant.sku,
           packSize: variant.packSize || null,
           hsnCode: variant.product.hsnCode || null,
-          gstRate,
+          gstRate: GST_ENABLED ? gstRate : 0.0,
           quantity: item.quantity,
           unitPrice,
           taxAmount: itemTax,
@@ -206,7 +239,7 @@ export async function createOrder(userId, {
       }
 
       subtotal = Number(subtotal.toFixed(2));
-      taxAmount = Number(taxAmount.toFixed(2));
+      taxAmount = GST_ENABLED ? Number(taxAmount.toFixed(2)) : 0.0;
       const shippingFee = 0.0;
       const totalAmount = Number((subtotal + taxAmount + shippingFee).toFixed(2));
 
@@ -225,6 +258,7 @@ export async function createOrder(userId, {
           orderStatus: "PENDING",
           paymentStatus: "PENDING",
           paymentMethod: paymentMethod || "COD",
+          paymentId: paymentId ? String(paymentId).trim() : null,
           subtotal,
           taxAmount,
           shippingFee,
@@ -453,4 +487,397 @@ export async function cancelUserOrder(userId, orderIdentifier, { reason } = {}, 
     }
   );
 }
+
+/**
+ * Allows a customer to submit or update their UPI Transaction Reference (UTR) for a pending order.
+ * Safe boundary:
+ * - Order must exist and belong to the authenticated user.
+ * - Payment status must be PENDING (cannot alter PAID/REFUNDED orders).
+ * - Leaves paymentStatus strictly as PENDING (never marks as PAID without admin reconciliation).
+ * - Records action in AuditLog for reconciliation audit trail.
+ */
+export async function submitOrderPaymentReference(orderIdentifier, paymentReference, userId) {
+  const order = await prisma.order.findFirst({
+    where: {
+      OR: [{ id: orderIdentifier }, { orderNumber: orderIdentifier }],
+    },
+  });
+
+  if (!order) {
+    const error = new Error(`Order with identifier '${orderIdentifier}' not found.`);
+    error.status = 404;
+    error.code = "ORDER_NOT_FOUND";
+    throw error;
+  }
+
+  if (order.userId !== userId) {
+    const error = new Error("You do not have permission to update payment details for this order.");
+    error.status = 403;
+    error.code = "FORBIDDEN";
+    throw error;
+  }
+
+  if (order.paymentStatus === "PAID") {
+    const error = new Error("This order's payment has already been verified and marked as PAID.");
+    error.status = 400;
+    error.code = "PAYMENT_ALREADY_SETTLED";
+    throw error;
+  }
+
+  if (order.paymentStatus === "REFUNDED") {
+    const error = new Error("This order has been marked as REFUNDED and cannot accept payment references.");
+    error.status = 400;
+    error.code = "ORDER_REFUNDED";
+    throw error;
+  }
+
+  const cleanReference = String(paymentReference).trim();
+  const updatedNotes = order.notes
+    ? `${order.notes} | [Customer Submitted UTR: ${cleanReference}]`
+    : `[Customer Submitted UTR: ${cleanReference}]`;
+
+  const updatedOrder = await prisma.order.update({
+    where: { id: order.id },
+    data: {
+      paymentId: cleanReference,
+      notes: updatedNotes,
+    },
+    include: {
+      items: true,
+    },
+  });
+
+  // Record audit log entry for the submission
+  await prisma.auditLog.create({
+    data: {
+      actorId: userId,
+      action: "CUSTOMER_PAYMENT_REFERENCE_SUBMITTED",
+      entityType: "Order",
+      entityId: order.id,
+      metadata: {
+        orderNumber: order.orderNumber,
+        previousPaymentId: order.paymentId || null,
+        newPaymentId: cleanReference,
+        paymentStatus: order.paymentStatus,
+      },
+    },
+  });
+
+  return formatOrder(updatedOrder);
+}
+
+export const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Resolves the authoritative delivery date for an order.
+ * Safe rules:
+ * - Order must be in DELIVERED status.
+ * - Checks order.notes tag [DeliveredAt: <ISO>]
+ * - Queries AuditLog for ORDER_STATUS_UPDATE to DELIVERED
+ * - Checks order.updatedAt as fallback for DELIVERED orders
+ * - If order is not DELIVERED or delivery date cannot be verified, returns null.
+ */
+export async function resolveOrderDeliveryDate(order, tx = prisma) {
+  if (!order || order.orderStatus !== "DELIVERED") {
+    return null;
+  }
+
+  // 1. Check notes for [DeliveredAt: <ISO>]
+  if (order.notes) {
+    const match = order.notes.match(/\[DeliveredAt:\s*([^\]]+)\]/i);
+    if (match && match[1]) {
+      const parsed = new Date(match[1].trim());
+      if (!isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    }
+  }
+
+  // 2. Query AuditLog for the delivery transition
+  const deliveryAudit = await tx.auditLog.findFirst({
+    where: {
+      entityType: "Order",
+      entityId: order.id,
+      action: "ORDER_STATUS_UPDATE",
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (deliveryAudit) {
+    const meta = deliveryAudit.metadata || {};
+    if (meta.newStatus === "DELIVERED") {
+      if (meta.deliveredAt) {
+        const parsed = new Date(meta.deliveredAt);
+        if (!isNaN(parsed.getTime())) return parsed;
+      }
+      return new Date(deliveryAudit.createdAt);
+    }
+  }
+
+  // 3. Fallback: if order is marked DELIVERED and updatedAt is recorded
+  if (order.updatedAt) {
+    const parsed = new Date(order.updatedAt);
+    if (!isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Allows a customer to submit a replacement request for an eligible delivered order.
+ * Enforces:
+ * - Customer ownership of the order.
+ * - Order must be in DELIVERED status.
+ * - Delivery date must be verifiable and within the 7-day window.
+ * - Rejects expired requests (>7 days) with clear explanation.
+ * - Validates item SKUs and quantities against the order.
+ * - Prevents duplicate active replacement requests.
+ * - Immutably logs request in AuditLog without altering payment or financial status.
+ */
+export async function requestOrderReplacement(userId, orderIdentifier, requestData, userEmail = null) {
+  const trimmedId = String(orderIdentifier || "").trim();
+  if (!trimmedId) {
+    const err = new Error("Order identifier is required.");
+    err.code = "INVALID_ORDER_IDENTIFIER";
+    err.status = 400;
+    throw err;
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // 1. Fetch order
+    const order = await tx.order.findFirst({
+      where: {
+        OR: [{ id: trimmedId }, { orderNumber: trimmedId }],
+      },
+      include: {
+        items: true,
+      },
+    });
+
+    if (!order) {
+      const err = new Error(`Order '${trimmedId}' not found.`);
+      err.code = "ORDER_NOT_FOUND";
+      err.status = 404;
+      throw err;
+    }
+
+    // 2. Enforce customer ownership
+    if (order.userId !== userId) {
+      const err = new Error("You do not have permission to request a replacement for this order.");
+      err.code = "FORBIDDEN";
+      err.status = 403;
+      throw err;
+    }
+
+    // 3. Status eligibility: must be DELIVERED
+    if (order.orderStatus !== "DELIVERED") {
+      const err = new Error(
+        `Cannot request replacement for order in '${order.orderStatus}' status. Replacements can only be requested for orders that have been successfully delivered.`
+      );
+      err.code = "ORDER_NOT_DELIVERED";
+      err.status = 400;
+      throw err;
+    }
+
+    // 4. Resolve delivery date
+    const deliveryDate = await resolveOrderDeliveryDate(order, tx);
+    if (!deliveryDate) {
+      const err = new Error(
+        "The delivery date for this order could not be verified. Replacements cannot be processed automatically without a verified delivery timestamp. Please contact VERTEX Technical Support directly."
+      );
+      err.code = "MISSING_DELIVERY_DATE";
+      err.status = 400;
+      throw err;
+    }
+
+    // 5. Enforce 7-Day Window
+    const now = new Date();
+    const deliveryTime = deliveryDate.getTime();
+    const elapsedMs = now.getTime() - deliveryTime;
+
+    if (elapsedMs < 0) {
+      const err = new Error("Invalid delivery timestamp: delivery date is recorded in the future.");
+      err.code = "INVALID_DELIVERY_DATE";
+      err.status = 400;
+      throw err;
+    }
+
+    if (elapsedMs > SEVEN_DAYS_MS) {
+      const elapsedDays = Math.floor(elapsedMs / (24 * 60 * 60 * 1000));
+      const err = new Error(
+        `The 7-day replacement window from the actual delivery date has expired (${elapsedDays} days since delivery on ${deliveryDate.toISOString().slice(0, 10)}). VERTEX customer policy strictly permits replacement requests within 7 days of delivery.`
+      );
+      err.code = "REPLACEMENT_WINDOW_EXPIRED";
+      err.status = 400;
+      throw err;
+    }
+
+    // 6. Check for active duplicate replacement request
+    const existingReplacement = await tx.auditLog.findFirst({
+      where: {
+        entityType: "Order",
+        entityId: order.id,
+        action: "CUSTOMER_REPLACEMENT_REQUESTED",
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (existingReplacement) {
+      const meta = existingReplacement.metadata || {};
+      if (meta.status === "PENDING_REVIEW" || meta.status === "IN_REVIEW" || meta.status === "APPROVED_FOR_DISPATCH") {
+        const err = new Error(
+          `A replacement request for Order #${order.orderNumber} is already active (${meta.status}). Duplicate requests are not permitted.`
+        );
+        err.code = "DUPLICATE_REPLACEMENT_REQUEST";
+        err.status = 409;
+        throw err;
+      }
+    }
+
+    // 7. Validate items
+    const requestedItems = [];
+    if (requestData.items && requestData.items.length > 0) {
+      for (const reqItem of requestData.items) {
+        const orderItem = order.items.find(
+          (it) => it.sku === reqItem.sku || it.id === reqItem.sku
+        );
+        if (!orderItem) {
+          const err = new Error(`Item SKU '${reqItem.sku}' was not found in Order #${order.orderNumber}.`);
+          err.code = "ITEM_NOT_IN_ORDER";
+          err.status = 400;
+          throw err;
+        }
+        if (reqItem.quantity > orderItem.quantity) {
+          const err = new Error(
+            `Requested quantity (${reqItem.quantity}) for '${orderItem.productName}' exceeds ordered quantity (${orderItem.quantity}).`
+          );
+          err.code = "QUANTITY_EXCEEDED";
+          err.status = 400;
+          throw err;
+        }
+        requestedItems.push({
+          sku: orderItem.sku,
+          productName: orderItem.productName,
+          quantity: reqItem.quantity,
+          reason: reqItem.reason || requestData.reason,
+        });
+      }
+    } else {
+      // Default to all items if not itemized
+      for (const item of order.items) {
+        requestedItems.push({
+          sku: item.sku,
+          productName: item.productName,
+          quantity: item.quantity,
+          reason: requestData.reason,
+        });
+      }
+    }
+
+    const windowDeadline = new Date(deliveryTime + SEVEN_DAYS_MS);
+
+    // 8. Record in AuditLog
+    const auditRecord = await tx.auditLog.create({
+      data: {
+        actorId: userId,
+        action: "CUSTOMER_REPLACEMENT_REQUESTED",
+        entityType: "Order",
+        entityId: order.id,
+        metadata: {
+          orderNumber: order.orderNumber,
+          customerEmail: userEmail || null,
+          reason: requestData.reason,
+          details: requestData.details,
+          items: requestedItems,
+          deliveryDate: deliveryDate.toISOString(),
+          requestedAt: now.toISOString(),
+          windowDeadline: windowDeadline.toISOString(),
+          status: "PENDING_REVIEW",
+          policy: "7_DAY_REPLACEMENT_ONLY",
+        },
+      },
+    });
+
+    // 9. Append notice to order notes
+    const replacementTag = `[Replacement Requested: ${now.toISOString().slice(0, 10)} - ${requestData.reason}]`;
+    const updatedNotes = order.notes ? `${order.notes} | ${replacementTag}` : replacementTag;
+    await tx.order.update({
+      where: { id: order.id },
+      data: { notes: updatedNotes },
+    });
+
+    return {
+      success: true,
+      requestId: auditRecord.id,
+      orderNumber: order.orderNumber,
+      status: "PENDING_REVIEW",
+      deliveryDate: deliveryDate.toISOString(),
+      requestedAt: now.toISOString(),
+      windowDeadline: windowDeadline.toISOString(),
+      reason: requestData.reason,
+      details: requestData.details,
+      items: requestedItems,
+      policy: "7-Day Replacement Only (Transit Damage, Defects, DOA)",
+      message: "Replacement request submitted successfully. Our engineering desk will review the documentation and dispatch verified replacements.",
+    };
+  });
+}
+
+/**
+ * Retrieves replacement requests and delivery eligibility for a customer's order.
+ */
+export async function getOrderReplacements(userId, orderIdentifier) {
+  const trimmedId = String(orderIdentifier || "").trim();
+  const order = await prisma.order.findFirst({
+    where: {
+      OR: [{ id: trimmedId }, { orderNumber: trimmedId }],
+    },
+    include: { items: true },
+  });
+
+  if (!order) {
+    const err = new Error(`Order '${trimmedId}' not found.`);
+    err.code = "ORDER_NOT_FOUND";
+    err.status = 404;
+    throw err;
+  }
+
+  if (order.userId !== userId) {
+    const err = new Error("You do not have permission to view replacement details for this order.");
+    err.code = "FORBIDDEN";
+    err.status = 403;
+    throw err;
+  }
+
+  const logs = await prisma.auditLog.findMany({
+    where: {
+      entityType: "Order",
+      entityId: order.id,
+      action: { in: ["CUSTOMER_REPLACEMENT_REQUESTED", "ADMIN_REPLACEMENT_STATUS_UPDATE"] },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const deliveryDate = await resolveOrderDeliveryDate(order);
+  const now = new Date();
+  const isWithinWindow = deliveryDate ? (now.getTime() - deliveryDate.getTime() <= SEVEN_DAYS_MS && now.getTime() >= deliveryDate.getTime()) : false;
+
+  return {
+    success: true,
+    orderNumber: order.orderNumber,
+    orderStatus: order.orderStatus,
+    deliveryDate: deliveryDate ? deliveryDate.toISOString() : null,
+    isEligibleForReplacement: order.orderStatus === "DELIVERED" && isWithinWindow,
+    windowDeadline: deliveryDate ? new Date(deliveryDate.getTime() + SEVEN_DAYS_MS).toISOString() : null,
+    replacements: logs.map((l) => ({
+      id: l.id,
+      action: l.action,
+      createdAt: l.createdAt,
+      metadata: l.metadata,
+    })),
+  };
+}
+
 

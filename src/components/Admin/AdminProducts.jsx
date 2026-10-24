@@ -2451,56 +2451,52 @@ export default function AdminProducts() {
                   </div>
                 )}
 
-                <div
-                  style={{
-                    background: "var(--adm-bg-surface, #f8fafc)",
-                    border: "1px solid var(--adm-border, #e2e8f0)",
-                    borderRadius: 8,
-                    padding: "14px 16px",
-                    marginBottom: 16,
-                  }}
-                >
-                  <div style={{ fontSize: "0.94rem", fontWeight: 700, color: "var(--adm-text, #0f172a)", marginBottom: 4 }}>
+                <div className="adm-price-product-card">
+                  <div className="adm-price-product-name">
                     {pricingProduct.name}
                   </div>
-                  <div style={{ fontSize: "0.8rem", color: "var(--adm-text-secondary, #64748b)", display: "flex", flexWrap: "wrap", gap: "10px" }}>
-                    <span><strong>SKU:</strong> <code>{pricingProduct.variants?.[0]?.sku || pricingProduct.sku || "—"}</code></span>
-                    <span><strong>Category:</strong> {pricingProduct.category?.name || "General"}</span>
+                  <div className="adm-price-product-meta">
+                    <span className="adm-price-meta-item">
+                      <strong className="adm-price-meta-label">SKU:</strong>
+                      <code className="adm-price-sku-code">
+                        {pricingProduct.variants?.[0]?.sku || pricingProduct.sku || "—"}
+                      </code>
+                    </span>
+                    <span className="adm-price-meta-item">
+                      <strong className="adm-price-meta-label">Category:</strong>
+                      <span className="adm-price-meta-value">
+                        {pricingProduct.category?.name || "General"}
+                      </span>
+                    </span>
                     {pricingProduct.subcategory?.name && (
-                      <span><strong>Subcategory:</strong> {pricingProduct.subcategory.name}</span>
+                      <span className="adm-price-meta-item">
+                        <strong className="adm-price-meta-label">Subcategory:</strong>
+                        <span className="adm-price-meta-value">
+                          {pricingProduct.subcategory.name}
+                        </span>
+                      </span>
                     )}
                   </div>
-                  <div style={{ marginTop: 8, fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <span style={{ color: "var(--adm-text-secondary, #64748b)" }}>Current Price:</span>
+                  <div className="adm-price-current-row">
+                    <span className="adm-price-current-label">Current Selling Price:</span>
                     {getProductMinPrice(pricingProduct) !== null ? (
-                      <strong style={{ color: "var(--adm-primary, #ea580c)" }}>
+                      <strong className="adm-price-current-value">
                         {formatINR(getProductMinPrice(pricingProduct))}
                       </strong>
                     ) : (
-                      <span className="adm-badge adm-badge-warning" style={{ fontSize: "0.72rem" }}>
+                      <span className="adm-badge adm-badge-needs-pricing">
                         Needs Pricing
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="adm-form-group">
+                <div className="adm-form-group adm-price-input-group">
                   <label className="adm-label" htmlFor="edit-selling-price-input">
                     Customer Selling Price (INR ₹) *
                   </label>
-                  <div style={{ position: "relative" }}>
-                    <span
-                      style={{
-                        position: "absolute",
-                        left: 14,
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        fontSize: "1rem",
-                        fontWeight: 600,
-                        color: "var(--adm-text-secondary, #64748b)",
-                        pointerEvents: "none",
-                      }}
-                    >
+                  <div className="adm-price-input-wrapper">
+                    <span className="adm-price-currency-prefix" aria-hidden="true">
                       ₹
                     </span>
                     <input
@@ -2508,8 +2504,7 @@ export default function AdminProducts() {
                       type="number"
                       step="0.01"
                       min="0.01"
-                      className="adm-input"
-                      style={{ paddingLeft: 32, fontSize: "1.05rem", fontWeight: 600 }}
+                      className="adm-input adm-price-input"
                       placeholder="e.g. 249.00"
                       value={newPriceValue}
                       onChange={(e) => setNewPriceValue(e.target.value)}
@@ -2519,9 +2514,12 @@ export default function AdminProducts() {
                       disabled={priceModalSubmitting}
                     />
                   </div>
-                  <p style={{ margin: "6px 0 0", fontSize: "0.76rem", color: "var(--adm-text-secondary, #64748b)" }}>
-                    Setting this price will immediately update the public storefront, product detail page, and enable Add-to-Cart. Historical orders are strictly preserved.
-                  </p>
+                  <div className="adm-price-helper-box">
+                    <span className="adm-price-helper-icon" aria-hidden="true">ℹ️</span>
+                    <span>
+                      Setting this price will immediately update the public storefront, product detail page, and enable Add-to-Cart. Historical orders are strictly preserved.
+                    </span>
+                  </div>
                 </div>
               </div>
 

@@ -380,18 +380,18 @@ export async function getAdminOrderById(orderIdentifier) {
 }
 
 /**
- * Updates order fulfillment status via Admin API.
+ * Updates order fulfillment status and optional payment/refund status via Admin API.
  */
-export async function updateAdminOrderStatus(orderId, { orderStatus, carrier, trackingNumber, notes }) {
-  if (isMockApiEnabled()) {
-    return mockAdminApi.updateAdminOrderStatus(orderId, { orderStatus, carrier, trackingNumber, notes });
+export async function updateAdminOrderStatus(orderId, { orderStatus, carrier, trackingNumber, notes, paymentStatus, refundAmount }) {
+  if (isMockApiEnabled() && mockAdminApi.updateAdminOrderStatus) {
+    return mockAdminApi.updateAdminOrderStatus(orderId, { orderStatus, carrier, trackingNumber, notes, paymentStatus, refundAmount });
   }
 
   const response = await fetch(`${API_BASE}/api/admin/orders/${encodeURIComponent(orderId)}/status`, {
     method: "PATCH",
     headers: defaultHeaders,
     credentials: "include",
-    body: JSON.stringify({ orderStatus, carrier, trackingNumber, notes }),
+    body: JSON.stringify({ orderStatus, carrier, trackingNumber, notes, paymentStatus, refundAmount }),
   });
 
   return handleResponse(response);
@@ -580,4 +580,257 @@ export async function getAdminNewsletterSubscriptions({ page = 1, limit = 20, se
 
   return handleResponse(response);
 }
+
+/**
+ * Updates a user account's system role (CUSTOMER, B2B, ADMIN) and active status.
+ */
+export async function updateAdminUserRole(userId, { role, isActive }) {
+  if (isMockApiEnabled() && mockAdminApi.updateAdminUserRole) {
+    return mockAdminApi.updateAdminUserRole(userId, { role, isActive });
+  }
+
+  const response = await fetch(`${API_BASE}/api/admin/users/${encodeURIComponent(userId)}/role`, {
+    method: "PATCH",
+    headers: defaultHeaders,
+    credentials: "include",
+    body: JSON.stringify({ role, isActive }),
+  });
+
+  return handleResponse(response);
+}
+
+/**
+ * Uploads a specification document (PDF, XLSX, XLS, CSV) to server-side persistent storage.
+ */
+export async function uploadAdminProductSpecification(productId, { fileName, fileData, fileType, fileSize }) {
+  if (isMockApiEnabled() && mockAdminApi.uploadAdminProductSpecification) {
+    return mockAdminApi.uploadAdminProductSpecification(productId, { fileName, fileData, fileType, fileSize });
+  }
+
+  const response = await fetch(`${API_BASE}/api/admin/products/${encodeURIComponent(productId)}/specification`, {
+    method: "POST",
+    headers: defaultHeaders,
+    credentials: "include",
+    body: JSON.stringify({ fileName, fileData, fileType, fileSize }),
+  });
+
+  return handleResponse(response);
+}
+
+/**
+ * Deletes a stored specification document from the server.
+ */
+export async function deleteAdminProductSpecification(productId) {
+  if (isMockApiEnabled() && mockAdminApi.deleteAdminProductSpecification) {
+    return mockAdminApi.deleteAdminProductSpecification(productId);
+  }
+
+  const response = await fetch(`${API_BASE}/api/admin/products/${encodeURIComponent(productId)}/specification`, {
+    method: "DELETE",
+    headers: defaultHeaders,
+    credentials: "include",
+  });
+
+  return handleResponse(response);
+}
+
+/**
+ * Fetches all payment transactions, summary metrics, and unresolved issues.
+ */
+export async function getAdminPayments({
+  page = 1,
+  limit = 10,
+  paymentStatus = "",
+  paymentMethod = "",
+  search = "",
+  q = "",
+  dateRange = "all",
+  sort = "newest",
+} = {}) {
+  if (isMockApiEnabled() && mockAdminApi.getAdminPayments) {
+    return mockAdminApi.getAdminPayments({ page, limit, paymentStatus, paymentMethod, search: search || q, dateRange, sort });
+  }
+
+  const query = new URLSearchParams();
+  if (page) query.set("page", page);
+  if (limit) query.set("limit", limit);
+  if (paymentStatus && paymentStatus !== "all") query.set("paymentStatus", paymentStatus);
+  if (paymentMethod && paymentMethod !== "all") query.set("paymentMethod", paymentMethod);
+  const searchTerm = (search || q || "").trim();
+  if (searchTerm) query.set("search", searchTerm);
+  if (dateRange && dateRange !== "all") query.set("dateRange", dateRange);
+  if (sort) query.set("sort", sort);
+
+  const response = await fetch(`${API_BASE}/api/admin/payments?${query.toString()}`, {
+    method: "GET",
+    headers: { "X-Requested-With": "XMLHttpRequest" },
+    credentials: "include",
+  });
+
+  return handleResponse(response);
+}
+
+/**
+ * Reconciles or resolves a payment issue safely with audit logging.
+ */
+export async function reconcileAdminPayment(orderId, { action, notes, settlementReference, refundAmount, confirmed }) {
+  if (isMockApiEnabled() && mockAdminApi.reconcileAdminPayment) {
+    return mockAdminApi.reconcileAdminPayment(orderId, { action, notes, settlementReference, refundAmount, confirmed });
+  }
+
+  const response = await fetch(`${API_BASE}/api/admin/payments/${encodeURIComponent(orderId)}/reconcile`, {
+    method: "POST",
+    headers: defaultHeaders,
+    credentials: "include",
+    body: JSON.stringify({ action, notes, settlementReference, refundAmount, confirmed }),
+  });
+
+  return handleResponse(response);
+}
+
+/**
+ * Retrieves full administrative UPI and payment configuration.
+ */
+export async function getAdminPaymentConfig() {
+  if (isMockApiEnabled() && mockAdminApi.getAdminPaymentConfig) {
+    return mockAdminApi.getAdminPaymentConfig();
+  }
+
+  const response = await fetch(`${API_BASE}/api/admin/payments/config`, {
+    method: "GET",
+    headers: { "X-Requested-With": "XMLHttpRequest" },
+    credentials: "include",
+  });
+
+  return handleResponse(response);
+}
+
+/**
+ * Updates merchant UPI configuration, instructions, and static QR image with audit logging.
+ */
+export async function updateAdminPaymentConfig(configData) {
+  if (isMockApiEnabled() && mockAdminApi.updateAdminPaymentConfig) {
+    return mockAdminApi.updateAdminPaymentConfig(configData);
+  }
+
+  const response = await fetch(`${API_BASE}/api/admin/payments/config`, {
+    method: "PUT",
+    headers: defaultHeaders,
+    credentials: "include",
+    body: JSON.stringify(configData),
+  });
+
+  return handleResponse(response);
+}
+
+/**
+ * Removes the uploaded static merchant QR code image and reverts to dynamic QR generation.
+ */
+export async function removeAdminPaymentQr() {
+  if (isMockApiEnabled() && mockAdminApi.removeAdminPaymentQr) {
+    return mockAdminApi.removeAdminPaymentQr();
+  }
+
+  const response = await fetch(`${API_BASE}/api/admin/payments/config/qr`, {
+    method: "DELETE",
+    headers: defaultHeaders,
+    credentials: "include",
+  });
+
+  return handleResponse(response);
+}
+
+/**
+ * Fetches registered commercial and educational coupons.
+ */
+export async function getAdminCoupons({ category = "all", status = "all" } = {}) {
+  if (isMockApiEnabled() && mockAdminApi.getAdminCoupons) {
+    return mockAdminApi.getAdminCoupons({ category, status });
+  }
+
+  const query = new URLSearchParams();
+  if (category && category !== "all") query.set("category", category);
+  if (status && status !== "all") query.set("status", status);
+
+  const response = await fetch(`${API_BASE}/api/coupons?${query.toString()}`, {
+    method: "GET",
+    headers: { "X-Requested-With": "XMLHttpRequest" },
+    credentials: "include",
+  });
+
+  return handleResponse(response);
+}
+
+/**
+ * Registers a new regular or college coupon.
+ */
+export async function createAdminCoupon(couponData) {
+  if (isMockApiEnabled() && mockAdminApi.createAdminCoupon) {
+    return mockAdminApi.createAdminCoupon(couponData);
+  }
+
+  const response = await fetch(`${API_BASE}/api/coupons`, {
+    method: "POST",
+    headers: defaultHeaders,
+    credentials: "include",
+    body: JSON.stringify(couponData),
+  });
+
+  return handleResponse(response);
+}
+
+/**
+ * Validates coupon redemption eligibility and enforces server-side free unit limits.
+ */
+export async function validateCouponRedemption(redemptionData) {
+  if (isMockApiEnabled() && mockAdminApi.validateCouponRedemption) {
+    return mockAdminApi.validateCouponRedemption(redemptionData);
+  }
+
+  const response = await fetch(`${API_BASE}/api/coupons/validate`, {
+    method: "POST",
+    headers: defaultHeaders,
+    credentials: "include",
+    body: JSON.stringify(redemptionData),
+  });
+
+  return handleResponse(response);
+}
+
+/**
+ * Retrieves customer replacement requests and 7-day delivery eligibility status.
+ */
+export async function getAdminReplacements() {
+  if (isMockApiEnabled() && mockAdminApi.getAdminReplacements) {
+    return mockAdminApi.getAdminReplacements();
+  }
+
+  const response = await fetch(`${API_BASE}/api/admin/replacements`, {
+    method: "GET",
+    headers: { "X-Requested-With": "XMLHttpRequest" },
+    credentials: "include",
+  });
+
+  return handleResponse(response);
+}
+
+/**
+ * Reviews and updates a replacement request status with immutable audit logging.
+ */
+export async function reviewAdminReplacement(orderIdentifier, { status, adminNotes }) {
+  if (isMockApiEnabled() && mockAdminApi.reviewAdminReplacement) {
+    return mockAdminApi.reviewAdminReplacement(orderIdentifier, { status, adminNotes });
+  }
+
+  const response = await fetch(`${API_BASE}/api/admin/replacements/${encodeURIComponent(orderIdentifier)}/review`, {
+    method: "POST",
+    headers: defaultHeaders,
+    credentials: "include",
+    body: JSON.stringify({ status, adminNotes }),
+  });
+
+  return handleResponse(response);
+}
+
+
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { getAdminCustomers } from "../../services/adminApi";
+import { getAdminCustomers, updateAdminUserRole } from "../../services/adminApi";
 
 // Formats ISO timestamp to local readable date
 const formatDate = (isoString) => {
@@ -57,6 +57,56 @@ export default function AdminUsers({ currentAdminUser }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+
+  // Role & status management state
+  const [selectedRole, setSelectedRole] = useState("CUSTOMER");
+  const [selectedStatus, setSelectedStatus] = useState("ACTIVE");
+  const [roleUpdating, setRoleUpdating] = useState(false);
+  const [roleFeedback, setRoleFeedback] = useState(null);
+
+  useEffect(() => {
+    if (inspectingUser) {
+      setSelectedRole(inspectingUser.role || "CUSTOMER");
+      setSelectedStatus(inspectingUser.status || "ACTIVE");
+      setRoleFeedback(null);
+    }
+  }, [inspectingUser]);
+
+  const handleUpdateUserRole = async (e) => {
+    if (e && typeof e.preventDefault === "function") e.preventDefault();
+    if (!inspectingUser || roleUpdating) return;
+
+    try {
+      setRoleUpdating(true);
+      setRoleFeedback(null);
+
+      await updateAdminUserRole(inspectingUser.id, {
+        role: selectedRole,
+        isActive: selectedStatus === "ACTIVE",
+      });
+
+      setRoleFeedback({
+        type: "success",
+        text: `User ${inspectingUser.fullName} role updated to ${selectedRole} (${selectedStatus}) successfully.`,
+      });
+
+      setInspectingUser((prev) => (prev ? { ...prev, role: selectedRole, status: selectedStatus } : null));
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === inspectingUser.id ? { ...u, role: selectedRole, status: selectedStatus } : u
+        )
+      );
+
+      loadUsers(true);
+    } catch (err) {
+      setRoleFeedback({
+        type: "error",
+        text: err.message || "Failed to update user role and account status.",
+      });
+    } finally {
+      setRoleUpdating(false);
+    }
+  };
 
   const loadUsers = useCallback(async (isRefresh = false) => {
     try {
@@ -678,6 +728,77 @@ export default function AdminUsers({ currentAdminUser }) {
                 <span style={{ fontSize: "0.78rem", color: "var(--adm-text-secondary)" }}>
                   Authorization is validated on every request by server-side middleware (<code>authenticateSession</code> + <code>requireRole</code>).
                 </span>
+              </div>
+
+              {/* Administrative Role & Status Assignment */}
+              <h3 className="adm-customer-section-title" style={{ marginTop: 20 }}>Administrative Role Assignment &amp; Governance</h3>
+              <div className="adm-card" style={{ marginBottom: 20, padding: "16px", background: "var(--adm-surface-alt, rgba(0,0,0,0.02))" }}>
+                {roleFeedback && (
+                  <div
+                    className={`adm-notice-banner ${roleFeedback.type === "success" ? "adm-notice-success" : "adm-notice-warning"}`}
+                    role="alert"
+                    data-testid="user-role-feedback"
+                    style={{ marginBottom: 12 }}
+                  >
+                    <span className="adm-notice-icon">{roleFeedback.type === "success" ? "✓" : "⚠️"}</span>
+                    <div>{roleFeedback.text}</div>
+                  </div>
+                )}
+
+                {currentAdminUser && inspectingUser.email === currentAdminUser.email ? (
+                  <div className="adm-notice-banner adm-notice-info" style={{ margin: 0 }}>
+                    <span className="adm-notice-icon">🔒</span>
+                    <div>
+                      <strong>Active Self-Session:</strong> You are currently authenticated as this administrator. Modifying your own administrative privileges or deactivating yourself is blocked to prevent accidental account lockout.
+                    </div>
+                  </div>
+                ) : (
+                  <form onSubmit={handleUpdateUserRole}>
+                    <div className="adm-form-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <div className="adm-form-field">
+                        <label htmlFor="assign-user-role">System Role *</label>
+                        <select
+                          id="assign-user-role"
+                          className="adm-select"
+                          data-testid="user-role-select"
+                          value={selectedRole}
+                          onChange={(e) => setSelectedRole(e.target.value)}
+                          disabled={roleUpdating}
+                        >
+                          <option value="CUSTOMER">CUSTOMER (Standard Retail)</option>
+                          <option value="B2B">B2B (Wholesale Commercial)</option>
+                          <option value="ADMIN">ADMIN (Full Governance)</option>
+                        </select>
+                      </div>
+
+                      <div className="adm-form-field">
+                        <label htmlFor="assign-user-status">Account Access Status *</label>
+                        <select
+                          id="assign-user-status"
+                          className="adm-select"
+                          data-testid="user-status-select"
+                          value={selectedStatus}
+                          onChange={(e) => setSelectedStatus(e.target.value)}
+                          disabled={roleUpdating}
+                        >
+                          <option value="ACTIVE">ACTIVE (Authorized Access)</option>
+                          <option value="INACTIVE">INACTIVE / SUSPENDED (Login Blocked)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
+                      <button
+                        type="submit"
+                        className="adm-btn adm-btn-primary"
+                        data-testid="save-user-role-btn"
+                        disabled={roleUpdating || (selectedRole === inspectingUser.role && selectedStatus === (inspectingUser.status || "ACTIVE"))}
+                      >
+                        {roleUpdating ? "Updating Role..." : "Save Role & Privileges"}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
             </div>
 

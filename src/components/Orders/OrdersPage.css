@@ -703,10 +703,135 @@
   cursor: not-allowed;
 }
 
+/* 7-Day Replacement Action Button */
+.btn-request-replacement {
+  background: #ffffff;
+  color: #0284c7;
+  border: 1px solid #38bdf8;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.btn-request-replacement:hover:not(:disabled) {
+  background: #f0f9ff;
+  border-color: #0284c7;
+  color: #0369a1;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(2, 132, 199, 0.15);
+}
+
+.btn-request-replacement:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-request-replacement:focus-visible {
+  outline: 2px solid #0284c7;
+  outline-offset: 2px;
+}
+
+.btn-request-replacement:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.vtx-replacement-pill-active {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vtx-replacement-pill-expired {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.vtx-replacement-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  padding: 12px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.vtx-replacement-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.vtx-replacement-item-row:last-child {
+  border-bottom: none;
+}
+
+.vtx-replacement-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+
+.vtx-replacement-item-title {
+  color: var(--navy, #09182d);
+  font-weight: 600;
+}
+
+.vtx-replacement-qty-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.vtx-replacement-qty-input {
+  width: 52px;
+  padding: 4px 6px;
+  border: 1px solid var(--border, #cbd5e1);
+  border-radius: 4px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.vtx-replacement-qty-max {
+  color: var(--text-light, #64748b);
+  font-size: 0.8rem;
+}
+
 /* Order Card Body */
 .vtx-order-card-body {
   padding: 24px;
 }
+
 
 .vtx-order-details-grid {
   display: grid;

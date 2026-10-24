@@ -629,7 +629,12 @@ export default function App() {
       setCartError("Unable to add product: no purchasable variant found.");
       return false;
     }
-    // Quote-only items can be added directly to cart as quote-required items
+    const price = targetVariant?.price ?? product?.price;
+    if (price === null || price === undefined || Number(price) <= 0) {
+      setCartError(`"${product.name}" requires a commercial quote and cannot be added to retail checkout.`);
+      setQuoteProduct(product);
+      return false;
+    }
 
     const qty = Math.max(1, parseInt(quantity, 10) || 1);
     setPendingCartAction({ type: "add", id: targetVariant.id });
@@ -1170,7 +1175,7 @@ export default function App() {
             <button
               type="button"
               className="header-action cart-action"
-              onClick={() => navigate("cart-page")}
+              onClick={() => setCartOpen(true)}
               aria-label={`Shopping cart with ${cart?.totalQuantity || 0} items`}
               data-testid="cart-button"
             >
@@ -2239,6 +2244,7 @@ export default function App() {
         onClearError={() => setCartError(null)}
         onNavigateLogin={() => navigate("login", null, "/")}
         onProceedToCheckout={handleProceedToCheckout}
+        onViewCartPage={() => navigate("cart-page")}
         currentUser={currentUser}
       />
 

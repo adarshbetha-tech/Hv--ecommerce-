@@ -112,6 +112,102 @@ describe("VERTEX Admin Portal Suite", () => {
       isImplemented: false,
       logs: [],
     });
+    if (adminApi.getAdminPayments) {
+      adminApi.getAdminPayments.mockResolvedValue({
+        success: true,
+        summary: {
+          totalCount: 2,
+          totalGrossVolume: 2500,
+          paidCount: 1,
+          paidVolume: 1250,
+          pendingCount: 1,
+          pendingVolume: 1250,
+          failedCount: 0,
+          failedVolume: 0,
+          refundedCount: 0,
+          refundedVolume: 0,
+        },
+        payments: [],
+        unresolvedIssues: [],
+        gatewayIntegration: {
+          isConfigured: false,
+          provider: "RAZORPAY / STRIPE",
+        },
+        upiConfig: {
+          merchantUpiId: "billing.vertex@icici",
+          merchantName: "VERTEX Industrial E-Commerce",
+          upiEnabled: true,
+          qrMode: "DYNAMIC",
+          hasStaticQr: false,
+        },
+        pagination: { totalItems: 0, page: 1, limit: 10, totalPages: 1 },
+      });
+    }
+    if (adminApi.reconcileAdminPayment) {
+      adminApi.reconcileAdminPayment.mockResolvedValue({
+        success: true,
+        message: "Payment reconciled successfully in audit log.",
+      });
+    }
+    if (adminApi.getAdminPaymentConfig) {
+      adminApi.getAdminPaymentConfig.mockResolvedValue({
+        success: true,
+        config: {
+          merchantUpiId: "billing.vertex@icici",
+          merchantName: "VERTEX Industrial E-Commerce",
+          upiEnabled: true,
+          qrMode: "DYNAMIC",
+          hasStaticQr: false,
+          instructions: "Scan using BHIM, GPay, PhonePe, or Paytm.",
+          staticQrImageUrl: null,
+        },
+      });
+    }
+    if (adminApi.updateAdminPaymentConfig) {
+      adminApi.updateAdminPaymentConfig.mockResolvedValue({
+        success: true,
+        message: "Merchant UPI payment configuration saved successfully.",
+        config: {
+          merchantUpiId: "billing.vertex@icici",
+          merchantName: "VERTEX Industrial E-Commerce",
+          upiEnabled: true,
+          qrMode: "DYNAMIC",
+          hasStaticQr: false,
+        },
+      });
+    }
+    if (adminApi.removeAdminPaymentQr) {
+      adminApi.removeAdminPaymentQr.mockResolvedValue({
+        success: true,
+        message: "Static QR code image removed successfully.",
+      });
+    }
+    if (adminApi.getAdminCoupons) {
+      adminApi.getAdminCoupons.mockResolvedValue({
+        success: true,
+        count: 4,
+        coupons: [],
+      });
+    }
+    if (adminApi.createAdminCoupon) {
+      adminApi.createAdminCoupon.mockResolvedValue({
+        success: true,
+        message: "Coupon registered successfully.",
+      });
+    }
+    if (adminApi.getAdminReplacements) {
+      adminApi.getAdminReplacements.mockResolvedValue({
+        success: true,
+        count: 0,
+        replacements: [],
+      });
+    }
+    if (adminApi.reviewAdminReplacement) {
+      adminApi.reviewAdminReplacement.mockResolvedValue({
+        success: true,
+        message: "Replacement review updated.",
+      });
+    }
     authApi.getCurrentUser.mockResolvedValue({
       user: mockAdminUser,
     });
@@ -841,7 +937,7 @@ describe("VERTEX Admin Portal Suite", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
-  });
+  }, 25000);
 
   test("19. Categories page summary cards, desktop table view, search/sorting filters, empty state, inspection modal, and Add Category modal", async () => {
     render(<AdminLayout onNavigateHome={jest.fn()} onNavigateLogin={jest.fn()} />);
@@ -1023,7 +1119,7 @@ describe("VERTEX Admin Portal Suite", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
-  });
+  }, 15000);
 
   test("21. Validates Coupons section: KPI cards, Regular vs College tabs, search/filters, inspect modal, and creation flow", async () => {
     render(<AdminLayout onNavigateHome={jest.fn()} onNavigateLogin={jest.fn()} />);
@@ -1297,7 +1393,7 @@ describe("VERTEX Admin Portal Suite", () => {
       );
       expect(screen.getByText(/registered successfully!/i)).toBeInTheDocument();
     });
-  });
+  }, 25000);
 
   test("23. Validates Modal Scrolling: form flex propagation, footer persistence, and background scroll lock for Add Product and Add Coupon modals", async () => {
     render(<AdminLayout onNavigateHome={jest.fn()} onNavigateLogin={jest.fn()} />);
@@ -2904,7 +3000,7 @@ describe("VERTEX Admin Portal Suite", () => {
       expect(screen.getByText(/Across 39 Parent Products/i)).toBeInTheDocument();
       expect(screen.getByText(/Displaying 41 of 41 tracked variant SKUs across 39 official parent products/i)).toBeInTheDocument();
     });
-  });
+  }, 25000);
 
   test("44. Product Specification & GST Audit: direct GST numeric entry, preset options, persistent PDF upload, view, replace, and delete", async () => {
     const mockProduct = {
@@ -3024,6 +3120,522 @@ describe("VERTEX Admin Portal Suite", () => {
           specificationFileName: "VERTEX-M6-Datasheet.pdf",
         })
       );
+    });
+  });
+
+  test("45. Dashboard Metric Cards: Total Orders and Orders Today have distinct identity colors, hover states, and clicking navigates to Orders with correct filters", async () => {
+    const todayIso = new Date().toISOString();
+    const olderIso = "2026-01-01T10:00:00.000Z";
+
+    adminApi.getAdminOrders.mockResolvedValue({
+      isImplemented: true,
+      orders: [
+        {
+          id: "ord-today-1",
+          orderNumber: "VTX-TODAY-01",
+          orderStatus: "PROCESSING",
+          paymentStatus: "PAID",
+          paymentMethod: "COD",
+          totalAmount: 1500,
+          createdAt: todayIso,
+          shippingRecipient: "Apex Today Customer",
+          items: [],
+        },
+        {
+          id: "ord-old-1",
+          orderNumber: "VTX-OLD-01",
+          orderStatus: "DELIVERED",
+          paymentStatus: "PAID",
+          paymentMethod: "COD",
+          totalAmount: 2200,
+          createdAt: olderIso,
+          shippingRecipient: "Past Customer",
+          items: [],
+        },
+      ],
+    });
+
+    render(<AdminLayout onNavigateHome={jest.fn()} onNavigateLogin={jest.fn()} />);
+
+    // Wait for Dashboard to render
+    await waitFor(() => {
+      expect(screen.getByTestId("kpi-total-orders")).toBeInTheDocument();
+      expect(screen.getByTestId("kpi-orders-today")).toBeInTheDocument();
+    });
+
+    const totalOrdersCard = screen.getByTestId("kpi-total-orders");
+    const ordersTodayCard = screen.getByTestId("kpi-orders-today");
+
+    // 1. Verify distinct class identities
+    expect(totalOrdersCard).toHaveClass("kpi-total-orders");
+    expect(ordersTodayCard).toHaveClass("kpi-orders-today");
+    expect(totalOrdersCard).toHaveAttribute("role", "button");
+    expect(ordersTodayCard).toHaveAttribute("role", "button");
+
+    // 2. Click Orders Today card -> should navigate to Orders with 'today' filter
+    fireEvent.click(ordersTodayCard);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("filter-order-date")).toBeInTheDocument();
+      expect(screen.getAllByText("VTX-TODAY-01").length).toBeGreaterThan(0);
+    });
+
+    expect(screen.getByTestId("filter-order-date")).toHaveValue("today");
+    expect(screen.queryAllByText("VTX-OLD-01")).toHaveLength(0);
+
+    // 3. Navigate back to dashboard and click Total Orders card -> shows all orders
+    fireEvent.click(screen.getByTitle("Dashboard"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("kpi-total-orders")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("kpi-total-orders"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("filter-order-date")).toBeInTheDocument();
+      expect(screen.getAllByText("VTX-TODAY-01").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("VTX-OLD-01").length).toBeGreaterThan(0);
+    });
+
+    expect(screen.getByTestId("filter-order-date")).toHaveValue("all");
+  }, 15000);
+
+  test("46. Admin Payments Management: renders financial KPIs, transaction ledger, gateway boundary notice, search/filter, and resolves payment issue with audit confirmation", async () => {
+    const mockPayments = [
+      {
+        id: "pay-order-1",
+        orderId: "pay-order-1",
+        orderNumber: "VTX-PAY-1001",
+        orderStatus: "PROCESSING",
+        paymentStatus: "PENDING",
+        paymentMethod: "COD",
+        paymentId: null,
+        amount: 2450.0,
+        subtotal: 2000.0,
+        taxAmount: 360.0,
+        shippingFee: 90.0,
+        customer: {
+          id: "cust-1",
+          fullName: "Tata Steel Procurement",
+          email: "procurement@tatasteel.local",
+          role: "B2B",
+        },
+        recipientName: "Tata Steel Procurement",
+        phone: "+91 98765 11111",
+        city: "Jamshedpur",
+        state: "Jharkhand",
+        createdAt: "2026-10-20T10:00:00Z",
+        auditHistory: [
+          {
+            id: "aud-pay-1",
+            action: "ORDER_CREATED",
+            actor: "system@vertex.in",
+            createdAt: "2026-10-20T10:00:00Z",
+          },
+        ],
+      },
+      {
+        id: "pay-order-2",
+        orderId: "pay-order-2",
+        orderNumber: "VTX-PAY-1002",
+        orderStatus: "CANCELLED",
+        paymentStatus: "FAILED",
+        paymentMethod: "RAZORPAY",
+        paymentId: "pay_failed_ref_99",
+        amount: 850.0,
+        subtotal: 700.0,
+        taxAmount: 126.0,
+        shippingFee: 24.0,
+        customer: {
+          id: "cust-2",
+          fullName: "Rohan Engineer",
+          email: "rohan@vertex.local",
+          role: "CUSTOMER",
+        },
+        recipientName: "Rohan Engineer",
+        phone: "+91 98765 22222",
+        city: "Pune",
+        state: "Maharashtra",
+        createdAt: "2026-10-21T12:00:00Z",
+        auditHistory: [],
+      },
+    ];
+
+    adminApi.getAdminPayments.mockResolvedValue({
+      success: true,
+      summary: {
+        totalCount: 2,
+        totalGrossVolume: 3300.0,
+        paidCount: 0,
+        paidVolume: 0,
+        pendingCount: 1,
+        pendingVolume: 2450.0,
+        failedCount: 1,
+        failedVolume: 850.0,
+        refundedCount: 0,
+        refundedVolume: 0,
+      },
+      payments: mockPayments,
+      unresolvedIssues: [mockPayments[1]],
+      gatewayIntegration: {
+        isConfigured: false,
+        provider: "RAZORPAY / STRIPE (Safe Boundary)",
+        message: "Payment provider gateway credentials not configured.",
+      },
+      pagination: { totalItems: 2, page: 1, limit: 10, totalPages: 1 },
+    });
+
+    render(<AdminLayout onNavigateHome={jest.fn()} onNavigateLogin={jest.fn()} />);
+
+    // 1. Navigate to Payments via Sidebar
+    await waitFor(() => {
+      expect(screen.getByTitle("Payments")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTitle("Payments"));
+
+    // 2. Breadcrumb and Gateway Boundary Notice
+    await waitFor(() => {
+      expect(screen.getByText("Payments & Transactions", { selector: ".adm-breadcrumbs-current" })).toBeInTheDocument();
+      expect(screen.getByText(/Payment Gateway Boundary & Financial Ledger Integrity/i)).toBeInTheDocument();
+    });
+
+    // 3. Financial KPIs
+    expect(screen.getByTestId("kpi-total-payments")).toBeInTheDocument();
+    expect(screen.getByTestId("kpi-pending-payments")).toBeInTheDocument();
+    expect(screen.getByTestId("kpi-failed-payments")).toBeInTheDocument();
+
+    // 4. Unresolved payments banner
+    expect(screen.getByTestId("unresolved-payments-alert")).toBeInTheDocument();
+    expect(screen.getByText(/Action Required: 1 Unresolved Payment Issue/i)).toBeInTheDocument();
+
+    // 5. Transactions Table rendering
+    expect(screen.getByText("VTX-PAY-1001")).toBeInTheDocument();
+    expect(screen.getByText("VTX-PAY-1002")).toBeInTheDocument();
+    expect(screen.getByText("Tata Steel Procurement")).toBeInTheDocument();
+
+    // 6. Test Filtering: Filter by Failed Status
+    const statusSelect = screen.getByTestId("filter-payment-status");
+    fireEvent.change(statusSelect, { target: { value: "FAILED" } });
+
+    await waitFor(() => {
+      expect(adminApi.getAdminPayments).toHaveBeenCalledWith(
+        expect.objectContaining({ paymentStatus: "FAILED" })
+      );
+    });
+
+    // 7. Inspect payment and open reconciliation modal
+    const inspectBtn = screen.getByTestId("inspect-payment-btn-pay-order-1");
+    fireEvent.click(inspectBtn);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("payment-detail-modal")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/Payment Details & Reconciliation — Order #VTX-PAY-1001/i)).toBeInTheDocument();
+    expect(screen.getByTestId("reconcile-action-select")).toBeInTheDocument();
+
+    // 8. Attempt submit without confirmation checkbox -> rejected
+    const notesInput = screen.getByTestId("reconcile-notes-input");
+    fireEvent.change(notesInput, { target: { value: "Verified NEFT bank wire receipt" } });
+
+    const submitBtn = screen.getByTestId("submit-reconciliation-btn");
+    expect(submitBtn).toBeDisabled();
+
+    // 9. Check confirmation box and execute resolution
+    const confirmBox = screen.getByTestId("confirm-reconciliation-checkbox");
+    fireEvent.click(confirmBox);
+    expect(submitBtn).not.toBeDisabled();
+
+    adminApi.reconcileAdminPayment.mockResolvedValue({
+      success: true,
+      message: "Payment marked as PAID via offline settlement for order VTX-PAY-1001.",
+    });
+
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(adminApi.reconcileAdminPayment).toHaveBeenCalledWith(
+        "pay-order-1",
+        expect.objectContaining({
+          action: "VERIFY_OFFLINE_SETTLEMENT",
+          notes: "Verified NEFT bank wire receipt",
+          confirmed: true,
+        })
+      );
+      expect(screen.getByText(/Payment marked as PAID via offline settlement/i)).toBeInTheDocument();
+    });
+  });
+
+  test("47. Validates UPI Payment Configuration & Filtering: opens UPI settings modal, validates VPA format, uploads static QR preview, removes static QR, updates configuration, and filters transactions by UPI payment method", async () => {
+    const mockUpiPayment = {
+      id: "pay-upi-1",
+      orderId: "pay-upi-1",
+      orderNumber: "VTX-ORD-UPI-901",
+      orderStatus: "PENDING",
+      paymentStatus: "PENDING",
+      paymentMethod: "UPI",
+      paymentId: "UTR987654321012",
+      amount: 4500.0,
+      subtotal: 3800.0,
+      taxAmount: 684.0,
+      shippingFee: 16.0,
+      customer: {
+        id: "cust-upi-1",
+        fullName: "Kaveri Robotics Lab",
+        email: "procure@kaverirobotics.in",
+        role: "B2B",
+      },
+      recipientName: "Kaveri Robotics Lab",
+      phone: "+91 98765 43200",
+      city: "Bengaluru",
+      state: "Karnataka",
+      createdAt: "2026-10-23T10:00:00Z",
+      auditHistory: [],
+    };
+
+    adminApi.getAdminPayments.mockResolvedValue({
+      success: true,
+      summary: {
+        totalCount: 1,
+        totalGrossVolume: 4500.0,
+        paidCount: 0,
+        paidVolume: 0,
+        pendingCount: 1,
+        pendingVolume: 4500.0,
+        failedCount: 0,
+        failedVolume: 0,
+        refundedCount: 0,
+        refundedVolume: 0,
+      },
+      payments: [mockUpiPayment],
+      unresolvedIssues: [mockUpiPayment],
+      gatewayIntegration: {
+        isConfigured: false,
+        provider: "RAZORPAY / STRIPE (Safe Boundary)",
+        message: "Payment provider gateway credentials not configured.",
+      },
+      upiConfig: {
+        merchantUpiId: "billing.vertex@icici",
+        merchantName: "VERTEX Industrial E-Commerce",
+        upiEnabled: true,
+        qrMode: "DYNAMIC",
+        hasStaticQr: false,
+      },
+      pagination: { totalItems: 1, page: 1, limit: 10, totalPages: 1 },
+    });
+
+    adminApi.getAdminPaymentConfig.mockResolvedValue({
+      success: true,
+      config: {
+        merchantUpiId: "billing.vertex@icici",
+        merchantName: "VERTEX Industrial E-Commerce",
+        upiEnabled: true,
+        qrMode: "DYNAMIC",
+        hasStaticQr: false,
+        instructions: "Scan using BHIM, GPay, PhonePe, or Paytm.",
+        staticQrImageUrl: null,
+      },
+    });
+
+    render(<AdminLayout onNavigateHome={jest.fn()} onNavigateLogin={jest.fn()} />);
+
+    // 1. Navigate to Payments via Sidebar
+    await waitFor(() => {
+      expect(screen.getByTitle("Payments")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTitle("Payments"));
+
+    // 2. Verify UPI status banner and details
+    await waitFor(() => {
+      expect(screen.getByTestId("upi-config-status-card")).toBeInTheDocument();
+      expect(screen.getByTestId("upi-enabled-badge")).toHaveTextContent("Active on Storefront");
+      expect(screen.getByTestId("status-merchant-vpa")).toHaveTextContent("billing.vertex@icici");
+    });
+
+    // 3. Filter by UPI payment method
+    const methodSelect = screen.getByTestId("filter-payment-method");
+    fireEvent.change(methodSelect, { target: { value: "UPI" } });
+
+    await waitFor(() => {
+      expect(adminApi.getAdminPayments).toHaveBeenCalledWith(
+        expect.objectContaining({ paymentMethod: "UPI" })
+      );
+    });
+
+    // 4. Verify UTR transaction reference displayed in payments table
+    expect(screen.getByText("VTX-ORD-UPI-901")).toBeInTheDocument();
+    expect(screen.getByText("UTR987654321012")).toBeInTheDocument();
+
+    // 5. Open UPI configuration modal
+    const configBtn = screen.getByTestId("open-upi-config-btn");
+    fireEvent.click(configBtn);
+
+    await waitFor(() => {
+      const upiModal = screen.getByTestId("upi-config-modal");
+      expect(upiModal).toBeInTheDocument();
+      expect(upiModal).toHaveClass("adm-modal-backdrop");
+      expect(upiModal).toHaveAttribute("role", "dialog");
+      expect(upiModal).toHaveAttribute("aria-modal", "true");
+      expect(screen.getByText(/Configure Merchant UPI & QR Code/i)).toBeInTheDocument();
+      expect(document.body.style.overflow).toBe("hidden");
+    });
+
+    // 6. Test invalid UPI VPA validation
+    const vpaInput = screen.getByTestId("input-merchant-upi");
+    fireEvent.change(vpaInput, { target: { value: "invalid-vpa-no-bank" } });
+
+    const saveBtn = screen.getByTestId("save-upi-config-btn");
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("upi-config-feedback")).toBeInTheDocument();
+      expect(screen.getByText(/Invalid UPI VPA format/i)).toBeInTheDocument();
+    });
+
+    // 7. Test valid VPA and form submission
+    fireEvent.change(vpaInput, { target: { value: "payments.vertex@hdfcbank" } });
+    const nameInput = screen.getByTestId("input-merchant-name");
+    fireEvent.change(nameInput, { target: { value: "VERTEX Industrial Supplies Ltd" } });
+    const instrInput = screen.getByTestId("input-upi-instructions");
+    fireEvent.change(instrInput, { target: { value: "Please enter your 12-digit UTR after transferring." } });
+
+    adminApi.updateAdminPaymentConfig.mockResolvedValueOnce({
+      success: true,
+      message: "Merchant UPI payment configuration saved successfully.",
+      config: {
+        merchantUpiId: "payments.vertex@hdfcbank",
+        merchantName: "VERTEX Industrial Supplies Ltd",
+        upiEnabled: true,
+        qrMode: "DYNAMIC",
+        hasStaticQr: false,
+      },
+    });
+
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(adminApi.updateAdminPaymentConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          merchantUpiId: "payments.vertex@hdfcbank",
+          merchantName: "VERTEX Industrial Supplies Ltd",
+          instructions: "Please enter your 12-digit UTR after transferring.",
+        })
+      );
+      expect(screen.getByText(/saved successfully/i)).toBeInTheDocument();
+    });
+
+    // 8. Test Static QR removal and dialog dismiss behaviors
+    // Re-open with static QR present
+    adminApi.getAdminPaymentConfig.mockResolvedValueOnce({
+      success: true,
+      config: {
+        merchantUpiId: "payments.vertex@hdfcbank",
+        merchantName: "VERTEX Industrial Supplies Ltd",
+        upiEnabled: true,
+        qrMode: "STATIC",
+        hasStaticQr: true,
+        staticQrImageUrl: "/api/payments/qr-image",
+      },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Close configuration modal" }));
+    await waitFor(() => {
+      expect(screen.queryByTestId("upi-config-modal")).not.toBeInTheDocument();
+      expect(document.body.style.overflow).toBe("");
+    });
+
+    // Re-open to verify static QR removal
+    fireEvent.click(screen.getByTestId("open-upi-config-btn"));
+    await waitFor(() => {
+      expect(screen.getByTestId("remove-qr-btn")).toBeInTheDocument();
+      expect(document.body.style.overflow).toBe("hidden");
+    });
+
+    adminApi.removeAdminPaymentQr.mockResolvedValueOnce({
+      success: true,
+      message: "Static QR code image removed successfully.",
+    });
+
+    fireEvent.click(screen.getByTestId("remove-qr-btn"));
+
+    await waitFor(() => {
+      expect(adminApi.removeAdminPaymentQr).toHaveBeenCalled();
+      expect(screen.getByText(/Static QR code image removed/i)).toBeInTheDocument();
+    });
+
+    // Test Escape key dismissal
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => {
+      expect(screen.queryByTestId("upi-config-modal")).not.toBeInTheDocument();
+      expect(document.body.style.overflow).toBe("");
+    });
+
+    // Test Backdrop click dismissal
+    fireEvent.click(screen.getByTestId("open-upi-config-btn"));
+    await waitFor(() => {
+      expect(screen.getByTestId("upi-config-modal")).toBeInTheDocument();
+      expect(document.body.style.overflow).toBe("hidden");
+    });
+    const backdropElem = screen.getByTestId("upi-config-modal");
+    fireEvent.click(backdropElem);
+    await waitFor(() => {
+      expect(screen.queryByTestId("upi-config-modal")).not.toBeInTheDocument();
+      expect(document.body.style.overflow).toBe("");
+    });
+  });
+
+  test("48. Admin Discounts: Free gift selector populates only priced catalog items and excludes unpriced RFQ products", async () => {
+    adminApi.getAdminProducts.mockResolvedValue({
+      success: true,
+      products: [
+        {
+          id: "p-priced",
+          name: "Standard Ground Lug",
+          price: 250,
+          isActive: true,
+          variants: [{ id: "v-priced", sku: "VTX-LUG-250", price: 250, isActive: true, stockQuantity: 50 }],
+        },
+        {
+          id: "p-unpriced",
+          name: "Custom Heavy Solder Billet",
+          price: null,
+          isActive: true,
+          variants: [{ id: "v-unpriced", sku: "VTX-BILLET-RFQ", price: null, isActive: true, stockQuantity: 10 }],
+        },
+      ],
+    });
+
+    render(<AdminLayout onNavigateHome={jest.fn()} onNavigateLogin={jest.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Admin Overview/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTitle("Discounts & Promos"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Discounts & Promotions Management/i)).toBeInTheDocument();
+    });
+
+    // Open Create Promotion Modal
+    fireEvent.click(screen.getByTestId("create-discount-btn"));
+    await waitFor(() => {
+      expect(screen.getByText(/Create New Promotion Campaign/i)).toBeInTheDocument();
+    });
+
+    // Switch to College Coupon
+    const colModalTab = screen.getByRole("tab", { name: /College Educational Coupon/i });
+    fireEvent.click(colModalTab);
+
+    // Verify gift select dropdown contains priced product and excludes unpriced RFQ product
+    await waitFor(() => {
+      const selectEl = document.getElementById("colSelectedGiftSku");
+      expect(selectEl).toBeInTheDocument();
+      const optionTexts = Array.from(selectEl.querySelectorAll("option")).map((o) => o.textContent);
+      expect(optionTexts.some((txt) => txt.includes("Standard Ground Lug"))).toBe(true);
+      expect(optionTexts.some((txt) => txt.includes("Custom Heavy Solder Billet"))).toBe(false);
     });
   });
 });

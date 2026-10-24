@@ -61,5 +61,13 @@ describe("SiteFooter Component", () => {
     const termsBtn = screen.getByRole("button", { name: "Terms of Service" });
     fireEvent.click(termsBtn);
     expect(handlePolicy).toHaveBeenCalledWith("terms");
+
+    const returnsBtn = screen.getByRole("button", { name: "Returns & Replacements" });
+    fireEvent.click(returnsBtn);
+    expect(handlePolicy).toHaveBeenCalledWith("returns");
+
+    const replacePolicyBtn = screen.getByRole("button", { name: "Replacement Policy" });
+    fireEvent.click(replacePolicyBtn);
+    expect(handlePolicy).toHaveBeenCalledWith("returns");
   });
 });

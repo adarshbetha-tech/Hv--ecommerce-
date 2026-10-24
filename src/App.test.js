@@ -964,4 +964,15 @@ describe('VERTEX Unified Login & Role-Based Routing Suite', () => {
       expect(screen.getByText('Arduino Uno R3 Microcontroller Board')).toBeInTheDocument();
     });
   });
+
+  test('32. Direct navigation to /cart renders CartPage without breaking CartDrawer integration', async () => {
+    window.history.pushState({}, '', '/cart');
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('cart-page')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 1, name: /Shopping Cart/i })).toBeInTheDocument();
+    });
+  });
 });

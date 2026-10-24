@@ -10,6 +10,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "seed": "node prisma/seed.js",
+    "seed:official": "node prisma/seed_official_catalog.js",
+    "seed:official:dryrun": "node prisma/seed_official_catalog.js --dry-run",
     "seed:admin": "node src/scripts/seedAdmin.js",
     "test": "node --test --test-concurrency=1 tests/**/*.test.js"
   },

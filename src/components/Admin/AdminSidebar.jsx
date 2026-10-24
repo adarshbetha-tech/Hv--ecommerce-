@@ -7,6 +7,7 @@ const navGroups = [
     items: [
       { id: "dashboard", label: "Dashboard", icon: "📊" },
       { id: "orders", label: "Orders", icon: "🚚" },
+      { id: "payments", label: "Payments", icon: "💳" },
       { id: "quotes", label: "Commercial RFQs", icon: "📑" },
       { id: "refunds", label: "Refunds & Returns", icon: "↩️" },
       { id: "discounts", label: "Discounts & Promos", icon: "🏷️" },
