@@ -1,0 +1,34 @@
+
+
+.vtx-tour-layer{position:fixed;inset:0;z-index:10030;pointer-events:none}.vtx-tour-scrim{position:absolute;inset:0;background:rgba(8,17,32,.54);pointer-events:auto}.vtx-tour-spotlight{position:fixed;z-index:1;border:2px solid #efb849;border-radius:14px;box-shadow:0 0 0 9999px rgba(8,17,32,.54),0 0 0 5px rgba(239,184,73,.18);pointer-events:none;transition:top .22s ease,left .22s ease,width .22s ease,height .22s ease}.vtx-tour-dialog{position:fixed;z-index:2;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,calc(100vw - 32px));box-sizing:border-box;border:1px solid rgba(255,255,255,.75);border-radius:22px;padding:23px 24px 17px;background:#fff;color:#17233a;box-shadow:0 28px 90px rgba(3,12,29,.3);pointer-events:auto;animation:vtx-tour-enter .25s ease-out}.vtx-tour-topline{display:flex;align-items:center;gap:9px;color:#52617a;font-size:10px;font-weight:800;letter-spacing:.16em}.vtx-tour-mark{display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:#142543;color:#f5c45f;font-size:15px;font-weight:900;letter-spacing:0}.vtx-tour-close{margin-left:auto;width:30px;height:30px;border:0;border-radius:9px;background:#f1f4f8;color:#43516a;font-size:23px;line-height:1;cursor:pointer}.vtx-tour-progress-track{height:4px;margin:18px 0 23px;overflow:hidden;border-radius:99px;background:#edf0f5}.vtx-tour-progress-track span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#d99a27,#f4c75d);transition:width .25s ease}.vtx-tour-eyebrow{margin:0 0 8px;color:#a66b09;font-size:10px;font-weight:800;letter-spacing:.15em}.vtx-tour-dialog h2{margin:0;color:#14233e;font-size:clamp(23px,4vw,29px);line-height:1.17;letter-spacing:-.035em}.vtx-tour-dialog>p:not(.vtx-tour-eyebrow){margin:12px 0 0;color:#59667b;font-size:14px;line-height:1.65}.vtx-tour-dialog .vtx-tour-note{padding:9px 11px;border-radius:9px;background:#f7f8fb;font-size:12px}.vtx-tour-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:25px;padding-top:17px;border-top:1px solid #edf0f4}.vtx-tour-count{color:#14233e;font-size:12px;font-weight:800}.vtx-tour-count span{padding:0 3px;color:#9aa4b4;font-weight:500}.vtx-tour-actions{display:flex;align-items:center;gap:9px}.vtx-tour-back,.vtx-tour-next{min-height:41px;border-radius:11px;padding:0 15px;font-size:13px;font-weight:750;cursor:pointer}.vtx-tour-back{border:1px solid #dce2ea;background:#fff;color:#35435a}.vtx-tour-next{border:1px solid #142543;background:#142543;color:#fff;box-shadow:0 5px 12px rgba(20,37,67,.14)}.vtx-tour-next:hover{background:#20385f}.vtx-tour-next span{margin-left:6px;color:#f5c45f}.vtx-tour-skip{display:block;margin:12px auto 0;border:0;background:transparent;color:#7c8798;font-size:11px;font-weight:650;cursor:pointer}.vtx-tour-skip:hover{color:#263957}
+@keyframes vtx-tour-enter{from{opacity:0;transform:translate(-50%,-47%) scale(.98)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+@media(max-width:600px){.vtx-tour-dialog{padding:19px 18px 15px;border-radius:18px}.vtx-tour-progress-track{margin:15px 0 19px}.vtx-tour-dialog h2{font-size:25px}.vtx-tour-dialog>p:not(.vtx-tour-eyebrow){font-size:13px}.vtx-tour-footer{margin-top:20px;padding-top:14px}.vtx-tour-back,.vtx-tour-next{min-height:39px;padding:0 12px}}
+@media(prefers-reduced-motion:reduce){.vtx-tour-dialog,.vtx-tour-spotlight,.vtx-tour-progress-track span{animation:none;transition:none}}
+
+
+/* Keep the replay control directly above the existing Need Help button. */
+.vtx-tour-replay-btn{
+  position:fixed;
+  right:24px;
+  bottom:84px;
+  z-index:989;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-height:42px;
+  padding:0 17px;
+  border:1px solid rgba(239,184,73,.7);
+  border-radius:999px;
+  background:#142543;
+  color:#fff;
+  box-shadow:0 8px 22px rgba(9,24,45,.22);
+  font:700 13px/1.2 inherit;
+  cursor:pointer;
+  transition:transform .18s ease,background .18s ease,box-shadow .18s ease;
+}
+.vtx-tour-replay-btn span{color:#f5c45f;font-size:16px}
+.vtx-tour-replay-btn:hover{background:#20385f;transform:translateY(-2px);box-shadow:0 11px 25px rgba(9,24,45,.28)}
+.vtx-tour-replay-btn:focus-visible{outline:3px solid #f5c45f;outline-offset:3px}
+@media(max-width:600px){.vtx-tour-replay-btn{right:16px;bottom:70px;min-height:39px;padding:0 13px;font-size:12px}}
+@media(max-width:380px){.vtx-tour-replay-btn{right:12px;bottom:66px;min-height:37px;padding:0 11px}}

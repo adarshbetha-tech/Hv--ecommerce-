@@ -25,6 +25,7 @@ import FloatingSupport from "./components/Home/FloatingSupport";
 import PolicyModal from "./components/Home/PolicyModal";
 import SiteFooter from "./components/Home/SiteFooter";
 import ScrollReveal from "./components/Common/ScrollReveal";
+import WebsiteTour from "./components/Common/WebsiteTour";
 import { subscribeNewsletter } from "./services/newsletterApi";
 import { getCurrentUser, logoutUser } from "./services/authApi";
 import { getCategories, getProducts, getProductBySlug } from "./services/catalogApi";
@@ -1073,7 +1074,7 @@ export default function App() {
             </div>
           </div>
 
-          <form onSubmit={handleSearchSubmit} className="search-bar" role="search">
+          <form onSubmit={handleSearchSubmit} className="search-bar" role="search" data-tour="search">
             <span className="search-icon-prefix" aria-hidden="true">🔍</span>
             <input
               type="text"
@@ -1154,6 +1155,7 @@ export default function App() {
             <button
               type="button"
               className="header-action header-action-btn wishlist-action"
+              data-tour="wishlist"
               onClick={() => navigate("wishlist-page")}
               aria-label={`Saved Wishlist with ${wishlistCount} items`}
               title="View saved wishlist components"
@@ -1169,6 +1171,7 @@ export default function App() {
             <button
               type="button"
               className="header-action cart-action"
+              data-tour="cart"
               onClick={() => navigate("cart-page")}
               aria-label={`Shopping cart with ${cart?.totalQuantity || 0} items`}
               data-testid="cart-button"
@@ -1821,6 +1824,7 @@ export default function App() {
         onNavigate={navigate}
       />
       {renderSharedHeader()}
+      <WebsiteTour />
 
       {/* Hero Section — 4-Slide Interactive Slider */}
       <HeroSlider
@@ -1849,7 +1853,7 @@ export default function App() {
       />
 
       {/* Featured Products Section */}
-      <section className="section" id="featured-products">
+      <section className="section" id="featured-products" data-tour="products">
         <div className="section-head">
           <div style={{ display: "flex", alignItems: "baseline", gap: "12px", flexWrap: "wrap" }}>
             <h2>Featured Products</h2>
