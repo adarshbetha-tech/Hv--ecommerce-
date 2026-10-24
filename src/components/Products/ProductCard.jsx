@@ -64,6 +64,8 @@ export default function ProductCard({
   const cardRef = useRef(null);
   const [imgError, setImgError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [addFeedback, setAddFeedback] = useState(false);
+  const addFeedbackTimerRef = useRef(null);
   const [isWishlisted, setIsWishlisted] = useState(() => isItemInWishlist(product?.id || product?.slug));
   const prefersReducedMotion = useSafeReducedMotion();
 
@@ -92,12 +94,26 @@ export default function ProductCard({
     return () => window.removeEventListener("vertex_wishlist_updated", handleWishlistUpdate);
   }, [product]);
 
+  useEffect(() => () => {
+    if (addFeedbackTimerRef.current) window.clearTimeout(addFeedbackTimerRef.current);
+  }, []);
+
   if (!product) return null;
 
   const handleWishlistClick = (e) => {
     e.stopPropagation();
     const nowWishlisted = toggleWishlistItem(product);
     setIsWishlisted(nowWishlisted);
+  };
+
+  const handleAddToCartClick = () => {
+    if (!onAddToCart || isAdding || addFeedback) return;
+    onAddToCart(product, product.variants?.[0]);
+    setAddFeedback(true);
+    addFeedbackTimerRef.current = window.setTimeout(() => {
+      setAddFeedback(false);
+      addFeedbackTimerRef.current = null;
+    }, 1800);
   };
 
   // Pointer event handlers for 3D tilt
@@ -418,14 +434,14 @@ export default function ProductCard({
           <motion.button
             type="button"
             className="btn btn-primary btn-cart vtx-card-add-to-cart"
-            onClick={() => onAddToCart && onAddToCart(product, primaryVariant)}
-            disabled={!inStock || isAdding}
+            onClick={handleAddToCartClick}
+            disabled={!inStock || isAdding || addFeedback}
             data-testid={`add-to-cart-${product.id || product.slug}`}
-            aria-label={`Add ${product.name} to cart`}
+            aria-label={addFeedback ? `${product.name} added to cart` : `Add ${product.name} to cart`}
             whileHover={prefersReducedMotion || !inStock ? undefined : { scale: 1.02 }}
             whileTap={prefersReducedMotion || !inStock ? undefined : { scale: 0.98 }}
           >
-            {isAdding ? "Adding..." : "🛒 Add to Cart"}
+            {addFeedback ? "✓ Added" : isAdding ? "Adding..." : "🛒 Add to Cart"}
           </motion.button>
         </div>
       </div>
